@@ -150,7 +150,7 @@ async function pollPrediction(token, prediction) {
     console.error("No prediction id, cannot poll. Response:", prediction);
     return null;
   }
-  const pollUrl = `/api/replicate-api/v1/predictions/${prediction.id}`;
+  const pollUrl = `/api/replicate/v1/predictions/${prediction.id}`;
   for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 1500));
     const res = await fetch(pollUrl, { headers: { "Authorization": `Bearer ${token}` } });
@@ -171,7 +171,7 @@ async function genFirstImage(token, scene, charDesc, mood) {
   const style = getStyleForMood(mood);
   const prompt = `${style}. ${scene}. The main character is ${charDesc}. Show ALL characters described in the scene with distinct appearances. Dynamic poses and clear interaction between characters. No text, words, letters, or writing anywhere in the image.`;
   try {
-    const res = await fetch("/api/replicate-api/v1/models/black-forest-labs/flux-2-pro/predictions", {
+    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } })
@@ -188,7 +188,7 @@ async function genNextImage(token, scene, charDesc, refImageUrl, mood) {
   const style = getStyleForMood(mood);
   const prompt = `${style}. ${scene}. The main character from the reference image (${charDesc}) must appear with identical design (colors, clothing, features). Show ALL characters described in the scene — include every creature, person, or animal mentioned. Each character should have distinct appearance and clear interaction with others. Dynamic poses matching the described action. Rich detailed environment with depth. No text, words, letters, or writing anywhere in the image.`;
   try {
-    const res = await fetch("/api/replicate-api/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
+    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({ input: { prompt, input_image: refImageUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 5 } })
@@ -442,7 +442,7 @@ export default function App() {
         
         if (!url) {
           const voiceId = elVoiceId || "EXAVITQu4vr4xnSDxMaL";
-          const res = await fetch(`/api/elevenlabs-api/v1/text-to-speech/${voiceId}`, {
+          const res = await fetch(`/api/elevenlabs/v1/text-to-speech/${voiceId}`, {
             method: "POST",
             headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -497,7 +497,7 @@ export default function App() {
       let url = sfxCacheRef.current.get(sfxPrompt);
       
       if (!url) {
-        const res = await fetch("/api/elevenlabs-api/v1/sound-generation", {
+        const res = await fetch("/api/elevenlabs/v1/sound-generation", {
           method: "POST",
           headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -586,7 +586,7 @@ export default function App() {
     if (!elKey) return;
     setVoicesLoading(true);
     try {
-      const res = await fetch("/api/elevenlabs-api/v1/voices?page_size=100", {
+      const res = await fetch("/api/elevenlabs/v1/voices?page_size=100", {
         headers: { "xi-api-key": elKey }
       });
       const data = await res.json();
@@ -613,7 +613,7 @@ export default function App() {
   const previewVoice = async (voiceId) => {
     if (voicePreview) { voicePreview.pause(); setVoicePreview(null); }
     try {
-      const res = await fetch(`/api/elevenlabs-api/v1/text-to-speech/${voiceId}`, {
+      const res = await fetch(`/api/elevenlabs/v1/text-to-speech/${voiceId}`, {
         method: "POST",
         headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
         body: JSON.stringify({

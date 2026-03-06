@@ -1,5 +1,8 @@
 export default async function handler(req, res) {
-  const path = req.query.path ? (Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path) : '';
+  // Extract the path after /api/replicate/
+  const fullUrl = req.url;
+  const match = fullUrl.match(/\/api\/replicate\/(.*)/);
+  const path = match ? match[1] : '';
   const url = `https://api.replicate.com/${path}`;
 
   const headers = {};
@@ -21,10 +24,9 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    res.status(response.status);
     const ct = response.headers.get('content-type');
     if (ct) res.setHeader('Content-Type', ct);
-    res.send(data);
+    res.status(response.status).send(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

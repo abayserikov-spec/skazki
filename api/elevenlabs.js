@@ -1,5 +1,8 @@
 export default async function handler(req, res) {
-  const path = req.query.path ? (Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path) : '';
+  // Extract the path after /api/elevenlabs/
+  const fullUrl = req.url;
+  const match = fullUrl.match(/\/api\/elevenlabs\/(.*)/);
+  const path = match ? match[1] : '';
   const url = `https://api.elevenlabs.io/${path}`;
 
   const headers = {};
@@ -22,15 +25,14 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    res.status(response.status);
     if (ct) res.setHeader('Content-Type', ct);
 
     if (ct.includes('audio') || ct.includes('octet-stream')) {
       const buffer = Buffer.from(await response.arrayBuffer());
-      res.send(buffer);
+      res.status(response.status).send(buffer);
     } else {
       const data = await response.text();
-      res.send(data);
+      res.status(response.status).send(data);
     }
   } catch (e) {
     res.status(500).json({ error: e.message });

@@ -6,15 +6,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api/replicate-api': {
+      '/api/replicate': {
         target: 'https://api.replicate.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/replicate-api/, ''),
+        rewrite: (path) => path.replace(/^\/api\/replicate/, ''),
       },
-      '/api/elevenlabs-api': {
+      '/api/elevenlabs': {
         target: 'https://api.elevenlabs.io',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/elevenlabs-api/, ''),
+        rewrite: (path) => path.replace(/^\/api\/elevenlabs/, ''),
       }
     }
   },
