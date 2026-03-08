@@ -88,7 +88,7 @@ async function genPage(ctx, apiKey) {
 - Предыстория: ${premise || "Таинственное приключение"}
 - Стр ${pn}/${TOTAL_PAGES}. 3-5 предложений. Живой язык. NPC, опасности, юмор.
 - ${choicesInstr}${diceInstr}
-- "scene": Описание сцены на АНГЛИЙСКОМ для иллюстрации. Тёплый золотистый стиль, яркое освещение, уютная атмосфера. Персонажи с характером но НЕ мрачные — живые выразительные лица, лёгкий юмор. Детальное средневековое окружение.
+- "scene": Описание сцены на АНГЛИЙСКОМ. ОБЯЗАТЕЛЬНО описывай КОМИЧНЫЕ выражения лиц каждого персонажа — выпученные глаза, отвисшая челюсть, хитрая ухмылка, панический ужас, самодовольная гримаса. Каждый персонаж РЕАГИРУЕТ эмоционально и смешно. Тёплое золотистое освещение, уютная фэнтези атмосфера.
 - "mood": "dungeon"|"forest"|"castle"|"tavern"|"battle"|"magic"|"mountain"|"ruins"|"city"|"ocean"
 JSON:
 {"text":"...","mood":"...","scene":"..."${charDescJson},${choicesOrEnd},"title":"название главы","sfx":"english ambient 5-10 words","tts_text":"текст с паузами для озвучки"}`;
@@ -108,7 +108,7 @@ JSON:
   return JSON.parse(txt.replace(/```json|```/g, "").trim());
 }
 
-const FANTASY_STYLE = "Semi-realistic fantasy illustration in warm golden tones. Clean digital art with soft ink outlines, bright warm lighting like afternoon sunlight. Characters have realistic proportions with slightly stylized expressive faces — NOT gritty, NOT dark, NOT horror. Warm color palette: golden yellows, soft oranges, warm browns, sky blues, gentle greens. Bright and inviting atmosphere with soft shadows. Characters look like real people drawn in a friendly comic style — distinct features, personality, light humor in expressions. Cozy medieval fantasy settings — taverns with firelight, sunny villages, colorful markets, green forests. Style similar to modern webtoon fantasy comics or Pixar concept art. Professional illustration. No text in image.";
+const FANTASY_STYLE = "Semi-realistic fantasy illustration in warm golden tones. Clean digital art with soft ink outlines, bright warm lighting. Characters have realistic proportions but HIGHLY EXAGGERATED COMEDIC FACIAL EXPRESSIONS — wide eyes, dropped jaws, sneaky grins, raised eyebrows, smug smirks, terrified faces, goofy surprise. Every character reacts with over-the-top emotion like a comedy manga panel. Warm color palette: golden yellows, soft oranges, warm browns. Bright inviting atmosphere. Medieval fantasy settings — taverns, villages, forests. Style like Korean webtoon comedy mixed with DnD artbook. Professional illustration. No text in image.";
 
 async function pollPrediction(token, prediction) {
   if (!prediction || prediction.error) return null;
@@ -130,7 +130,7 @@ async function genFirstImage(token, scene, charDesc) {
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
       method:"POST", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Prefer":"wait=60"},
-      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character: ${charDesc}. Warm bright lighting, friendly expressions, colorful scene. No text.`,aspect_ratio:"16:9",output_format:"webp",output_quality:90,safety_tolerance:5}})
+      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character: ${charDesc}. Characters must have EXAGGERATED COMEDIC EXPRESSIONS — wide eyes, goofy grins, dramatic reactions. Warm golden lighting. No text.`,aspect_ratio:"16:9",output_format:"webp",output_quality:90,safety_tolerance:5}})
     });
     return await pollPrediction(token, await res.json());
   } catch { return null; }
@@ -141,7 +141,7 @@ async function genNextImage(token, scene, charDesc, refUrl) {
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
       method:"POST", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Prefer":"wait=60"},
-      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character from reference (${charDesc}) must appear with identical design — same colors, clothing, features. Warm bright lighting, expressive faces. No text.`,input_image:refUrl,aspect_ratio:"16:9",output_format:"png",safety_tolerance:5}})
+      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character from reference (${charDesc}) identical design. EXAGGERATED COMEDIC EXPRESSIONS on all characters — dramatic reactions, wide eyes, goofy faces. Warm golden lighting. No text.`,input_image:refUrl,aspect_ratio:"16:9",output_format:"png",safety_tolerance:5}})
     });
     return await pollPrediction(token, await res.json());
   } catch { return null; }
