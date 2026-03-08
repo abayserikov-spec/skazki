@@ -69,7 +69,7 @@ async function genPage(ctx, apiKey) {
   const statsStr = Object.entries(stats).map(([k,v]) => STATS[k].n+":"+v+"("+(getMod(v)>=0?"+":"")+getMod(v)+")").join(", ");
   const charBlock = charDesc
     ? "\n- Персонаж установлен: " + charDesc + ". Сохраняй внешность."
-    : "\n- ПЕРВАЯ СТРАНИЦА: Верни \"characterDesc\" с АНГЛИЙСКИМ описанием внешности в стиле РИСОВАННОГО АРТА. Пример: \"a stocky dwarf warrior with bright red braided beard, oversized battle axe, dented iron helmet with horns, exaggerated muscular arms, wearing patched leather armor with fur collar, cheerful grin showing gold tooth\". Описывай ярко, с преувеличенными деталями.";
+    : "\n- ПЕРВАЯ СТРАНИЦА: Верни \"characterDesc\" с АНГЛИЙСКИМ описанием внешности в стиле ПОЛУРЕАЛИСТИЧНОГО КОМИКСА. Пример: \"a weathered dwarf warrior with thick red braided beard, deep-set tired eyes, broken nose, dented iron helmet, scarred muscular arms in patched leather armor, crooked smirk showing gold tooth\". Описывай грубовато, с характером — шрамы, морщины, щетина, потёртая одежда.";
   const charDescJson = !charDesc ? ',"characterDesc":"...english visual description..."' : '';
   const endInstr = isEnd ? "ПОСЛЕДНЯЯ СТРАНИЦА. Подведи итог. Храбрость=победа. Трусость=поражение. Микс=горько-сладкий." : "";
   const choicesOrEnd = isEnd ? '"isEnd":true,"ending":"victory|mixed|defeat"' : '"choices":[{"label":"...","emoji":"...","stat":"str|dex|con|int|wis|cha","dc":number}]';
@@ -88,7 +88,7 @@ async function genPage(ctx, apiKey) {
 - Предыстория: ${premise || "Таинственное приключение"}
 - Стр ${pn}/${TOTAL_PAGES}. 3-5 предложений. Живой язык. NPC, опасности, юмор.
 - ${choicesInstr}${diceInstr}
-- "scene": Описание сцены на АНГЛИЙСКОМ для иллюстрации в стиле РИСОВАННОГО ФЭНТЕЗИ АРТА. Описывай как для артбука настольной RPG: яркие цвета, преувеличенные эмоции, динамичные позы, детальное окружение. Каждый персонаж с выразительной мимикой и характерными жестами.
+- "scene": Описание сцены на АНГЛИЙСКОМ для иллюстрации в стиле полуреалистичного фэнтези-комикса. НЕ милый, НЕ детский — взрослые персонажи с характером: шрамы, щетина, грубые черты лица, потёртая одежда. Тёплое золотистое освещение, глубокие тени. Каждый персонаж с яркой индивидуальностью.
 - "mood": "dungeon"|"forest"|"castle"|"tavern"|"battle"|"magic"|"mountain"|"ruins"|"city"|"ocean"
 JSON:
 {"text":"...","mood":"...","scene":"..."${charDescJson},${choicesOrEnd},"title":"название главы","sfx":"english ambient 5-10 words","tts_text":"текст с паузами для озвучки"}`;
@@ -108,7 +108,7 @@ JSON:
   return JSON.parse(txt.replace(/```json|```/g, "").trim());
 }
 
-const FANTASY_STYLE = "Hand-drawn fantasy illustration, bold ink outlines with vibrant watercolor fills. Stylized exaggerated proportions, expressive cartoon-like faces with dramatic emotions. Rich saturated colors — deep purples, fiery oranges, emerald greens, golden yellows. Dramatic lighting with strong shadows. Slightly humorous and whimsical tone. Detailed fantasy environments with decorative elements. Style similar to tabletop RPG artbooks, DnD character sheets, and animated fantasy shows. Thick brushstrokes visible. Professional illustration quality. No text or writing in image.";
+const FANTASY_STYLE = "Semi-realistic fantasy comic illustration, European comic book style similar to Moebius and Korean manhwa. Realistic body proportions but stylized rough angular faces with strong jawlines, expressive eyes, and distinct personality in each character. NOT cute, NOT Disney, NOT anime chibi — adult characters with rugged features, scars, stubble, wrinkles. Warm muted color palette with dramatic golden lighting and deep shadows. Visible brushwork and ink linework. Gritty medieval fantasy atmosphere with humor. Detailed armor, weapons, and tavern environments. Professional comic book quality. No text or writing in image.";
 
 async function pollPrediction(token, prediction) {
   if (!prediction || prediction.error) return null;
@@ -130,7 +130,7 @@ async function genFirstImage(token, scene, charDesc) {
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
       method:"POST", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Prefer":"wait=60"},
-      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character: ${charDesc}. Show ALL characters with exaggerated expressive poses and emotions. Bold outlines, vibrant colors, fantasy art style. No text.`,aspect_ratio:"16:9",output_format:"webp",output_quality:90,safety_tolerance:5}})
+      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character: ${charDesc}. Rugged adult characters with personality, NOT cute or cartoonish. Strong expressions, dynamic poses. No text.`,aspect_ratio:"16:9",output_format:"webp",output_quality:90,safety_tolerance:5}})
     });
     return await pollPrediction(token, await res.json());
   } catch { return null; }
@@ -141,7 +141,7 @@ async function genNextImage(token, scene, charDesc, refUrl) {
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
       method:"POST", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Prefer":"wait=60"},
-      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character from reference (${charDesc}) must appear with identical design — same colors, clothing, features. All characters with exaggerated expressive poses. Bold outlines, vibrant colors. No text.`,input_image:refUrl,aspect_ratio:"16:9",output_format:"png",safety_tolerance:5}})
+      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character from reference (${charDesc}) must appear with identical design — same colors, clothing, features. Rugged adult characters, NOT cute. Strong expressions. No text.`,input_image:refUrl,aspect_ratio:"16:9",output_format:"png",safety_tolerance:5}})
     });
     return await pollPrediction(token, await res.json());
   } catch { return null; }
