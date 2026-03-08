@@ -108,8 +108,6 @@ JSON:
   return JSON.parse(txt.replace(/```json|```/g, "").trim());
 }
 
-// Style now defined by ПЧК reference image, no text style needed
-
 async function pollPrediction(token, prediction) {
   if (!prediction || prediction.error) return null;
   if (prediction.status === "succeeded" && prediction.output) { const o = prediction.output; return typeof o === "string" ? o : Array.isArray(o) ? o[0] : o; }
@@ -125,16 +123,15 @@ async function pollPrediction(token, prediction) {
   return null;
 }
 
-// Style reference URL — ПЧК art style
-const STYLE_REF_PATH = "/style-ref.png";
+// ПЧК art style — precise description based on actual show art
+const PCK_STYLE = "Digital illustration with visible ink outlines and warm earthy color palette. Semi-realistic proportions with expressive stylized faces — large noses, thick eyebrows, distinct jawlines, comedic expressions. Warm muted tones: golden amber, earthy browns, olive greens, burnt orange, dusty rose. Textured brushwork like watercolor wash over ink lineart. Warm golden lighting with soft shadows. Characters have real personality — funny quirky faces, not pretty or idealized. Medieval fantasy setting with lived-in detailed environments. Style of a professional artbook for a tabletop RPG comedy show. NOT anime, NOT Disney, NOT photorealistic. No text in image.";
 
 async function genFirstImage(token, scene, charDesc) {
   if (!token) return null;
-  const styleRefUrl = window.location.origin + STYLE_REF_PATH;
   try {
-    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
+    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
       method:"POST", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Prefer":"wait=60"},
-      body: JSON.stringify({input:{prompt:`Draw a COMPLETELY NEW SCENE in the EXACT SAME ART STYLE as the reference image. Match the reference art style precisely: same ink line quality, same coloring technique, same level of detail, same warm tones. NEW SCENE: ${scene}. The NEW main character is ${charDesc}. Expressive comedic faces, warm lighting. Do NOT copy the reference scene — only copy the ART STYLE. No text in image.`,input_image:styleRefUrl,aspect_ratio:"16:9",output_format:"webp",safety_tolerance:5}})
+      body: JSON.stringify({input:{prompt:`${PCK_STYLE} Scene: ${scene}. Main character: ${charDesc}. Characters with funny expressive faces, warm golden lighting, detailed fantasy environment. No text.`,aspect_ratio:"16:9",output_format:"webp",output_quality:90,safety_tolerance:5}})
     });
     return await pollPrediction(token, await res.json());
   } catch { return null; }
@@ -145,7 +142,7 @@ async function genNextImage(token, scene, charDesc, refUrl) {
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
       method:"POST", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Prefer":"wait=60"},
-      body: JSON.stringify({input:{prompt:`Keep the EXACT SAME ART STYLE as the reference image — same ink lines, same coloring, same warm tones. NEW SCENE: ${scene}. Main character from reference (${charDesc}) must appear with identical design. Expressive comedic faces, warm golden lighting. No text.`,input_image:refUrl,aspect_ratio:"16:9",output_format:"png",safety_tolerance:5}})
+      body: JSON.stringify({input:{prompt:`Keep the EXACT SAME ART STYLE as the reference — same ink outlines, same warm earthy colors, same textured brushwork. NEW SCENE: ${scene}. Main character from reference (${charDesc}) must appear identical. Funny expressive faces, warm golden lighting. No text.`,input_image:refUrl,aspect_ratio:"16:9",output_format:"png",safety_tolerance:5}})
     });
     return await pollPrediction(token, await res.json());
   } catch { return null; }
