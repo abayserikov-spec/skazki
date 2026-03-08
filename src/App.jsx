@@ -108,7 +108,7 @@ JSON:
   return JSON.parse(txt.replace(/```json|```/g, "").trim());
 }
 
-const FANTASY_STYLE = "Semi-realistic fantasy illustration in warm golden tones. Clean digital art with soft ink outlines, bright warm lighting. Characters have realistic proportions but HIGHLY EXAGGERATED COMEDIC FACIAL EXPRESSIONS — wide eyes, dropped jaws, sneaky grins, raised eyebrows, smug smirks, terrified faces, goofy surprise. Every character reacts with over-the-top emotion like a comedy manga panel. Warm color palette: golden yellows, soft oranges, warm browns. Bright inviting atmosphere. Medieval fantasy settings — taverns, villages, forests. Style like Korean webtoon comedy mixed with DnD artbook. Professional illustration. No text in image.";
+// Style now defined by ПЧК reference image, no text style needed
 
 async function pollPrediction(token, prediction) {
   if (!prediction || prediction.error) return null;
@@ -125,12 +125,16 @@ async function pollPrediction(token, prediction) {
   return null;
 }
 
+// Style reference URL — ПЧК art style
+const STYLE_REF_PATH = "/style-ref.png";
+
 async function genFirstImage(token, scene, charDesc) {
   if (!token) return null;
+  const styleRefUrl = window.location.origin + STYLE_REF_PATH;
   try {
-    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
+    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
       method:"POST", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Prefer":"wait=60"},
-      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character: ${charDesc}. Characters must have EXAGGERATED COMEDIC EXPRESSIONS — wide eyes, goofy grins, dramatic reactions. Warm golden lighting. No text.`,aspect_ratio:"16:9",output_format:"webp",output_quality:90,safety_tolerance:5}})
+      body: JSON.stringify({input:{prompt:`Draw a COMPLETELY NEW SCENE in the EXACT SAME ART STYLE as the reference image. Match the reference art style precisely: same ink line quality, same coloring technique, same level of detail, same warm tones. NEW SCENE: ${scene}. The NEW main character is ${charDesc}. Expressive comedic faces, warm lighting. Do NOT copy the reference scene — only copy the ART STYLE. No text in image.`,input_image:styleRefUrl,aspect_ratio:"16:9",output_format:"webp",safety_tolerance:5}})
     });
     return await pollPrediction(token, await res.json());
   } catch { return null; }
@@ -141,7 +145,7 @@ async function genNextImage(token, scene, charDesc, refUrl) {
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
       method:"POST", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json","Prefer":"wait=60"},
-      body: JSON.stringify({input:{prompt:`${FANTASY_STYLE} ${scene}. Main character from reference (${charDesc}) identical design. EXAGGERATED COMEDIC EXPRESSIONS on all characters — dramatic reactions, wide eyes, goofy faces. Warm golden lighting. No text.`,input_image:refUrl,aspect_ratio:"16:9",output_format:"png",safety_tolerance:5}})
+      body: JSON.stringify({input:{prompt:`Keep the EXACT SAME ART STYLE as the reference image — same ink lines, same coloring, same warm tones. NEW SCENE: ${scene}. Main character from reference (${charDesc}) must appear with identical design. Expressive comedic faces, warm golden lighting. No text.`,input_image:refUrl,aspect_ratio:"16:9",output_format:"png",safety_tolerance:5}})
     });
     return await pollPrediction(token, await res.json());
   } catch { return null; }
