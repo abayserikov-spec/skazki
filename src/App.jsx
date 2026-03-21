@@ -677,7 +677,7 @@ export default function App() {
     
     genFn.then(url => {
         setCurImg(url);
-        if (url) setRefImgUrl(url);
+        if (url && !refImgUrl) setRefImgUrl(url); // only save first image as permanent reference
         setImgLoading(false);
       })
       .catch(() => setImgLoading(false));
