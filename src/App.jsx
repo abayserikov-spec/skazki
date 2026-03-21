@@ -43,6 +43,96 @@ const DARK = {
 
 // ── STORY CONFIG ──
 const TOTAL_PAGES = 6;
+
+// ── i18n ──
+const I18N = {
+  ru: {
+    interactiveStories: "Интерактивные сказки",
+    skazka: "Сказка", vmeste: "Вместе",
+    aiCreates: "ИИ создаёт уникальную сказку.", readTogether: "Вы читаете вместе с ребёнком.",
+    yourName: "Ваше имя", email: "Email", login: "Войти →",
+    back: "← Назад", dashboard: "Dashboard", hello: "Привет",
+    children: "Дети", addChild: "+ Добавить", childName: "Имя ребёнка", years: "лет",
+    addChildPlaceholder: "Добавьте ребёнка, чтобы начать",
+    newSession: "Новая сессия", forWhom: "Для кого?", createStory: "Создать историю →",
+    history: "📚 История", min: "мин", pages: "стр.",
+    storyFor: "История для", whatAbout: "О чём будет история? Выберите идею или придумайте свою",
+    storyIdeas: "✨ Идеи для истории", more: "🔄 Ещё", generating: "Генерируем идеи…",
+    noIdeas: "Не удалось загрузить. Нажмите 🔄", needKey: "Нужен API ключ для генерации идей",
+    writeYourOwn: "✏️ Или напишите свою",
+    premisePlaceholder: "Например: Мальчик хочет выиграть школьный чемпионат по шахматам...",
+    anyGenre: "Реалистичная, фэнтези, фантастика — что угодно.",
+    startStory: "Начать историю →", clear: "Очистить",
+    artStyle: "🎨 Стиль иллюстраций",
+    styleBook: "Книжная иллюстрация", styleBookDesc: "Тёплая акварель, как в детских книгах",
+    styleAnime: "Аниме", styleAnimeDesc: "Яркий стиль как Ghibli / Shinkai",
+    styleRealistic: "Реалистичный", styleRealisticDesc: "Фотореалистичный стиль",
+    settings: "⚙️ Настройки", done: "Готово", logout: "Выйти",
+    creatingStory: "Создаём сказку", continuing: "Продолжение…",
+    end: "✨ Конец", viewReport: "Смотреть отчёт →",
+    orCustom: "или придумайте свой вариант:", heroAction: "Что хочет сделать герой?..",
+    speak: "Озвучить", stop: "Стоп", auto: "авто", sounds: "звуки", quiet: "тихо",
+    sessionReport: "Отчёт сессии", journey: "Путешествие", choices: "выборов",
+    choicesOf: "💎 Выборы", fullStory: "📜 Сказка целиком", decisionPath: "🧭 Путь выборов",
+    newSessionBtn: "Новая сессия →", dashboardBtn: "Дашборд",
+    disclaimer: "🛡️ Все истории создаются ИИ с фильтрацией контента по возрасту. Контент безопасен для детей, но рекомендуется присутствие родителя.",
+    disclaimerEn: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
+    finish: "Завершить", page: "стр.", of: "из",
+    parentPremise: "Предыстория от родителя", discussionQ: "💡 Вопрос для звонка",
+    ending: { good: "Счастливый конец ✨", mixed: "Неоднозначный финал ⚖️", sad: "Грустный конец 💔" },
+  },
+  en: {
+    interactiveStories: "Interactive Fairy Tales",
+    skazka: "Story", vmeste: "Together",
+    aiCreates: "AI creates a unique story.", readTogether: "Read it together with your child.",
+    yourName: "Your name", email: "Email", login: "Enter →",
+    back: "← Back", dashboard: "Dashboard", hello: "Hello",
+    children: "Children", addChild: "+ Add", childName: "Child's name", years: "years old",
+    addChildPlaceholder: "Add a child to begin",
+    newSession: "New Session", forWhom: "For whom?", createStory: "Create Story →",
+    history: "📚 History", min: "min", pages: "p.",
+    storyFor: "Story for", whatAbout: "What will the story be about? Choose an idea or write your own",
+    storyIdeas: "✨ Story Ideas", more: "🔄 More", generating: "Generating ideas…",
+    noIdeas: "Failed to load. Press 🔄", needKey: "API key needed for ideas",
+    writeYourOwn: "✏️ Or write your own",
+    premisePlaceholder: "E.g.: A boy wants to win the school chess tournament but his rival is his best friend...",
+    anyGenre: "Realistic, fantasy, sci-fi — anything goes.",
+    startStory: "Start Story →", clear: "Clear",
+    artStyle: "🎨 Illustration Style",
+    styleBook: "Book Illustration", styleBookDesc: "Warm watercolor, like children's books",
+    styleAnime: "Anime", styleAnimeDesc: "Bright Ghibli / Shinkai style",
+    styleRealistic: "Realistic", styleRealisticDesc: "Photorealistic style",
+    settings: "⚙️ Settings", done: "Done", logout: "Log out",
+    creatingStory: "Creating story", continuing: "Continuing…",
+    end: "✨ The End", viewReport: "View Report →",
+    orCustom: "or write your own action:", heroAction: "What does the hero want to do?..",
+    speak: "Listen", stop: "Stop", auto: "auto", sounds: "sounds", quiet: "quiet",
+    sessionReport: "Session Report", journey: "Journey of", choices: "choices",
+    choicesOf: "💎 Choices by", fullStory: "📜 Full Story", decisionPath: "🧭 Decision Path",
+    newSessionBtn: "New Session →", dashboardBtn: "Dashboard",
+    disclaimer: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
+    disclaimerEn: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
+    finish: "Finish", page: "p.", of: "of",
+    parentPremise: "Parent's premise", discussionQ: "💡 Discussion question",
+    ending: { good: "Happy ending ✨", mixed: "Mixed ending ⚖️", sad: "Sad ending 💔" },
+  }
+};
+
+// ── ART STYLES ──
+const ART_STYLES = {
+  book: {
+    fantasy: "Children's book illustration, warm watercolor style with hand-painted texture and visible soft brushstrokes. Rich detailed environment. Soft golden lighting, fairy-tale atmosphere, gentle pastel colors. Professional illustration quality like a printed storybook",
+    realistic: "Children's book illustration, warm watercolor with hand-painted texture. Rich detailed real-world environment. Soft natural lighting, gentle earth tones. Professional storybook quality"
+  },
+  anime: {
+    fantasy: "Anime-inspired digital illustration, vibrant colors, expressive characters with large eyes. Style like Studio Ghibli or Makoto Shinkai. Cinematic lighting, magical atmosphere. Professional animation quality",
+    realistic: "Anime-inspired semi-realistic illustration, similar to Makoto Shinkai. Rich real-world environment, warm natural lighting. Expressive character faces. Professional quality"
+  },
+  realistic: {
+    fantasy: "Photorealistic fantasy illustration, cinematic lighting and composition. Detailed magical environment with realistic textures. Characters with realistic proportions and expressions. High quality digital art",
+    realistic: "Photorealistic illustration, cinematic composition with depth of field. Detailed real-world environment. Natural lighting with warm tones. Characters with realistic proportions. High quality"
+  }
+};
 const VALS = {
   // Positive
   generosity:  { n:"Щедрость",      e:"💛", c:"#D4845A", pos: true },
@@ -66,7 +156,7 @@ const VALS = {
 
 // ── AI: Story Generation (Sonnet) ──
 async function genPage(ctx, apiKey) {
-  const { name, age, theme, history, choice, charDesc, backstory } = ctx;
+  const { name, age, theme, history, choice, charDesc, backstory, lang: storyLang } = ctx;
   const pn = history.length + 1, isEnd = pn >= TOTAL_PAGES;
   const hist = history.map((h,i) => "P" + (i+1) + ": " + h.text + (h.choice ? " [chose: " + h.choice.label + "/" + h.choice.value + "]" : "")).join("\n");
   
@@ -101,7 +191,12 @@ async function genPage(ctx, apiKey) {
 
   const backstoryBlock = backstory ? "\n- STORY PREMISE: " + backstory + ". This is the core situation. Build the story around this premise." : "";
 
-  const sys = "You are a master storyteller creating interactive stories in Russian for children. This is a STORY WITH CONSEQUENCES — the child's choices DIRECTLY shape the outcome.\nRules:\n- Child: " + name + ", age " + age + charBlock + backstoryBlock + "\n- Page " + pn + "/" + TOTAL_PAGES + ". Write 2-3 vivid sentences in simple, engaging language appropriate for the child's age.\n- TONE MATCHING: Determine the tone from the premise. If the premise is realistic (sports, school, friendship, everyday life) — keep it grounded and realistic. NO magic, NO supernatural creatures, NO portals unless the premise explicitly involves fantasy or magic. A story about esports = real esports. A story about school = real school. Only add fantasy elements if the premise calls for them.\n- COPYRIGHT CHARACTERS: If the child mentions a character from movies, cartoons, comics, or games (Spider-Man, Elsa, Batman, Mario, etc.), create an ORIGINAL character INSPIRED by them. Do NOT use the original name. Examples: Spider-Man → Арахнид, a boy who got powers from a magical spider. Elsa → Ледяная Принцесса Аврора. Batman → Тёмный Страж. In the story text, add a fun comment like 'В нашем волшебном мире этого героя зовут по-другому!' or 'Здесь у него своё особенное имя!'. For the visual description (characterDesc/scene), describe the character through colors, silhouette, and design elements WITHOUT naming the brand. Example for Spider-Man: 'a teenage boy in a tight red and blue suit with web pattern design, large white eye lenses on mask, agile dynamic pose'. This creates a recognizable but legally original character.\n- " + choicesInstruction + "\n- CRITICAL: If the child previously made a negative choice, show realistic consequences in the NEXT page — trust eroding, friends being hurt, opportunities closing. Don't immediately fix bad choices. Let the child feel the weight.\n- If the child made a positive choice, show warm rewards — new friendships, discovered treasures, growing trust.\n" + '- Include a "scene" field: a CINEMATIC English description for illustration. CRITICAL RULES FOR SCENE:\n  (1) Include ALL characters mentioned in the text\n  (2) Show CHARACTER INTERACTION — body language between characters\n  (3) Describe what each character is ACTIVELY DOING (never just standing)\n  (4) Include EXPRESSIONS on each character face\n  (5) Rich ENVIRONMENT details (specific objects, lighting, atmosphere)\n  (6) CAMERA ANGLE (wide shot, medium shot, close-up)\n  (7) For REALISTIC stories: describe real-world settings accurately (gaming setup, school classroom, sports field). For FANTASY: magical environments.\n- Include a "mood" field to set illustration style. Choose the BEST fit:\n  "forest" = nature/wilderness, "ocean" = water/sea, "space" = sci-fi/cosmos, "castle" = medieval/royalty, "magic" = general fantasy\n  "city" = urban/streets, "school" = classroom/campus, "sports" = competition/games/esports, "home" = domestic/indoor\n\nRespond ONLY with JSON (no markdown):\n{"text":"...","mood":"forest|ocean|space|castle|magic|city|school|sports|home","scene":"...cinematic english scene..."' + charDescJson + "," + choicesOrEnd + ',"title":"short chapter title in Russian","sfx":"short English description of ambient sound for this scene, 5-10 words, e.g. forest birds chirping with gentle wind, keyboard clicking and crowd cheering in arena, ocean waves on sandy beach, sword clashing with dramatic orchestral music","tts_text":"same story text but ENHANCED for text-to-speech engine. Add <break time=\\"0.5s\\"/> for short pauses, <break time=\\"1.0s\\"/> for dramatic pauses. Use ellipsis for hesitation. Use dashes for rhythm. Add emotional stage directions that the TTS engine reads like: he whispered, she exclaimed excitedly, he said nervously. These directions WILL be spoken so keep them natural. Make it sound like a living audiobook performance. Example: Маленький герой остановился... <break time=\\"0.7s\\"/> и вдруг — он увидел это! — воскликнул он с восторгом."}';
+  const langInstr = storyLang === "en" ? "Write the story text in ENGLISH." : "Write the story text in RUSSIAN.";
+  const prevLocations = history.map(h => h.mood || "").filter(Boolean).join(", ");
+  const diversityInstr = prevLocations ? `\n- LOCATION DIVERSITY: Previous pages used these locations: [${prevLocations}]. This page MUST use a COMPLETELY DIFFERENT location/setting. Change the environment dramatically — if previous was indoors, go outdoors. If it was day, make it night. If forest, go to a town. NEVER repeat the same mood/location two pages in a row. Vary camera angles: use close-ups, wide panoramas, overhead shots, low angles.` : "\n- LOCATION: Start with a vivid, unique setting that draws the reader in.";
+  const copyrightInstr = "\n- COPYRIGHT CHARACTERS: If the child mentions a character from movies/cartoons/comics/games (Spider-Man, Elsa, Batman, etc.), create an ORIGINAL character INSPIRED by them. Do NOT use the original name. Examples: Spider-Man → Арахнид/Arachnid, Elsa → Ice Princess Aurora. Add a fun comment in the story. For visuals, describe the character through colors and design WITHOUT naming the brand.";
+
+  const sys = "You are a master storyteller creating interactive stories for children. " + langInstr + " This is a STORY WITH CONSEQUENCES — the child's choices DIRECTLY shape the outcome.\nRules:\n- Child: " + name + ", age " + age + charBlock + backstoryBlock + "\n- Page " + pn + "/" + TOTAL_PAGES + ". Write 2-3 vivid sentences in simple, engaging language appropriate for the child's age." + diversityInstr + copyrightInstr + "\n- TONE MATCHING: Determine the tone from the premise. If the premise is realistic (sports, school, friendship, everyday life) — keep it grounded and realistic. NO magic, NO supernatural creatures, NO portals unless the premise explicitly involves fantasy or magic. A story about esports = real esports. A story about school = real school. Only add fantasy elements if the premise calls for them.\n- " + choicesInstruction + "\n- CRITICAL: If the child previously made a negative choice, show realistic consequences in the NEXT page — trust eroding, friends being hurt, opportunities closing. Don't immediately fix bad choices. Let the child feel the weight.\n- If the child made a positive choice, show warm rewards — new friendships, discovered treasures, growing trust.\n" + '- Include a "scene" field: a CINEMATIC English description for illustration. CRITICAL RULES FOR SCENE:\n  (1) Include ALL characters mentioned in the text\n  (2) Show CHARACTER INTERACTION — body language between characters\n  (3) Describe what each character is ACTIVELY DOING (never just standing)\n  (4) Include EXPRESSIONS on each character face\n  (5) Rich UNIQUE ENVIRONMENT details — DIFFERENT from all previous pages\n  (6) CAMERA ANGLE — vary between wide shot, medium shot, close-up, bird\'s eye, low angle\n  (7) For REALISTIC stories: describe real-world settings accurately. For FANTASY: magical environments.\n  (8) IMPORTANT: Make each scene visually DISTINCT. Different colors, lighting, time of day, weather.\n- Include a "mood" field. Choose the BEST fit — MUST be different from previous pages if possible:\n  "forest" = nature/wilderness, "ocean" = water/sea, "space" = sci-fi/cosmos, "castle" = medieval/royalty, "magic" = general fantasy\n  "city" = urban/streets, "school" = classroom/campus, "sports" = competition/games/esports, "home" = domestic/indoor\n\nRespond ONLY with JSON (no markdown):\n{"text":"...","mood":"forest|ocean|space|castle|magic|city|school|sports|home","scene":"...cinematic english scene..."' + charDescJson + "," + choicesOrEnd + ',"title":"short chapter title in ' + (storyLang === "en" ? "English" : "Russian") + '","sfx":"short English description of ambient sound for this scene, 5-10 words","tts_text":"same story text but ENHANCED for text-to-speech engine. Add <break time=\\"0.5s\\"/> for short pauses, <break time=\\"1.0s\\"/> for dramatic pauses. Use ellipsis for hesitation. Use dashes for rhythm. Add emotional stage directions. Make it sound like a living audiobook performance."}';
   
   const msg = history.length === 0
     ? "Create a new story for " + name + ". Premise: " + (backstory || "a surprise creative adventure") + ". IMPORTANT: Match the tone to the premise — if realistic, stay realistic. If fantasy, be magical. Start with an exciting opening that presents the character in a situation where choices will matter!"
@@ -122,13 +217,10 @@ async function genPage(ctx, apiKey) {
   return JSON.parse(txt.replace(/```json|```/g, "").trim());
 }
 
-// ── STYLE CONSTANTS ──
-const FANTASY_STYLE = "Children's book illustration, warm watercolor style with hand-painted texture and visible soft brushstrokes. Cinematic composition with depth of field. Rich detailed environment with foreground and background elements. Dynamic character pose showing action and emotion. Soft golden lighting, fairy-tale atmosphere, gentle pastel colors with warm amber and sage green tones. Large expressive eyes on characters. Professional illustration quality";
-
-const REALISTIC_STYLE = "Anime-inspired digital illustration in warm semi-realistic style, similar to Makoto Shinkai or Pixar quality. Cinematic composition with depth of field. Rich detailed real-world environment with realistic objects. Dynamic character pose showing action and emotion. Warm natural lighting with soft shadows. Expressive character faces. Professional illustration quality";
-
-function getStyleForMood(mood) {
-  return ["city","school","sports","home"].includes(mood) ? REALISTIC_STYLE : FANTASY_STYLE;
+// ── STYLE CONSTANTS (dynamic based on artStyle) ──
+function getStyleForMood(mood, artStyleKey) {
+  const styles = ART_STYLES[artStyleKey] || ART_STYLES.book;
+  return ["city","school","sports","home"].includes(mood) ? styles.realistic : styles.fantasy;
 }
 
 // ── Replicate: poll until done ──
@@ -166,9 +258,9 @@ async function pollPrediction(token, prediction) {
 }
 
 // ── PAGE 1: Flux 2 Pro (text-to-image, high quality character creation) ──
-async function genFirstImage(token, scene, charDesc, mood) {
+async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
   if (!token) return null;
-  const style = getStyleForMood(mood);
+  const style = getStyleForMood(mood, artStyleKey);
   const prompt = `${style}. ${scene}. The main character is ${charDesc}. Show ALL characters described in the scene with distinct appearances. Dynamic poses and clear interaction between characters. No text, words, letters, or writing anywhere in the image.`;
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
@@ -183,9 +275,9 @@ async function genFirstImage(token, scene, charDesc, mood) {
 }
 
 // ── PAGES 2-6: Kontext Pro (image-to-image, character consistency) ──
-async function genNextImage(token, scene, charDesc, refImageUrl, mood) {
+async function genNextImage(token, scene, charDesc, refImageUrl, mood, artStyleKey) {
   if (!token || !refImageUrl) return null;
-  const style = getStyleForMood(mood);
+  const style = getStyleForMood(mood, artStyleKey);
   const prompt = `${style}. ${scene}. The main character from the reference image (${charDesc}) must appear with identical design (colors, clothing, features). Show ALL characters described in the scene — include every creature, person, or animal mentioned. Each character should have distinct appearance and clear interaction with others. Dynamic poses matching the described action. Rich detailed environment with depth. No text, words, letters, or writing anywhere in the image.`;
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
@@ -319,6 +411,10 @@ function ThemeSwitch({ dark, onToggle }) {
   </button>;
 }
 
+function LangSwitch({ lang, onToggle, t }) {
+  return <button onClick={onToggle} style={{ padding: "4px 10px", borderRadius: 14, border: `1px solid ${t.gb}`, background: t.gl2, cursor: "pointer", fontSize: ".7rem", fontWeight: 600, color: t.tx3, fontFamily: "'Outfit', sans-serif", transition: "all .3s", flexShrink: 0 }}>{lang === "ru" ? "EN" : "RU"}</button>;
+}
+
 // ══════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════
@@ -330,6 +426,8 @@ export default function App() {
   const [antKey, setAntKey] = useState("");
   const [elKey, setElKey] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [lang, setLang] = useState("ru");
+  const [artStyle, setArtStyle] = useState("book");
   const [sessions, setSessions] = useState([]);
   const [children, setChildren] = useState([]);
   const [activeChild, setActiveChild] = useState(null);
@@ -384,7 +482,9 @@ export default function App() {
   const ttsCacheRef = useRef(new Map()); // text -> blobUrl
 
   const t = dark ? DARK : LIGHT;
+  const L = I18N[lang] || I18N.ru;
   const toggleTheme = async () => { const next = !dark; setDark(next); await ST.set("dark", next) };
+  const toggleLang = async () => { const next = lang === "ru" ? "en" : "ru"; setLang(next); await ST.set("lang", next) };
   const fmtT = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
 
   // Init
@@ -398,6 +498,8 @@ export default function App() {
     if (rt) setRepToken(rt);
     if (ak) setAntKey(ak);
     if (ek) setElKey(ek);
+    const savedLang = await ST.get("lang"); if (savedLang) setLang(savedLang);
+    const savedStyle = await ST.get("artStyle"); if (savedStyle) setArtStyle(savedStyle);
     const vid = await ST.get("elVoiceId"); if (vid) setElVoiceId(vid);
     const vname = await ST.get("elVoiceName"); if (vname) setElVoiceName(vname);
     if (u) { setUser(u); setSessions(await ST.get("sessions")||[]); setChildren(await ST.get("children")||[]); setView("dashboard") }
@@ -565,8 +667,8 @@ export default function App() {
     const pageMood = curPage.mood || "forest";
     const isFirstPage = !refImgUrl; // no reference = first page
     const genFn = isFirstPage
-      ? genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", pageMood)
-      : genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, pageMood);
+      ? genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", pageMood, artStyle)
+      : genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, pageMood, artStyle);
     
     genFn.then(url => {
         setCurImg(url);
@@ -640,13 +742,15 @@ export default function App() {
   const generatePresets = async (childName, childAge) => {
     if (!antKey) return;
     setPresetsLoading(true);
+    const promptRu = `Придумай 6 коротких завязок для интерактивных историй для ребёнка ${childName} (${childAge} лет). Микс: 2 реалистичных (спорт, школа, дружба, хобби), 2 фэнтези (магия, говорящие животные), 2 необычных (фантастика, приключения). Каждая — 1 предложение, 10-18 слов. Начинай с "Герой" или с действия. Разнообразь! Ответь ТОЛЬКО JSON массивом: [{"emoji":"...","text":"..."}]`;
+    const promptEn = `Create 6 short story premises for interactive stories for a child named ${childName} (${childAge} years old). Mix: 2 realistic (sports, school, friendship), 2 fantasy (magic, talking animals), 2 unusual (sci-fi, adventure). Each — 1 sentence, 10-18 words. Start with "The hero" or an action. Be diverse! Respond ONLY with JSON array: [{"emoji":"...","text":"..."}]`;
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": antKey, "content-type": "application/json", "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 600,
-          messages: [{ role: "user", content: `Придумай 6 коротких завязок для интерактивных историй для ребёнка ${childName} (${childAge} лет). Микс: 2 реалистичных (спорт, школа, дружба, хобби), 2 фэнтези (магия, говорящие животные), 2 необычных (фантастика, приключения). Каждая — 1 предложение, 10-18 слов. Начинай с "Герой" или с действия. Разнообразь! Ответь ТОЛЬКО JSON массивом: [{"emoji":"...","text":"..."}]` }]
+          messages: [{ role: "user", content: lang === "en" ? promptEn : promptRu }]
         })
       });
       const data = await r.json();
@@ -670,7 +774,7 @@ export default function App() {
     setView("session"); setLoading(true);
     if (!antKey) { setError("Нужен Anthropic API ключ! Откройте ⚙️ Настройки."); setLoading(false); return; }
     try {
-      const r = await genPage({ name: child.name, age: child.age, theme: premise || "surprise creative story", history: [], choice: null, charDesc: null, backstory: premise || "" }, antKey);
+      const r = await genPage({ name: child.name, age: child.age, theme: premise || "surprise creative story", history: [], choice: null, charDesc: null, backstory: premise || "", lang }, antKey);
       if (r.characterDesc) setCharDesc(r.characterDesc);
       setCurPage(r); setLoading(false);
     } catch { setError("Ошибка. Попробуйте ещё."); setLoading(false); }
@@ -684,7 +788,7 @@ export default function App() {
       const up = [...pages, { ...curPage, imgUrl: curImg, choice: ch }];
       setPages(up); setCurPage(null); setCurImg(null); setSel(null); setLoading(true);
       try {
-        const r = await genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: up.map(p => ({ text: p.text, choice: p.choice })), choice: ch, charDesc }, antKey);
+        const r = await genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: up.map(p => ({ text: p.text, choice: p.choice, mood: p.mood })), choice: ch, charDesc, lang }, antKey);
         setCurPage(r); setLoading(false);
       } catch { setError("Ошибка."); setLoading(false); }
     }, 800);
@@ -857,24 +961,28 @@ export default function App() {
       <div style={{ position: "absolute", bottom: "10%", left: "10%", width: 300, height: 300, borderRadius: "50%", background: `radial-gradient(circle, ${t.sageBg}, transparent 60%)`, filter: "blur(60px)", pointerEvents: "none" }}/>
       <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "40px 28px", maxWidth: 420, width: "100%" }}>
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <a href="/" style={{ background: t.gl2, border: `1px solid ${t.gb}`, padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b, textDecoration: "none" }}>← Назад</a>
-          <ThemeSwitch dark={dark} onToggle={toggleTheme}/>
+          <a href="/" style={{ background: t.gl2, border: `1px solid ${t.gb}`, padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b, textDecoration: "none" }}>{L.back}</a>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <LangSwitch lang={lang} onToggle={toggleLang} t={t}/>
+            <ThemeSwitch dark={dark} onToggle={toggleTheme}/>
+          </div>
         </div>
         <div style={{ animation: "fu .7s ease-out", marginBottom: 44, paddingTop: 20 }}>
-          <Label center>Интерактивные сказки</Label>
+          <Label center>{L.interactiveStories}</Label>
           <h1 style={{ fontFamily: FN.d, fontSize: "clamp(2.8rem,9vw,4rem)", fontWeight: 300, lineHeight: 1, letterSpacing: "-.02em", marginBottom: 14 }}>
-            <span style={{ color: t.tx }}>Сказка</span><br/>
-            <em style={{ color: t.accent, fontWeight: 400 }}>Вместе</em>
+            <span style={{ color: t.tx }}>{L.skazka}</span><br/>
+            <em style={{ color: t.accent, fontWeight: 400 }}>{L.vmeste}</em>
           </h1>
-          <p style={{ color: t.tx3, fontFamily: FN.b, fontSize: ".9rem", maxWidth: 300, margin: "0 auto", lineHeight: 1.65, fontWeight: 300 }}>ИИ создаёт уникальную сказку.<br/>Вы читаете вместе с ребёнком.</p>
+          <p style={{ color: t.tx3, fontFamily: FN.b, fontSize: ".9rem", maxWidth: 300, margin: "0 auto", lineHeight: 1.65, fontWeight: 300 }}>{L.aiCreates}<br/>{L.readTogether}</p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, animation: "fu .7s .1s ease-out both" }}>
-          <input value={authName} onChange={e => setAuthName(e.target.value)} placeholder="Ваше имя" style={inp} onFocus={onF} onBlur={onB}/>
-          <input value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="Email" type="email" style={inp} onFocus={onF} onBlur={onB} onKeyDown={e => e.key === "Enter" && register()}/>
+          <input value={authName} onChange={e => setAuthName(e.target.value)} placeholder={L.yourName} style={inp} onFocus={onF} onBlur={onB}/>
+          <input value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder={L.email} type="email" style={inp} onFocus={onF} onBlur={onB} onKeyDown={e => e.key === "Enter" && register()}/>
         </div>
         <div style={{ marginTop: 18, animation: "fu .7s .2s ease-out both" }}>
-          <PBtn onClick={register} disabled={!authName.trim() || !authEmail.trim()} style={{ width: "100%" }}>Войти →</PBtn>
+          <PBtn onClick={register} disabled={!authName.trim() || !authEmail.trim()} style={{ width: "100%" }}>{L.login}</PBtn>
         </div>
+        <div style={{ marginTop: 20, padding: "10px 14px", borderRadius: 14, background: t.sageBg, border: `1px solid ${t.sage}20`, fontSize: ".65rem", color: t.sage, lineHeight: 1.5, fontWeight: 300 }}>{L.disclaimer}</div>
       </div>
     </div>
   );
@@ -897,7 +1005,8 @@ export default function App() {
               ⚙️
               {(!repToken || !antKey) && <div style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", background: "#C47B7B", border: `2px solid ${t.bg}` }}/>}
             </button>
-            <button onClick={async () => { await ST.del("user"); window.location.href = "/" }} style={{ background: t.gl2, border: `1px solid ${t.gb}`, cursor: "pointer", padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b }}>Выйти</button>
+            <button onClick={async () => { await ST.del("user"); window.location.href = "/" }} style={{ background: t.gl2, border: `1px solid ${t.gb}`, cursor: "pointer", padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b }}>{L.logout}</button>
+            <LangSwitch lang={lang} onToggle={toggleLang} t={t}/>
             <ThemeSwitch dark={dark} onToggle={toggleTheme}/>
           </div>
         </div>
@@ -916,18 +1025,18 @@ export default function App() {
         {/* Children */}
         <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .05s ease-out both" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, color: t.tx }}>Дети</h3>
+            <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, color: t.tx }}>{L.children}</h3>
             <button onClick={() => setShowAdd(!showAdd)} style={{ background: t.accentBg, border: "none", cursor: "pointer", padding: "6px 14px", borderRadius: 20, fontSize: ".73rem", fontWeight: 500, color: t.accent, fontFamily: FN.b }}>+ Добавить</button>
           </div>
           {showAdd && <div style={{ display: "flex", gap: 8, marginBottom: 12, animation: "fu .25s ease-out" }}>
-            <input value={newChild} onChange={e => setNewChild(e.target.value)} placeholder="Имя ребёнка" style={{ ...inp, flex: 1, padding: "11px 14px" }} onFocus={onF} onBlur={onB}/>
+            <input value={newChild} onChange={e => setNewChild(e.target.value)} placeholder={L.childName} style={{ ...inp, flex: 1, padding: "11px 14px" }} onFocus={onF} onBlur={onB}/>
             <select value={newAge} onChange={e => setNewAge(e.target.value)} style={{ padding: "11px", borderRadius: 14, border: `1.5px solid ${t.gb}`, background: dark ? t.bg2 : "#fff", color: t.tx, fontFamily: FN.b, fontSize: ".85rem" }}>
               {[3,4,5,6,7,8,9,10].map(a => <option key={a} value={a}>{a} лет</option>)}
             </select>
             <button onClick={addChild} style={{ padding: "11px 18px", borderRadius: 14, background: t.accent, color: "#fff", border: "none", fontWeight: 600, fontFamily: FN.b, fontSize: ".88rem", cursor: "pointer" }}>✓</button>
           </div>}
           {children.length === 0
-            ? <p style={{ fontSize: ".83rem", color: t.tx3, textAlign: "center", padding: 14, fontWeight: 300 }}>Добавьте ребёнка, чтобы начать</p>
+            ? <p style={{ fontSize: ".83rem", color: t.tx3, textAlign: "center", padding: 14, fontWeight: 300 }}>{L.addChildPlaceholder}</p>
             : <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {children.map(ch => <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", background: t.blushBg, borderRadius: 14, border: `1px solid ${t.gb}` }}>
                   <span style={{ fontSize: "1rem" }}>👶</span>
@@ -938,19 +1047,19 @@ export default function App() {
 
         {/* New Session */}
         {children.length > 0 && <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .1s ease-out both" }}>
-          <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, marginBottom: 16, color: t.tx }}>Новая сессия</h3>
-          <p style={{ fontSize: ".8rem", color: t.tx3, marginBottom: 8, fontWeight: 300 }}>Для кого?</p>
+          <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, marginBottom: 16, color: t.tx }}>{L.newSession}</h3>
+          <p style={{ fontSize: ".8rem", color: t.tx3, marginBottom: 8, fontWeight: 300 }}>{L.forWhom}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
             {children.map(ch => <button key={ch.id} onClick={() => setActiveChild(activeChild?.id === ch.id ? null : ch)} style={{ padding: "9px 18px", borderRadius: 50, fontFamily: FN.b, fontSize: ".83rem", fontWeight: 500, cursor: "pointer", background: activeChild?.id === ch.id ? t.accentBg : (dark ? t.gl2 : "#fff"), border: `1.5px solid ${activeChild?.id === ch.id ? t.accent : t.gb}`, color: t.tx, transition: "all .3s" }}>{ch.name}</button>)}
           </div>
           {activeChild && <div style={{ animation: "fu .3s ease-out" }}>
-            <PBtn onClick={() => { setBackstory(""); setPresets([]); setView("setup"); generatePresets(activeChild.name, activeChild.age); }} style={{ width: "100%" }}>Создать историю →</PBtn>
+            <PBtn onClick={() => { setBackstory(""); setPresets([]); setView("setup"); generatePresets(activeChild.name, activeChild.age); }} style={{ width: "100%" }}>{L.createStory}</PBtn>
           </div>}
         </div>}
 
         {/* History */}
         {sessions.length > 0 && <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", boxShadow: t.shadow, animation: "fu .5s .15s ease-out both" }}>
-          <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, marginBottom: 16, color: t.tx }}>📚 История</h3>
+          <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, marginBottom: 16, color: t.tx }}>{L.history}</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {sessions.slice(0, 8).map((s, i) => <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: t.blushBg, borderRadius: 14, border: `1px solid ${t.gb}`, animation: `si .35s ${i*.05}s ease-out both` }}>
               <span style={{ fontSize: "1.1rem" }}>{s.theme?.emoji || "📖"}</span>
@@ -972,16 +1081,16 @@ export default function App() {
         <style>{CSS}</style>
         <div style={{ position: "relative", zIndex: 1, maxWidth: 520, margin: "0 auto", padding: "36px 18px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <button onClick={() => setView("dashboard")} style={{ background: t.gl2, border: "1px solid " + t.gb, padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b, cursor: "pointer" }}>← Назад</button>
-            <ThemeSwitch dark={dark} onToggle={toggleTheme}/>
+            <button onClick={() => setView("dashboard")} style={{ background: t.gl2, border: "1px solid " + t.gb, padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b, cursor: "pointer" }}>{L.back}</button>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}><LangSwitch lang={lang} onToggle={toggleLang} t={t}/><ThemeSwitch dark={dark} onToggle={toggleTheme}/></div>
           </div>
 
           <div style={{ textAlign: "center", marginBottom: 28, animation: "fu .5s ease-out" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: 8 }}>📖</div>
             <h2 style={{ fontFamily: FN.d, fontSize: "clamp(1.4rem,4vw,1.9rem)", fontWeight: 300, letterSpacing: "-.02em", color: t.tx, marginBottom: 6 }}>
-              История для <em style={{ color: t.accent, fontWeight: 400, fontStyle: "italic" }}>{activeChild?.name}</em>
+              {L.storyFor} <em style={{ color: t.accent, fontWeight: 400, fontStyle: "italic" }}>{activeChild?.name}</em>
             </h2>
-            <p style={{ color: t.tx3, fontSize: ".82rem", fontWeight: 300 }}>О чём будет история? Выберите идею или придумайте свою</p>
+            <p style={{ color: t.tx3, fontSize: ".82rem", fontWeight: 300 }}>{L.whatAbout}</p>
           </div>
 
           {/* AI-generated presets */}
@@ -1034,12 +1143,30 @@ export default function App() {
             <p style={{ fontSize: ".62rem", color: t.tx3, marginTop: 6, fontWeight: 300 }}>Реалистичная, фэнтези, фантастика — что угодно.</p>
           </div>
 
+          {/* Art Style Picker */}
+          <div style={{ background: dark ? t.gl : "#fff", border: "1px solid " + t.gb, borderRadius: 20, padding: "20px 18px", marginBottom: 20, boxShadow: t.shadow, animation: "fu .5s .12s ease-out both" }}>
+            <h3 style={{ fontFamily: FN.d, fontSize: ".95rem", fontWeight: 600, marginBottom: 10, color: t.tx, fontStyle: "italic" }}>{L.artStyle}</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              {[["book", L.styleBook, L.styleBookDesc, "📖"], ["anime", L.styleAnime, L.styleAnimeDesc, "🎨"], ["realistic", L.styleRealistic, L.styleRealisticDesc, "📷"]].map(([key, name, desc, emoji]) => (
+                <button key={key} onClick={async () => { setArtStyle(key); await ST.set("artStyle", key); }} style={{
+                  padding: "12px 8px", borderRadius: 14, border: `1.5px solid ${artStyle === key ? t.accent : t.gb}`,
+                  background: artStyle === key ? t.accentBg : (dark ? t.gl2 : "#fff"),
+                  cursor: "pointer", textAlign: "center", transition: "all .2s", fontFamily: FN.b
+                }}>
+                  <div style={{ fontSize: "1.2rem", marginBottom: 4 }}>{emoji}</div>
+                  <div style={{ fontSize: ".78rem", fontWeight: 600, color: t.tx }}>{name}</div>
+                  <div style={{ fontSize: ".58rem", color: t.tx3, fontWeight: 300 }}>{desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Start buttons */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10, animation: "fu .5s .15s ease-out both" }}>
             <PBtn onClick={() => startSession(activeChild, backstory)} disabled={!backstory.trim()} style={{ width: "100%", opacity: backstory.trim() ? 1 : .5 }}>
-              Начать историю →
+              {L.startStory}
             </PBtn>
-            {backstory && <button onClick={() => { setBackstory(""); }} style={{ padding: "10px", border: "none", background: "transparent", color: t.tx3, fontSize: ".78rem", fontFamily: FN.b, cursor: "pointer", fontWeight: 400 }}>Очистить</button>}
+            {backstory && <button onClick={() => { setBackstory(""); }} style={{ padding: "10px", border: "none", background: "transparent", color: t.tx3, fontSize: ".78rem", fontFamily: FN.b, cursor: "pointer", fontWeight: 400 }}>{L.clear}</button>}
           </div>
         </div>
       </div>
@@ -1066,7 +1193,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <PageProgress current={pages.length + 1} total={TOTAL_PAGES} t={t} />
           <ThemeSwitch dark={dark} onToggle={toggleTheme}/>
-          <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: t.accentBg, border: `1px solid ${t.accent}25`, color: t.accent, fontSize: ".76rem", fontWeight: 600, padding: "6px 14px", borderRadius: 20, fontFamily: FN.b, cursor: "pointer" }}>Завершить</button>
+          <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: t.accentBg, border: `1px solid ${t.accent}25`, color: t.accent, fontSize: ".76rem", fontWeight: 600, padding: "6px 14px", borderRadius: 20, fontFamily: FN.b, cursor: "pointer" }}>{L.finish}</button>
         </div>
       </div>
 
@@ -1080,10 +1207,10 @@ export default function App() {
                 <div style={{ padding: "20px 22px 18px" }}>
                   {loading ? <div style={{ textAlign: "center", padding: "46px 18px", animation: "fu .4s" }}>
                     <div style={{ width: 30, height: 30, border: `2px solid ${t.gb}`, borderTopColor: t.accent, borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
-                    <p style={{ fontSize: ".88rem", color: t.tx3, fontWeight: 300 }}>{pages.length === 0 ? `Создаём сказку для ${activeChild?.name}…` : "Продолжение…"}</p>
+                    <p style={{ fontSize: ".88rem", color: t.tx3, fontWeight: 300 }}>{pages.length === 0 ? `${L.creatingStory} ${activeChild?.name}…` : L.continuing}</p>
                     {error && <div style={{ marginTop: 10, padding: "9px 12px", background: "rgba(196,123,123,.08)", borderRadius: 12, border: "1px solid rgba(196,123,123,.2)", fontSize: ".78rem", color: "#C47B7B" }}>
                       {error}
-                      <button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice })), choice: picks[picks.length-1] || null, charDesc }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Повтор ошибки."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 16px", borderRadius: 16, background: t.accent, color: "#fff", border: "none", fontSize: ".76rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Повтор</button>
+                      <button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Повтор ошибки."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 16px", borderRadius: 16, background: t.accent, color: "#fff", border: "none", fontSize: ".76rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Повтор</button>
                     </div>}
                   </div> : curPage ? <div>
                     {/* Header */}
@@ -1117,7 +1244,7 @@ export default function App() {
                         animation: speaking ? "pulse 2s ease-in-out infinite" : "none"
                       }}>
                         <span style={{ fontSize: ".9rem" }}>{speaking ? "⏹" : "🔊"}</span>
-                        {speaking ? "Стоп" : "Озвучить"}
+                        {speaking ? L.stop : L.speak}
                       </button>
                       <button onClick={async () => { const next = !ttsEnabled; setTtsEnabled(next); await ST.set("ttsEnabled", next); }} style={{
                         background: ttsEnabled ? t.sageBg : t.blushBg, border: `1px solid ${ttsEnabled ? t.sage + "30" : t.gb}`,
@@ -1139,8 +1266,8 @@ export default function App() {
 
                     {/* End / Choices / Custom */}
                     {curPage.isEnd ? <div style={{ textAlign: "center", animation: "fu .5s ease-out" }}>
-                      <p style={{ fontFamily: FN.d, fontSize: "1rem", color: t.accent, fontWeight: 600, fontStyle: "italic", marginBottom: 12 }}>✨ Конец</p>
-                      <PBtn onClick={finishSession}>Смотреть отчёт →</PBtn>
+                      <p style={{ fontFamily: FN.d, fontSize: "1rem", color: t.accent, fontWeight: 600, fontStyle: "italic", marginBottom: 12 }}>{L.end}</p>
+                      <PBtn onClick={finishSession}>{L.viewReport}</PBtn>
                     </div> : textDone && <>
                       {curPage.choices?.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
                         {curPage.choices.map((ch, i) => <button key={i} onClick={() => pickChoice(ch)} disabled={!!sel || loading} style={{
@@ -1160,9 +1287,9 @@ export default function App() {
                         </button>)}
                       </div>}
                       {!sel && <div style={{ animation: "fu .3s .15s ease-out both" }}>
-                        <div style={{ fontSize: ".64rem", color: t.tx3, textAlign: "center", marginBottom: 6, fontWeight: 400 }}>или придумайте свой вариант:</div>
+                        <div style={{ fontSize: ".64rem", color: t.tx3, textAlign: "center", marginBottom: 6, fontWeight: 400 }}>{L.orCustom}</div>
                         <div style={{ display: "flex", gap: 8 }}>
-                          <input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder="Что хочет сделать герой?.." style={{ ...inp, flex: 1, padding: "11px 14px", fontSize: ".84rem" }} onFocus={onF} onBlur={onB}/>
+                          <input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder={L.heroAction} style={{ ...inp, flex: 1, padding: "11px 14px", fontSize: ".84rem" }} onFocus={onF} onBlur={onB}/>
                           <button onClick={submitCustom} disabled={!customInput.trim()} style={{ padding: "11px 18px", borderRadius: 14, background: customInput.trim() ? t.accent : t.gl2, color: customInput.trim() ? "#fff" : t.tx3, border: "none", fontWeight: 600, fontFamily: FN.b, fontSize: ".84rem", cursor: customInput.trim() ? "pointer" : "default", transition: "all .3s" }}>→</button>
                         </div>
                       </div>}
@@ -1232,17 +1359,17 @@ export default function App() {
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}><ThemeSwitch dark={dark} onToggle={toggleTheme}/></div>
 
           <div style={{ textAlign: "center", marginBottom: 36, animation: "fu .5s ease-out" }}>
-            <Label center>Отчёт сессии</Label>
+            <Label center>{L.sessionReport}</Label>
             <h2 style={{ fontFamily: FN.d, fontSize: "clamp(1.6rem,5vw,2.2rem)", fontWeight: 300, letterSpacing: "-.02em", marginBottom: 8, color: t.tx }}>
-              Путешествие <em style={{ color: t.accent, fontStyle: "italic", fontWeight: 400 }}>{activeChild?.name}</em>
+              {L.journey} <em style={{ color: t.accent, fontStyle: "italic", fontWeight: 400 }}>{activeChild?.name}</em>
             </h2>
-            <p style={{ color: t.tx3, fontSize: ".83rem", fontWeight: 300 }}>{theme?.emoji} {theme?.name} · {dur} мин · {picks.length} выборов · {allPages.length} стр.</p>
+            <p style={{ color: t.tx3, fontSize: ".83rem", fontWeight: 300 }}>{theme?.emoji} {theme?.name} · {dur} {L.min} · {picks.length} {L.choices} · {allPages.length} {L.pages}</p>
             <div style={{ display: "inline-block", marginTop: 10, padding: "5px 14px", borderRadius: 20, background: endColor + "15", border: "1px solid " + endColor + "30", fontSize: ".78rem", fontWeight: 600, color: endColor }}>{endLabel}</div>
           </div>
 
           {/* Values */}
           {vals.length > 0 && <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .1s ease-out both" }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: "1.1rem", fontWeight: 600, marginBottom: 18, color: t.tx, fontStyle: "italic" }}>💎 Выборы {activeChild?.name}</h3>
+            <h3 style={{ fontFamily: FN.d, fontSize: "1.1rem", fontWeight: 600, marginBottom: 18, color: t.tx, fontStyle: "italic" }}>{L.choicesOf} {activeChild?.name}</h3>
             {vals.map((v, i) => <div key={v.k} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, animation: `si .4s ${i*.1}s ease-out both` }}>
               <div style={{ width: 38, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", background: `${v.c}12`, border: `1px solid ${v.c}22`, flexShrink: 0 }}>{v.e}</div>
               <div style={{ flex: 1 }}>
@@ -1257,15 +1384,15 @@ export default function App() {
 
           {/* Discussion question */}
           <div style={{ background: t.accentBg, border: `1px solid ${t.accent}18`, borderRadius: 18, padding: "22px 20px", marginBottom: 16, animation: "fu .5s .2s ease-out both" }}>
-            <div style={{ fontSize: ".58rem", textTransform: "uppercase", letterSpacing: ".18em", fontWeight: 500, color: t.accent, marginBottom: 8 }}>💡 Вопрос для звонка</div>
+            <div style={{ fontSize: ".58rem", textTransform: "uppercase", letterSpacing: ".18em", fontWeight: 500, color: t.accent, marginBottom: 8 }}>{L.discussionQ}</div>
             <p style={{ fontFamily: FN.d, fontSize: ".95rem", fontStyle: "italic", lineHeight: 1.65, color: t.tx2, fontWeight: 400 }}>{activeChild?.name} {qs[topVal?.k] || "Что запомнилось из сказки?"}</p>
           </div>
 
           {/* Full story recap */}
           <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .25s ease-out both" }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: "1.1rem", fontWeight: 600, marginBottom: 18, color: t.tx, fontStyle: "italic" }}>📜 Сказка целиком</h3>
+            <h3 style={{ fontFamily: FN.d, fontSize: "1.1rem", fontWeight: 600, marginBottom: 18, color: t.tx, fontStyle: "italic" }}>{L.fullStory}</h3>
             {backstory && <div style={{ marginBottom: 16, padding: "12px 14px", background: t.accentBg, borderRadius: 14, border: "1px solid " + t.accent + "18" }}>
-              <div style={{ fontSize: ".6rem", textTransform: "uppercase", letterSpacing: ".12em", fontWeight: 500, color: t.accent, marginBottom: 4 }}>Предыстория от родителя</div>
+              <div style={{ fontSize: ".6rem", textTransform: "uppercase", letterSpacing: ".12em", fontWeight: 500, color: t.accent, marginBottom: 4 }}>{L.parentPremise}</div>
               <p style={{ fontFamily: FN.d, fontSize: ".82rem", fontStyle: "italic", lineHeight: 1.6, color: t.tx2, fontWeight: 400 }}>{backstory}</p>
             </div>}
             {allPages.map((pg, i) => (
@@ -1287,7 +1414,7 @@ export default function App() {
 
           {/* Decision path */}
           {picks.length > 0 && <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .3s ease-out both" }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: "1rem", fontWeight: 600, marginBottom: 12, color: t.tx, fontStyle: "italic" }}>🧭 Путь выборов</h3>
+            <h3 style={{ fontFamily: FN.d, fontSize: "1rem", fontWeight: 600, marginBottom: 12, color: t.tx, fontStyle: "italic" }}>{L.decisionPath}</h3>
             {picks.map((p, i) => {
               const vl = p.value === "custom" ? { n: "Свой ответ", c: "#8A7E6E" } : (VALS[p.value] || { n: p.value, c: "#888" });
               return <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", background: t.blushBg, borderRadius: 14, border: `1px solid ${t.gb}`, marginBottom: 5, animation: `si .3s ${i*.06}s ease-out both` }}>
@@ -1301,8 +1428,8 @@ export default function App() {
 
           {/* Actions */}
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", animation: "fu .5s .4s ease-out both" }}>
-            <PBtn onClick={() => setView("dashboard")}>Новая сессия →</PBtn>
-            <button onClick={() => setView("dashboard")} style={{ padding: "14px 28px", borderRadius: 50, fontFamily: FN.b, fontSize: ".9rem", fontWeight: 500, border: `1.5px solid ${t.gb}`, cursor: "pointer", background: "transparent", color: t.tx3, letterSpacing: ".02em" }}>Дашборд</button>
+            <PBtn onClick={() => setView("dashboard")}>{L.newSessionBtn}</PBtn>
+            <button onClick={() => setView("dashboard")} style={{ padding: "14px 28px", borderRadius: 50, fontFamily: FN.b, fontSize: ".9rem", fontWeight: 500, border: `1.5px solid ${t.gb}`, cursor: "pointer", background: "transparent", color: t.tx3, letterSpacing: ".02em" }}>{L.dashboardBtn}</button>
           </div>
         </div>
       </div>
