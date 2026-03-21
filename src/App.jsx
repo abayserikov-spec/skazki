@@ -679,7 +679,9 @@ export default function App() {
   // Auto-scroll
   useEffect(() => { if (curPage && storyScrollRef.current) { storyScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }) } }, [curPage]);
 
-  // Generate illustration when page arrives (dual model)
+  // Generate illustration when page arrives
+  // Flow: Page 1 → Flux generates portrait → Kontext generates scene from portrait
+  //       Page 2+ → Kontext generates scene from same portrait
   useEffect(() => {
     if (!curPage?.scene) return;
     setCurImg(null);
@@ -687,21 +689,34 @@ export default function App() {
     setImgLoading(true);
     
     const pageMood = curPage.mood || "forest";
-    const isFirstPage = !refImgUrl; // no portrait reference = first page
+    const isFirstPage = !refImgUrl; // no portrait yet = first page
     
     if (isFirstPage) {
-      // Page 1: generate scene + portrait in parallel
-      const scenePromise = genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", pageMood, artStyle);
-      const portraitPromise = charDesc ? genCharPortrait(repToken, charDesc, curPage.scene, artStyle) : Promise.resolve(null);
-      
-      Promise.all([scenePromise, portraitPromise]).then(([sceneUrl, portraitUrl]) => {
-        setCurImg(sceneUrl);
-        if (portraitUrl) setRefImgUrl(portraitUrl); // save clean portrait as permanent reference
-        else if (sceneUrl) setRefImgUrl(sceneUrl); // fallback to scene if portrait failed
-        setImgLoading(false);
-      }).catch(() => setImgLoading(false));
+      // Page 1: generate portrait first, then use it for scene via Kontext
+      const doFirstPage = async () => {
+        try {
+          // Step 1: Generate clean character portrait (Flux)
+          let portraitUrl = null;
+          if (charDesc) {
+            portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
+          }
+          if (portraitUrl) {
+            setRefImgUrl(portraitUrl);
+            // Step 2: Generate scene using portrait as reference (Kontext)
+            const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, pageMood, artStyle);
+            setCurImg(sceneUrl);
+          } else {
+            // Fallback: generate scene directly with Flux if portrait failed
+            const sceneUrl = await genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", pageMood, artStyle);
+            setCurImg(sceneUrl);
+            if (sceneUrl) setRefImgUrl(sceneUrl);
+          }
+          setImgLoading(false);
+        } catch { setImgLoading(false); }
+      };
+      doFirstPage();
     } else {
-      // Pages 2+: use clean portrait as reference, generates completely new scene
+      // Pages 2+: Kontext with same portrait reference
       genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, pageMood, artStyle)
         .then(url => { setCurImg(url); setImgLoading(false); })
         .catch(() => setImgLoading(false));
@@ -1248,7 +1263,7 @@ export default function App() {
                 <div style={{ padding: "20px 22px 18px" }}>
                   {loading ? <div style={{ textAlign: "center", padding: "46px 18px", animation: "fu .4s" }}>
                     <div style={{ width: 30, height: 30, border: `2px solid ${t.gb}`, borderTopColor: t.accent, borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
-                    <p style={{ fontSize: ".88rem", color: t.tx3, fontWeight: 300 }}>{pages.length === 0 ? `${L.creatingStory} ${activeChild?.name}…` : L.continuing}</p>
+                    <p style={{ fontSize: ".88rem", color: t.tx3, fontWeight: 300 }}>{pages.length === 0 ? (lang === "ru" ? `Создаём персонажей и первую сцену для ${activeChild?.name}…` : `Creating characters and first scene for ${activeChild?.name}…`) : L.continuing}</p>
                     {error && <div style={{ marginTop: 10, padding: "9px 12px", background: "rgba(196,123,123,.08)", borderRadius: 12, border: "1px solid rgba(196,123,123,.2)", fontSize: ".78rem", color: "#C47B7B" }}>
                       {error}
                       <button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Повтор ошибки."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 16px", borderRadius: 16, background: t.accent, color: "#fff", border: "none", fontSize: ".76rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Повтор</button>
@@ -1308,7 +1323,8 @@ export default function App() {
                     {/* End / Choices / Custom */}
                     {curPage.isEnd ? <div style={{ textAlign: "center", animation: "fu .5s ease-out" }}>
                       <p style={{ fontFamily: FN.d, fontSize: "1rem", color: t.accent, fontWeight: 600, fontStyle: "italic", marginBottom: 12 }}>{L.end}</p>
-                      <PBtn onClick={finishSession}>{L.viewReport}</PBtn>
+                      {imgLoading && <p style={{ fontSize: ".75rem", color: t.tx3, marginBottom: 8 }}>{lang === "ru" ? "Ждём последнюю иллюстрацию…" : "Waiting for last illustration…"}</p>}
+                      <PBtn onClick={finishSession} disabled={imgLoading} style={{ opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</PBtn>
                     </div> : textDone && <>
                       {curPage.choices?.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 12 }}>
                         {curPage.choices.map((ch, i) => <button key={i} onClick={() => pickChoice(ch)} disabled={!!sel || loading} style={{
