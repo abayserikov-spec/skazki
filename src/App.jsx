@@ -162,9 +162,9 @@ async function genPage(ctx, apiKey) {
   
   const charBlock = charDesc
     ? "\n- The main character has been established: " + charDesc + ". Keep this character consistent."
-    : '\n- FIRST PAGE: You MUST also return a "characterDesc" field with a detailed English visual description of the main character (species/type, hair/fur color, eye color, clothing, accessories, body build, distinctive features). This will be used for consistent illustrations. Example: "a small red fox cub with bright green eyes, wearing a blue scarf and brown leather satchel, fluffy tail with white tip"';
+    : '\n- FIRST PAGE: You MUST also return a "characterDesc" field with detailed English visual descriptions of the MAIN CHARACTER and any other key characters who will appear throughout the story. Describe each character separately. Example: "Main: a small red fox cub with bright green eyes, wearing a blue scarf and brown leather satchel, fluffy tail with white tip. Friend: a tall grey wolf pup with amber eyes, wearing a green vest and carrying a wooden staff". Include: species/type, hair/fur color, eye color, clothing, accessories, body build, distinctive features for EACH character.';
 
-  const charDescJson = !charDesc ? ',"characterDesc":"...detailed english visual description of main character..."' : '';
+  const charDescJson = !charDesc ? ',"characterDesc":"...detailed english visual description of main character AND other key characters..."' : '';
   
   // Analyze moral path from history
   const positiveValues = ["generosity","empathy","courage","curiosity","kindness","honesty","patience","teamwork"];
@@ -279,16 +279,33 @@ async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
   } catch (err) { console.error("Flux 2 Pro error:", err); return null; }
 }
 
+// ── CHARACTER PORTRAIT: clean reference with ALL characters on neutral background ──
+async function genCharPortrait(token, charDesc, scene, artStyleKey) {
+  if (!token) return null;
+  const style = (ART_STYLES[artStyleKey] || ART_STYLES.book).fantasy;
+  const prompt = `${style}. Character reference sheet, full body shot showing all characters clearly. Main character: ${charDesc}. Show ALL characters from this scene standing together in a row: ${scene}. Every character must be fully visible with clear distinct appearance. All characters face the viewer with natural relaxed poses on a plain simple light beige background. No scenery, no environment, no objects — ONLY the characters. Sharp clear details on each character's face, hair, clothing. Each character must look distinctly different from others. No text.`;
+  try {
+    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
+      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } })
+    });
+    const resp = await res.json();
+    console.log("Portrait generation:", resp.status || resp.error);
+    return await pollPrediction(token, resp);
+  } catch (err) { console.error("Portrait error:", err); return null; }
+}
+
 // ── PAGES 2-6: Kontext Pro (image-to-image, character consistency) ──
-async function genNextImage(token, scene, charDesc, refImageUrl, mood, artStyleKey) {
-  if (!token || !refImageUrl) return null;
+async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey) {
+  if (!token || !portraitUrl) return null;
   const style = getStyleForMood(mood, artStyleKey);
-  const prompt = `${style}. ${scene}. The main character from the reference image (${charDesc}) must appear with identical design (colors, clothing, features). Show ALL characters described in the scene — include every creature, person, or animal mentioned. Each character should have distinct appearance and clear interaction with others. Dynamic poses matching the described action. Rich detailed environment with depth. No text, words, letters, or writing anywhere in the image.`;
+  const prompt = `${style}. Create a completely NEW illustration for this scene: ${scene}. The main character from the reference portrait (${charDesc}) must appear with IDENTICAL visual identity — same face shape, hair, clothing colors and design. BUT the character's POSE, EXPRESSION, and BODY LANGUAGE must match the NEW scene — NOT the neutral portrait pose. Show vivid emotion: if scared, show wide eyes and hunched shoulders; if happy, show a big grin and open arms; if running, show dynamic motion blur. The character should feel ALIVE and ACTIVE in each scene. Add any other characters described with distinct appearances. Rich detailed NEW environment completely different from the reference. No text in image.`;
   try {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, input_image: refImageUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 5 } })
+      body: JSON.stringify({ input: { prompt, input_image: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 5 } })
     });
     const resp = await res.json();
     console.log("Kontext Pro response:", resp.status, resp.id || resp.error);
@@ -670,17 +687,25 @@ export default function App() {
     setImgLoading(true);
     
     const pageMood = curPage.mood || "forest";
-    const isFirstPage = !refImgUrl; // no reference = first page
-    const genFn = isFirstPage
-      ? genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", pageMood, artStyle)
-      : genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, pageMood, artStyle);
+    const isFirstPage = !refImgUrl; // no portrait reference = first page
     
-    genFn.then(url => {
-        setCurImg(url);
-        if (url && !refImgUrl) setRefImgUrl(url); // only save first image as permanent reference
+    if (isFirstPage) {
+      // Page 1: generate scene + portrait in parallel
+      const scenePromise = genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", pageMood, artStyle);
+      const portraitPromise = charDesc ? genCharPortrait(repToken, charDesc, curPage.scene, artStyle) : Promise.resolve(null);
+      
+      Promise.all([scenePromise, portraitPromise]).then(([sceneUrl, portraitUrl]) => {
+        setCurImg(sceneUrl);
+        if (portraitUrl) setRefImgUrl(portraitUrl); // save clean portrait as permanent reference
+        else if (sceneUrl) setRefImgUrl(sceneUrl); // fallback to scene if portrait failed
         setImgLoading(false);
-      })
-      .catch(() => setImgLoading(false));
+      }).catch(() => setImgLoading(false));
+    } else {
+      // Pages 2+: use clean portrait as reference, generates completely new scene
+      genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, pageMood, artStyle)
+        .then(url => { setCurImg(url); setImgLoading(false); })
+        .catch(() => setImgLoading(false));
+    }
   }, [curPage?.scene]);
 
   // Save Replicate token
