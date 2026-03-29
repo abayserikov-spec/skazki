@@ -1262,8 +1262,8 @@ export default function App() {
   if (view === "session") {
     const allPages = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
     const totalReady = allPages.length;
+    const BOOK_FONT = "'Literata', 'Cormorant Garamond', Georgia, serif";
     
-    // Spread nav: auto = latest, manual = browsing back
     const latestSpread = Math.floor(Math.max(0, totalReady - 1) / 2);
     const currentSpread = viewSpread >= 0 ? Math.min(viewSpread, latestSpread) : latestSpread;
     const isViewingPast = currentSpread < latestSpread;
@@ -1279,261 +1279,150 @@ export default function App() {
     const childName = activeChild?.name || "";
 
     const goToSpread = (idx) => {
-      if (idx < 0 || idx > latestSpread) return;
+      if (idx < 0 || idx > latestSpread || flipAnim) return;
       const dir = idx > currentSpread ? "forward" : "back";
       setFlipAnim(dir);
-      setTimeout(() => {
-        setViewSpread(idx === latestSpread ? -1 : idx);
-        setTimeout(() => setFlipAnim(null), 400);
-      }, 200);
+      setTimeout(() => { setViewSpread(idx === latestSpread ? -1 : idx); }, 400);
+      setTimeout(() => setFlipAnim(null), 850);
     };
 
-    // ── PAGE LAYOUTS — like real children's books ──
-    const LAYOUTS = ["img-top", "text-top", "img-big", "img-top", "text-top", "img-big"];
+    const LAYOUTS = ["img-top", "text-top", "img-big", "text-top", "img-top", "img-big"];
     const getLayout = (i) => LAYOUTS[i % LAYOUTS.length];
 
-    // Render illustration
     const renderImg = (page, frame, isCur, big) => (
-      <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", padding: "0 6px", minHeight: 0 }}>
-        <div style={{
-          width: "100%", maxWidth: big ? 340 : 280, aspectRatio: big ? "4/3" : "16/10", overflow: "hidden",
-          ...frame, background: "#f0ebe0",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.06), inset 0 1px 2px rgba(0,0,0,0.03)",
-          position: "relative"
-        }}>
+      <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", minHeight: 0 }}>
+        <div style={{ width: "100%", maxWidth: big ? "100%" : "90%", aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f0ebe0", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "relative" }}>
           {(isCur && imgLoading) ? (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#f0ebe0" }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "1.5rem", marginBottom: 4, opacity: .4 }}>🎨</div>
-                <div style={{ fontSize: ".58rem", color: "#a89878" }}>{lang === "ru" ? "Рисуем..." : "Illustrating..."}</div>
-              </div>
-            </div>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#f0ebe0" }}><div style={{ fontSize: "1.2rem", opacity: .35 }}>🎨</div></div>
           ) : (page._curImg || page.imgUrl) ? (
             <img src={page._curImg || page.imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
           ) : (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: "1.8rem", opacity: .12 }}>🖼</span>
-            </div>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.5rem", opacity: .1 }}>🖼</span></div>
           )}
         </div>
       </div>
     );
 
-    // Render text
-    const renderText = (page, big) => (
-      <div style={{ flex: big ? "1 1 0" : "0 0 auto", overflow: "auto", textAlign: "center", padding: "0 8px", minHeight: 0 }}>
-        <p style={{ fontSize: "clamp(.74rem,1.6vw,.88rem)", lineHeight: 1.85, color: "#3a2f24", fontStyle: "italic", fontWeight: 400, margin: 0 }}>{page.text}</p>
+    const renderText = (page) => (
+      <div style={{ flex: "1 1 0", overflow: "auto", padding: "0 4px", minHeight: 0 }}>
+        <p style={{ fontSize: "clamp(.8rem,1.7vw,.95rem)", lineHeight: 1.7, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1.5em" }}>{page.text}</p>
       </div>
     );
 
-    // Render one book page
     const renderPage = (page, num, frame, isCur, isBlur, side) => {
       const layout = getLayout(num - 1);
       return (
-      <div style={{
-        flex: 1, height: "100%", background: PAPER_BG, position: "relative", overflow: "hidden",
-        display: "flex", flexDirection: "column", fontFamily: FN.d,
-        filter: isBlur ? "blur(8px) brightness(0.95)" : "none",
-        transition: "filter 0.8s ease-out",
-      }}>
+      <div style={{ flex: 1, height: "100%", background: PAPER_BG, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", filter: isBlur ? "blur(8px) brightness(0.95)" : "none", transition: "filter 0.8s ease-out" }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none", zIndex: 0 }}/>
-        {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 25, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.05), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
-        {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 25, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.07), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
-
+        {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 20, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
+        {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 20, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.06), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
         {page ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "12px 16px 6px", gap: 6 }}>
-            <div style={{ textAlign: "center" }}>
-              <span style={{ fontSize: ".62rem", color: "#b89b78", fontWeight: 600, fontStyle: "italic", letterSpacing: ".04em" }}>{page.title || "✦"}</span>
-            </div>
-            {layout === "img-top" && <>{renderImg(page, frame, isCur, false)}{renderText(page, true)}</>}
-            {layout === "text-top" && <>{renderText(page, true)}{renderImg(page, frame, isCur, false)}</>}
-            {layout === "img-big" && <>{renderImg(page, frame, isCur, true)}<div style={{ padding: "0 8px", textAlign: "center" }}><p style={{ fontSize: "clamp(.7rem,1.4vw,.82rem)", lineHeight: 1.75, color: "#3a2f24", fontStyle: "italic", fontWeight: 400, margin: 0 }}>{page.text}</p></div></>}
-            <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: ".48rem", color: "#c4b498", padding: "0 8px" }}>{num}</div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "10px 14px 6px", gap: 4 }}>
+            <div style={{ textAlign: "center", marginBottom: 2 }}><span style={{ fontSize: ".6rem", color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
+            {layout === "img-top" && <>{renderImg(page, frame, isCur, false)}{renderText(page)}</>}
+            {layout === "text-top" && <>{renderText(page)}{renderImg(page, frame, isCur, false)}</>}
+            {layout === "img-big" && <>{renderImg(page, frame, isCur, true)}<div style={{ padding: "0 4px" }}><p style={{ fontSize: "clamp(.76rem,1.5vw,.88rem)", lineHeight: 1.65, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1.5em" }}>{page.text}</p></div></>}
+            <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: ".45rem", color: "#c4b498", padding: "0 6px", fontFamily: BOOK_FONT }}>{num}</div>
           </div>
         ) : isBlur ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-            <div style={{ textAlign: "center", opacity: .35 }}>
-              <div style={{ fontSize: "2.5rem", marginBottom: 10 }}>📖</div>
-              <div style={{ fontSize: ".7rem", color: "#8b7a66", fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div>
-            </div>
+            <div style={{ textAlign: "center", opacity: .3 }}><div style={{ fontSize: "2rem", marginBottom: 8 }}>📖</div><div style={{ fontSize: ".65rem", color: "#8b7a66", fontFamily: BOOK_FONT, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
           </div>
-        ) : (
-          <div style={{ flex: 1, position: "relative", zIndex: 1 }}/>
-        )}
-      </div>
-      );
+        ) : (<div style={{ flex: 1, position: "relative", zIndex: 1 }}/>)}
+      </div>);
     };
-
-    const flipStyle = flipAnim === "forward"
-      ? { animation: "bookFlipFwd 0.45s ease-in-out" }
-      : flipAnim === "back"
-      ? { animation: "bookFlipBack 0.45s ease-in-out" }
-      : {};
 
     return (
     <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <style>{CSS}{`
-        @keyframes bookFlipFwd {
-          0% { transform: perspective(1200px) rotateY(0deg); }
-          40% { transform: perspective(1200px) rotateY(-15deg) scale(0.98); }
-          100% { transform: perspective(1200px) rotateY(0deg); }
-        }
-        @keyframes bookFlipBack {
-          0% { transform: perspective(1200px) rotateY(0deg); }
-          40% { transform: perspective(1200px) rotateY(15deg) scale(0.98); }
-          100% { transform: perspective(1200px) rotateY(0deg); }
-        }
+        @keyframes pageTurnFwd { 0%{transform:perspective(1800px) rotateY(0deg)} 100%{transform:perspective(1800px) rotateY(-180deg)} }
+        @keyframes pageTurnBack { 0%{transform:perspective(1800px) rotateY(-180deg)} 100%{transform:perspective(1800px) rotateY(0deg)} }
       `}</style>
       {showSettings && <SettingsPanel />}
-
-      {/* Top bar */}
-      <div style={{ padding: "8px 16px", background: "rgba(255,250,242,0.95)", borderBottom: "1px solid rgba(139,109,74,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, backdropFilter: "blur(12px)" }}>
+      <div style={{ padding: "7px 16px", background: "rgba(255,250,242,0.95)", borderBottom: "1px solid rgba(139,109,74,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: ".85rem" }}>{theme?.emoji}</span>
-          <span style={{ fontFamily: FN.d, fontSize: ".85rem", fontWeight: 600, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
-          <div style={{ width: 1, height: 14, background: "rgba(139,109,74,0.12)", margin: "0 4px" }}/>
-          <span style={{ fontSize: ".68rem", fontWeight: 500, color: "#a89878", fontFamily: "monospace" }}>{fmtT(timer)}</span>
+          <span style={{ fontSize: ".8rem" }}>{theme?.emoji}</span>
+          <span style={{ fontFamily: BOOK_FONT, fontSize: ".85rem", fontWeight: 500, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
+          <span style={{ fontSize: ".65rem", color: "#a89878", fontFamily: "monospace" }}>{fmtT(timer)}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: ".65rem", color: "#a89878" }}>{totalReady} / {TOTAL_PAGES}</span>
-          <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: "rgba(212,132,90,0.1)", border: "1px solid rgba(212,132,90,0.2)", color: "#c47b4a", fontSize: ".72rem", fontWeight: 600, padding: "5px 14px", borderRadius: 20, fontFamily: FN.b, cursor: "pointer" }}>{L.finish}</button>
+          <span style={{ fontSize: ".6rem", color: "#a89878", fontFamily: BOOK_FONT }}>{lang === "ru" ? "стр." : "p."} {totalReady}/{TOTAL_PAGES}</span>
+          <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: "rgba(212,132,90,0.08)", border: "1px solid rgba(212,132,90,0.15)", color: "#c47b4a", fontSize: ".68rem", fontWeight: 600, padding: "4px 12px", borderRadius: 16, fontFamily: FN.b, cursor: "pointer" }}>{L.finish}</button>
         </div>
       </div>
-
-      {/* Main layout */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-
-        {/* LEFT: Nav + TTS */}
-        <div style={{ width: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px 6px", flexShrink: 0 }}>
-          <button onClick={() => goToSpread(currentSpread - 1)} disabled={currentSpread <= 0} style={{
-            width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.1)",
-            background: currentSpread > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)",
-            color: currentSpread > 0 ? "#8b6f4e" : "#c4b498", fontSize: ".9rem",
-            cursor: currentSpread > 0 ? "pointer" : "default",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>◀</button>
-          <div style={{ display: "flex", gap: 3 }}>
-            {Array.from({ length: Math.max(1, Math.ceil(totalReady / 2)) }).map((_, i) => (
-              <div key={i} onClick={() => goToSpread(i)} style={{
-                width: 5, height: 5, borderRadius: "50%", cursor: "pointer",
-                background: i === currentSpread ? "#c47b4a" : "rgba(139,109,74,0.18)", transition: "all .3s"
-              }}/>
-            ))}
-          </div>
-          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{
-            width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.1)",
-            background: speaking ? "rgba(212,132,90,0.12)" : "rgba(255,255,255,0.6)",
-            color: speaking ? "#c47b4a" : "#8b6f4e", fontSize: ".85rem", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            animation: speaking ? "pulse 2s ease-in-out infinite" : "none"
-          }}>{speaking ? "⏹" : "🔊"}</button>
-          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{
-            width: 30, height: 30, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)",
-            background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.5)",
-            color: sfxEnabled ? "#5a8a5e" : "#8b6f4e", fontSize: ".7rem", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
+        {/* LEFT */}
+        <div style={{ width: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "12px 4px", flexShrink: 0 }}>
+          <button onClick={() => goToSpread(currentSpread - 1)} disabled={currentSpread <= 0 || !!flipAnim} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: currentSpread > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)", color: currentSpread > 0 ? "#8b6f4e" : "#d0c8b8", fontSize: ".85rem", cursor: currentSpread > 0 && !flipAnim ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>◀</button>
+          <div style={{ display: "flex", gap: 3 }}>{Array.from({ length: Math.max(1, Math.ceil(totalReady / 2)) }).map((_, i) => (<div key={i} onClick={() => !flipAnim && goToSpread(i)} style={{ width: 5, height: 5, borderRadius: "50%", cursor: flipAnim ? "default" : "pointer", background: i === currentSpread ? "#c47b4a" : "rgba(139,109,74,0.15)", transition: "all .3s" }}/>))}</div>
+          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: speaking ? "rgba(212,132,90,0.1)" : "rgba(255,255,255,0.5)", color: speaking ? "#c47b4a" : "#8b6f4e", fontSize: ".8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: speaking ? "pulse 2s ease-in-out infinite" : "none" }}>{speaking ? "⏹" : "🔊"}</button>
+          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.06)", background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)", color: sfxEnabled ? "#5a8a5e" : "#8b6f4e", fontSize: ".65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
         </div>
-
-        {/* CENTER: Book */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px 0" }}>
+        {/* CENTER */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 0" }}>
           {loading && totalReady === 0 ? (
             <div style={{ textAlign: "center" }}>
-              <div style={{ width: 36, height: 36, border: "2px solid rgba(139,109,74,0.1)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 16px" }}/>
-              <p style={{ fontFamily: FN.d, fontSize: ".9rem", color: "#8b7a66", fontStyle: "italic" }}>
-                {lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}
-              </p>
-              {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(196,123,123,0.08)", borderRadius: 12, border: "1px solid rgba(196,123,123,0.2)", fontSize: ".78rem", color: "#C47B7B" }}>
-                {error}
-                <button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Retry failed."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 16px", borderRadius: 16, background: "#c47b4a", color: "#fff", border: "none", fontSize: ".74rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Retry</button>
-              </div>}
+              <div style={{ width: 32, height: 32, border: "2px solid rgba(139,109,74,0.08)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
+              <p style={{ fontFamily: BOOK_FONT, fontSize: ".88rem", color: "#8b7a66", fontStyle: "italic" }}>{lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}</p>
+              {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(196,123,123,0.06)", borderRadius: 12, border: "1px solid rgba(196,123,123,0.15)", fontSize: ".75rem", color: "#C47B7B" }}>{error}<button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Retry failed."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 14px", borderRadius: 14, background: "#c47b4a", color: "#fff", border: "none", fontSize: ".7rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Retry</button></div>}
             </div>
           ) : (
-            <div style={{ position: "relative", width: "min(90vw, 820px)", maxHeight: "75vh", aspectRatio: "1.6/1" }}>
-              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.08), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
-              <div style={{
-                position: "relative", zIndex: 1, width: "100%", height: "100%",
-                display: "flex", borderRadius: "3px 6px 6px 3px",
-                boxShadow: "0 2px 16px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)",
-                overflow: "hidden", transformStyle: "preserve-3d", ...flipStyle
-              }}>
-                {renderPage(leftPage, leftIdx + 1, getFrameStyle(leftIdx), leftPage?._isCurrent && !isViewingPast, false, "left")}
-                <div style={{ width: 5, background: "linear-gradient(to right, rgba(0,0,0,0.05), rgba(0,0,0,0.01), rgba(0,0,0,0.05))", flexShrink: 0, zIndex: 5 }}/>
-                {renderPage(rightPage, rightIdx + 1, getFrameStyle(rightIdx), rightPage?._isCurrent && !isViewingPast, rightIsBlurred, "right")}
+            <div style={{ position: "relative", width: "min(92vw, 840px)", maxHeight: "78vh", aspectRatio: "1.55/1" }}>
+              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.07), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
+              <div style={{ position: "relative", zIndex: 1, width: "100%", height: "100%", perspective: "2000px" }}>
+                {/* Base spread */}
+                <div style={{ position: "absolute", inset: 0, display: "flex", borderRadius: "3px 5px 5px 3px", boxShadow: "0 2px 14px rgba(0,0,0,0.07)", overflow: "hidden" }}>
+                  {renderPage(leftPage, leftIdx + 1, getFrameStyle(leftIdx), leftPage?._isCurrent && !isViewingPast, false, "left")}
+                  <div style={{ width: 4, background: "linear-gradient(to right, rgba(0,0,0,0.04), rgba(0,0,0,0.01), rgba(0,0,0,0.04))", flexShrink: 0, zIndex: 5 }}/>
+                  {renderPage(rightPage, rightIdx + 1, getFrameStyle(rightIdx), rightPage?._isCurrent && !isViewingPast, rightIsBlurred, "right")}
+                </div>
+                {/* Page turn overlay */}
+                {flipAnim === "forward" && <div style={{ position: "absolute", top: 0, left: "50%", width: "50%", height: "100%", transformOrigin: "left center", animation: "pageTurnFwd 0.8s ease-in-out forwards", backfaceVisibility: "hidden", zIndex: 10, borderRadius: "0 5px 5px 0", overflow: "hidden", boxShadow: "-4px 0 15px rgba(0,0,0,0.08)" }}>
+                  <div style={{ width: "100%", height: "100%", background: PAPER_BG }}><div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none" }}/></div>
+                </div>}
+                {flipAnim === "back" && <div style={{ position: "absolute", top: 0, left: 0, width: "50%", height: "100%", transformOrigin: "right center", animation: "pageTurnBack 0.8s ease-in-out forwards", backfaceVisibility: "hidden", zIndex: 10, borderRadius: "3px 0 0 3px", overflow: "hidden", boxShadow: "4px 0 15px rgba(0,0,0,0.08)" }}>
+                  <div style={{ width: "100%", height: "100%", background: PAPER_BG }}><div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none" }}/></div>
+                </div>}
               </div>
               <div style={{ position: "absolute", top: 3, right: -2, width: 3, height: "calc(100% - 6px)", background: "repeating-linear-gradient(to bottom, #e6d9c4, #f0e8d8 2px)", borderRadius: "0 1px 1px 0", zIndex: 0 }}/>
-              {isViewingPast && <div style={{ position: "absolute", bottom: -24, left: "50%", transform: "translateX(-50%)", background: "rgba(196,123,74,0.08)", border: "1px solid rgba(196,123,74,0.15)", borderRadius: 16, padding: "3px 12px", fontSize: ".6rem", color: "#c47b4a", fontFamily: FN.b, fontWeight: 500, whiteSpace: "nowrap" }}>
-                {lang === "ru" ? "Просмотр · нажмите ▶" : "Browsing · press ▶"}
-              </div>}
+              {isViewingPast && <div style={{ position: "absolute", bottom: -22, left: "50%", transform: "translateX(-50%)", background: "rgba(196,123,74,0.06)", border: "1px solid rgba(196,123,74,0.12)", borderRadius: 14, padding: "2px 10px", fontSize: ".55rem", color: "#c47b4a", fontFamily: FN.b, fontWeight: 500, whiteSpace: "nowrap" }}>{lang === "ru" ? "Просмотр" : "Browsing"}</div>}
             </div>
           )}
         </div>
-
-        {/* RIGHT: Forward + Choices */}
-        <div style={{ width: 200, display: "flex", flexDirection: "column", justifyContent: "center", padding: "16px 14px 16px 6px", flexShrink: 0, gap: 8 }}>
-          <button onClick={() => goToSpread(currentSpread + 1)} disabled={currentSpread >= latestSpread} style={{
-            width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.1)",
-            background: currentSpread < latestSpread ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)",
-            color: currentSpread < latestSpread ? "#8b6f4e" : "#c4b498", fontSize: ".9rem",
-            cursor: currentSpread < latestSpread ? "pointer" : "default",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 6px"
-          }}>▶</button>
-
+        {/* RIGHT */}
+        <div style={{ width: 190, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 12px 12px 4px", flexShrink: 0, gap: 6 }}>
+          <button onClick={() => goToSpread(currentSpread + 1)} disabled={currentSpread >= latestSpread || !!flipAnim} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: currentSpread < latestSpread ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)", color: currentSpread < latestSpread ? "#8b6f4e" : "#d0c8b8", fontSize: ".85rem", cursor: currentSpread < latestSpread && !flipAnim ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 4px" }}>▶</button>
           {showEnd ? (
             <div style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: FN.d, fontSize: ".85rem", color: "#c47b4a", fontWeight: 600, fontStyle: "italic", marginBottom: 10 }}>{L.end}</p>
-              {imgLoading && <p style={{ fontSize: ".6rem", color: "#a89878", marginBottom: 8 }}>{lang === "ru" ? "Ждём иллюстрацию…" : "Waiting..."}</p>}
-              <button onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "10px 16px", borderRadius: 14, fontFamily: FN.b, fontSize: ".8rem", fontWeight: 600, border: "none", cursor: imgLoading ? "default" : "pointer", background: imgLoading ? "rgba(196,123,90,0.15)" : "#c47b4a", color: "#fff", opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</button>
+              <p style={{ fontFamily: BOOK_FONT, fontSize: ".85rem", color: "#c47b4a", fontWeight: 500, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
+              {imgLoading && <p style={{ fontSize: ".58rem", color: "#a89878", marginBottom: 6 }}>{lang === "ru" ? "Ждём иллюстрацию…" : "Waiting..."}</p>}
+              <button onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "9px 14px", borderRadius: 12, fontFamily: FN.b, fontSize: ".78rem", fontWeight: 600, border: "none", cursor: imgLoading ? "default" : "pointer", background: imgLoading ? "rgba(196,123,90,0.12)" : "#c47b4a", color: "#fff", opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</button>
             </div>
           ) : showChoices ? (
             <div>
-              <div style={{ fontSize: ".58rem", color: "#a89878", textAlign: "center", marginBottom: 8, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".1em" }}>{lang === "ru" ? "Что дальше?" : "What next?"}</div>
+              <div style={{ fontSize: ".55rem", color: "#a89878", textAlign: "center", marginBottom: 6, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".1em", fontFamily: FN.b }}>{lang === "ru" ? "Что дальше?" : "What next?"}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 {curPage.choices?.map((ch, i) => (
-                  <button key={i} onClick={() => pickChoice(ch)} disabled={!!sel || loading} style={{
-                    background: sel === ch.label ? "rgba(212,132,90,0.1)" : "rgba(255,255,255,0.7)",
-                    border: `1px solid ${sel === ch.label ? "rgba(212,132,90,0.25)" : "rgba(139,109,74,0.1)"}`,
-                    borderRadius: 12, padding: "8px 10px", display: "flex", alignItems: "center", gap: 6,
-                    fontSize: ".72rem", fontWeight: 500, fontFamily: FN.b, color: "#3a2f24", textAlign: "left",
-                    cursor: sel ? "default" : "pointer", transition: "all .3s",
-                    animation: `si .3s ${i * .06}s ease-out both`
-                  }}
-                    onMouseOver={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(212,132,90,0.25)" }}
-                    onMouseOut={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(139,109,74,0.1)" }}>
-                    <span style={{ fontSize: ".85rem", flexShrink: 0 }}>{ch.emoji}</span>
-                    <span style={{ flex: 1, lineHeight: 1.3 }}>{ch.label}</span>
-                  </button>
-                ))}
+                  <button key={i} onClick={() => pickChoice(ch)} disabled={!!sel || loading} style={{ background: sel === ch.label ? "rgba(212,132,90,0.08)" : "rgba(255,255,255,0.65)", border: `1px solid ${sel === ch.label ? "rgba(212,132,90,0.2)" : "rgba(139,109,74,0.08)"}`, borderRadius: 10, padding: "7px 9px", display: "flex", alignItems: "center", gap: 6, fontSize: ".7rem", fontWeight: 500, fontFamily: FN.b, color: "#3a2f24", textAlign: "left", cursor: sel ? "default" : "pointer", transition: "all .3s", animation: `si .3s ${i * .05}s ease-out both` }} onMouseOver={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(212,132,90,0.2)" }} onMouseOut={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(139,109,74,0.08)" }}>
+                    <span style={{ fontSize: ".8rem", flexShrink: 0 }}>{ch.emoji}</span><span style={{ flex: 1, lineHeight: 1.25 }}>{ch.label}</span>
+                  </button>))}
               </div>
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: ".48rem", color: "#a89878", textAlign: "center", marginBottom: 3 }}>{L.orCustom}</div>
+              <div style={{ marginTop: 7 }}>
+                <div style={{ fontSize: ".45rem", color: "#a89878", textAlign: "center", marginBottom: 3, fontFamily: FN.b }}>{L.orCustom}</div>
                 <div style={{ display: "flex", gap: 4 }}>
-                  <input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder="..." style={{
-                    flex: 1, padding: "6px 9px", borderRadius: 10, border: "1px solid rgba(139,109,74,0.1)",
-                    background: "rgba(255,255,255,0.7)", color: "#3a2f24", fontSize: ".72rem", fontFamily: FN.b, outline: "none"
-                  }}/>
-                  <button onClick={submitCustom} disabled={!customInput.trim()} style={{
-                    padding: "6px 11px", borderRadius: 10, border: "none",
-                    background: customInput.trim() ? "#c47b4a" : "rgba(139,109,74,0.06)",
-                    color: customInput.trim() ? "#fff" : "#a89878",
-                    fontSize: ".72rem", fontWeight: 600, fontFamily: FN.b, cursor: customInput.trim() ? "pointer" : "default"
-                  }}>→</button>
+                  <input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder="..." style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "1px solid rgba(139,109,74,0.08)", background: "rgba(255,255,255,0.65)", color: "#3a2f24", fontSize: ".7rem", fontFamily: FN.b, outline: "none" }}/>
+                  <button onClick={submitCustom} disabled={!customInput.trim()} style={{ padding: "6px 10px", borderRadius: 8, border: "none", background: customInput.trim() ? "#c47b4a" : "rgba(139,109,74,0.05)", color: customInput.trim() ? "#fff" : "#a89878", fontSize: ".7rem", fontWeight: 600, fontFamily: FN.b, cursor: customInput.trim() ? "pointer" : "default" }}>→</button>
                 </div>
               </div>
             </div>
           ) : loading && totalReady > 0 && !isViewingPast ? (
             <div style={{ textAlign: "center" }}>
-              <div style={{ width: 20, height: 20, border: "2px solid rgba(139,109,74,0.08)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 8px" }}/>
-              <p style={{ fontSize: ".68rem", color: "#a89878", fontStyle: "italic" }}>{L.continuing}</p>
+              <div style={{ width: 18, height: 18, border: "2px solid rgba(139,109,74,0.06)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 6px" }}/>
+              <p style={{ fontSize: ".65rem", color: "#a89878", fontStyle: "italic", fontFamily: BOOK_FONT }}>{L.continuing}</p>
             </div>
           ) : isViewingPast ? (
             <div style={{ textAlign: "center" }}>
-              <button onClick={() => { setViewSpread(-1); setFlipAnim(null); }} style={{
-                padding: "8px 16px", borderRadius: 12, border: "1px solid rgba(212,132,90,0.2)",
-                background: "rgba(212,132,90,0.08)", color: "#c47b4a", fontSize: ".72rem",
-                fontWeight: 600, fontFamily: FN.b, cursor: "pointer"
-              }}>{lang === "ru" ? "К текущей →" : "Back to current →"}</button>
+              <button onClick={() => { setViewSpread(-1); setFlipAnim(null); }} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid rgba(212,132,90,0.15)", background: "rgba(212,132,90,0.06)", color: "#c47b4a", fontSize: ".68rem", fontWeight: 600, fontFamily: FN.b, cursor: "pointer" }}>{lang === "ru" ? "К текущей →" : "Current →"}</button>
             </div>
           ) : null}
         </div>
