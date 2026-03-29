@@ -804,6 +804,19 @@ export default function App() {
     return () => clearTimeout(delay);
   }, [curPage?.text]);
 
+  // Auto-flip book to latest page
+  useEffect(() => {
+    if (view !== "session" || !bookRef.current) return;
+    const t2 = setTimeout(() => {
+      try {
+        const pf = bookRef.current.pageFlip();
+        const count = pf.getPageCount();
+        if (count > 1) pf.flip(count - 1);
+      } catch {}
+    }, 400);
+    return () => clearTimeout(t2);
+  }, [view, pages.length]);
+
   // Generate illustration when page arrives
   // Flow: Page 1 → Flux generates portrait → Kontext generates scene from portrait
   //       Page 2+ → Kontext generates scene from same portrait
@@ -1356,19 +1369,6 @@ export default function App() {
 
 
   // ═══ SESSION (3D Book) ═══
-  // Auto-flip to latest page
-  useEffect(() => {
-    if (view !== "session" || !bookRef.current) return;
-    const t = setTimeout(() => {
-      try {
-        const pf = bookRef.current.pageFlip();
-        const count = pf.getPageCount();
-        if (count > 1) pf.flip(count - 1);
-      } catch {}
-    }, 400);
-    return () => clearTimeout(t);
-  }, [pages.length, curPage?.text, view]);
-
   if (view === "session") {
     // Build book pages array
     const bookPages = pages.map((p, i) => ({ ...p, _idx: i }));
