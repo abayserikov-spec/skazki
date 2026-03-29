@@ -1467,7 +1467,7 @@ export default function App() {
                   </div>
                 </BookCover>
 
-                {/* Completed story pages */}
+                {/* Story pages */}
                 {allBookPages.map((p, i) => (
                   <BookStoryPage
                     key={i}
@@ -1481,16 +1481,13 @@ export default function App() {
                   />
                 ))}
 
-                {/* Loading page (when generating next) */}
-                {loading && <BookLoadingPage message={lang === "ru" ? "Создаём следующую страницу…" : "Creating next page..."} />}
-
-                {/* Back Cover (only when story ended) */}
-                {showEnd && <BookCover type="back">
+                {/* Always render back cover — shows "The End" or loading */}
+                <BookCover type="back">
                   <div>
-                    <div style={{ fontSize: "1.3rem", marginBottom: 8 }}>{L.end}</div>
-                    <div style={{ fontSize: ".7rem", opacity: .5 }}>{childName}'s story</div>
+                    <div style={{ fontSize: "1.3rem", marginBottom: 8 }}>{showEnd ? L.end : (loading ? "..." : "✦")}</div>
+                    <div style={{ fontSize: ".7rem", opacity: .5 }}>{childName}</div>
                   </div>
-                </BookCover>}
+                </BookCover>
               </HTMLFlipBook>
 
               {/* Book spine overlay */}
