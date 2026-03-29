@@ -302,15 +302,15 @@ async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleK
   const style = getStyleForMood(mood, artStyleKey);
   const prompt = `${style}. Create a completely NEW illustration for this scene: ${scene}. The main character from the reference portrait (${charDesc}) must appear with IDENTICAL visual identity — same face shape, hair, clothing colors and design. BUT the character's POSE, EXPRESSION, and BODY LANGUAGE must match the NEW scene — NOT the neutral portrait pose. Show vivid emotion: if scared, show wide eyes and hunched shoulders; if happy, show a big grin and open arms; if running, show dynamic motion blur. The character should feel ALIVE and ACTIVE in each scene. Add any other characters described with distinct appearances. Rich detailed NEW environment completely different from the reference. No text in image.`;
   try {
-    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro-fast/predictions", {
+    const res = await fetch("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({ input: { prompt, input_image: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 5 } })
     });
     const resp = await res.json();
-    console.log("Kontext Pro Fast response:", resp.status, resp.id || resp.error);
+    console.log("Kontext Fast response:", resp.status, resp.id || resp.error);
     return await pollPrediction(token, resp);
-  } catch (err) { console.error("Kontext Pro Fast error:", err); return null; }
+  } catch (err) { console.error("Kontext Fast error:", err); return null; }
 }
 
 // ── TYPEWRITER COMPONENT ──
