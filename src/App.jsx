@@ -455,8 +455,8 @@ function getFrameStyle(pageIdx) {
 }
 
 // ── PAPER TEXTURE CSS ──
-const PAPER_BG = "#fdf8ee";
-const PAPER_TEXTURE = `repeating-linear-gradient(0deg, rgba(139,109,74,0.02), rgba(139,109,74,0.02) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(139,109,74,0.015), rgba(139,109,74,0.015) 1px, transparent 1px, transparent 4px)`;
+const PAPER_BG = "#fffdf8";
+const PAPER_TEXTURE = `repeating-linear-gradient(0deg, rgba(139,109,74,0.015), rgba(139,109,74,0.015) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(139,109,74,0.01), rgba(139,109,74,0.01) 1px, transparent 1px, transparent 4px)`;
 
 export default function App() {
   const [dark, setDark] = useState(false);
@@ -1350,21 +1350,21 @@ export default function App() {
     );
 
     return (
-    <div style={{ height: "100vh", background: "linear-gradient(160deg, #3d2e22, #2a1f16, #1a150f)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <style>{CSS}</style>
       {showSettings && <SettingsPanel />}
 
       {/* Top bar */}
-      <div style={{ padding: "8px 16px", background: "rgba(30,22,16,0.9)", borderBottom: "1px solid rgba(255,240,210,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, backdropFilter: "blur(12px)" }}>
+      <div style={{ padding: "8px 16px", background: "rgba(255,250,242,0.95)", borderBottom: "1px solid rgba(139,109,74,0.12)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, backdropFilter: "blur(12px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: ".85rem" }}>{theme?.emoji}</span>
-          <span style={{ fontFamily: FN.d, fontSize: ".85rem", fontWeight: 600, color: "#e8d8c4", fontStyle: "italic" }}>{childName}</span>
-          <div style={{ width: 1, height: 14, background: "rgba(255,240,210,0.12)", margin: "0 4px" }}/>
-          <span style={{ fontSize: ".68rem", fontWeight: 500, color: "rgba(255,240,210,0.5)", fontFamily: "monospace" }}>{fmtT(timer)}</span>
+          <span style={{ fontFamily: FN.d, fontSize: ".85rem", fontWeight: 600, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
+          <div style={{ width: 1, height: 14, background: "rgba(139,109,74,0.15)", margin: "0 4px" }}/>
+          <span style={{ fontSize: ".68rem", fontWeight: 500, color: "#a89878", fontFamily: "monospace" }}>{fmtT(timer)}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: ".65rem", color: "rgba(255,240,210,0.4)" }}>{totalReady} / {TOTAL_PAGES}</span>
-          <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: "rgba(212,132,90,0.15)", border: "1px solid rgba(212,132,90,0.25)", color: "#d4845a", fontSize: ".72rem", fontWeight: 600, padding: "5px 14px", borderRadius: 20, fontFamily: FN.b, cursor: "pointer" }}>{L.finish}</button>
+          <span style={{ fontSize: ".65rem", color: "#a89878" }}>{totalReady} / {TOTAL_PAGES}</span>
+          <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: "rgba(212,132,90,0.1)", border: "1px solid rgba(212,132,90,0.2)", color: "#c47b4a", fontSize: ".72rem", fontWeight: 600, padding: "5px 14px", borderRadius: 20, fontFamily: FN.b, cursor: "pointer" }}>{L.finish}</button>
         </div>
       </div>
 
@@ -1374,17 +1374,17 @@ export default function App() {
         {/* LEFT PANEL: TTS controls */}
         <div style={{ width: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "16px 6px", flexShrink: 0 }}>
           <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{
-            width: 38, height: 38, borderRadius: "50%", border: "1px solid rgba(255,240,210,0.1)",
-            background: speaking ? "rgba(212,132,90,0.3)" : "rgba(255,240,210,0.06)",
-            color: speaking ? "#d4845a" : "#c4b498", fontSize: ".95rem", cursor: "pointer",
+            width: 38, height: 38, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.15)",
+            background: speaking ? "rgba(212,132,90,0.15)" : "rgba(255,255,255,0.6)",
+            color: speaking ? "#c47b4a" : "#8b6f4e", fontSize: ".95rem", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             animation: speaking ? "pulse 2s ease-in-out infinite" : "none"
           }}>{speaking ? "⏹" : "🔊"}</button>
-          <span style={{ fontSize: ".5rem", color: "rgba(255,240,210,0.3)" }}>{speaking ? L.stop : L.speak}</span>
+          <span style={{ fontSize: ".5rem", color: "#a89878" }}>{speaking ? L.stop : L.speak}</span>
           {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{
-            width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,240,210,0.1)",
-            background: sfxEnabled ? "rgba(122,158,126,0.15)" : "rgba(255,240,210,0.06)",
-            color: sfxEnabled ? "#7a9e7e" : "#c4b498", fontSize: ".8rem", cursor: "pointer",
+            width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.12)",
+            background: sfxEnabled ? "rgba(122,158,126,0.1)" : "rgba(255,255,255,0.5)",
+            color: sfxEnabled ? "#5a8a5e" : "#8b6f4e", fontSize: ".8rem", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center"
           }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
         </div>
@@ -1394,33 +1394,33 @@ export default function App() {
           {loading && totalReady === 0 ? (
             /* Initial loading */
             <div style={{ textAlign: "center" }}>
-              <div style={{ width: 36, height: 36, border: "2px solid rgba(255,240,210,0.1)", borderTopColor: "#d4845a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 16px" }}/>
-              <p style={{ fontFamily: FN.d, fontSize: ".9rem", color: "#c4b498", fontStyle: "italic" }}>
+              <div style={{ width: 36, height: 36, border: "2px solid rgba(139,109,74,0.12)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 16px" }}/>
+              <p style={{ fontFamily: FN.d, fontSize: ".9rem", color: "#8b7a66", fontStyle: "italic" }}>
                 {lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}
               </p>
-              {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(196,123,123,0.1)", borderRadius: 12, border: "1px solid rgba(196,123,123,0.2)", fontSize: ".78rem", color: "#C47B7B" }}>
+              {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(196,123,123,0.08)", borderRadius: 12, border: "1px solid rgba(196,123,123,0.2)", fontSize: ".78rem", color: "#C47B7B" }}>
                 {error}
-                <button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Retry failed."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 16px", borderRadius: 16, background: "#d4845a", color: "#fff", border: "none", fontSize: ".74rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Retry</button>
+                <button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Retry failed."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 16px", borderRadius: 16, background: "#c47b4a", color: "#fff", border: "none", fontSize: ".74rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Retry</button>
               </div>}
             </div>
           ) : (
             /* The Book — open spread */
             <div style={{ position: "relative", width: "min(90vw, 820px)", maxHeight: "75vh", aspectRatio: "1.6/1" }}>
               {/* Book shadow under */}
-              <div style={{ position: "absolute", bottom: -8, left: "5%", right: "5%", height: 16, background: "radial-gradient(ellipse, rgba(0,0,0,0.35), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
+              <div style={{ position: "absolute", bottom: -8, left: "5%", right: "5%", height: 16, background: "radial-gradient(ellipse, rgba(0,0,0,0.12), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
 
               {/* Book body */}
               <div style={{
                 position: "relative", zIndex: 1, width: "100%", height: "100%",
                 display: "flex", borderRadius: "4px 8px 8px 4px",
-                boxShadow: "0 4px 30px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3)",
+                boxShadow: "0 2px 20px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.08)",
                 overflow: "hidden"
               }}>
                 {/* LEFT PAGE */}
                 {renderPage(leftPage, leftNum, leftFrame, leftPage?._isCurrent, false, "left")}
 
                 {/* Spine */}
-                <div style={{ width: 8, background: "linear-gradient(to right, rgba(0,0,0,0.12), rgba(0,0,0,0.04), rgba(0,0,0,0.12))", flexShrink: 0, zIndex: 5 }}/>
+                <div style={{ width: 6, background: "linear-gradient(to right, rgba(0,0,0,0.06), rgba(0,0,0,0.02), rgba(0,0,0,0.06))", flexShrink: 0, zIndex: 5 }}/>
 
                 {/* RIGHT PAGE */}
                 {renderPage(rightPage, rightNum, rightFrame, rightPage?._isCurrent, rightIsBlurred, "right")}
@@ -1440,25 +1440,25 @@ export default function App() {
         <div style={{ width: 200, display: "flex", flexDirection: "column", justifyContent: "center", padding: "16px 14px 16px 6px", flexShrink: 0, gap: 8 }}>
           {showEnd ? (
             <div style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: FN.d, fontSize: ".85rem", color: "#d4845a", fontWeight: 600, fontStyle: "italic", marginBottom: 10 }}>{L.end}</p>
-              {imgLoading && <p style={{ fontSize: ".65rem", color: "rgba(255,240,210,0.4)", marginBottom: 8 }}>{lang === "ru" ? "Ждём иллюстрацию…" : "Waiting..."}</p>}
-              <button onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "10px 16px", borderRadius: 14, fontFamily: FN.b, fontSize: ".8rem", fontWeight: 600, border: "none", cursor: imgLoading ? "default" : "pointer", background: imgLoading ? "rgba(212,132,90,0.2)" : "#d4845a", color: "#fff", opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</button>
+              <p style={{ fontFamily: FN.d, fontSize: ".85rem", color: "#c47b4a", fontWeight: 600, fontStyle: "italic", marginBottom: 10 }}>{L.end}</p>
+              {imgLoading && <p style={{ fontSize: ".65rem", color: "#a89878", marginBottom: 8 }}>{lang === "ru" ? "Ждём иллюстрацию…" : "Waiting..."}</p>}
+              <button onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "10px 16px", borderRadius: 14, fontFamily: FN.b, fontSize: ".8rem", fontWeight: 600, border: "none", cursor: imgLoading ? "default" : "pointer", background: imgLoading ? "rgba(196,123,90,0.2)" : "#c47b4a", color: "#fff", opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</button>
             </div>
           ) : showChoices ? (
             <div>
-              <div style={{ fontSize: ".6rem", color: "rgba(255,240,210,0.35)", textAlign: "center", marginBottom: 8, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".1em" }}>{lang === "ru" ? "Что дальше?" : "What next?"}</div>
+              <div style={{ fontSize: ".6rem", color: "#a89878", textAlign: "center", marginBottom: 8, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".1em" }}>{lang === "ru" ? "Что дальше?" : "What next?"}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {curPage.choices?.map((ch, i) => (
                   <button key={i} onClick={() => pickChoice(ch)} disabled={!!sel || loading} style={{
-                    background: sel === ch.label ? "rgba(212,132,90,0.15)" : "rgba(255,240,210,0.04)",
-                    border: `1px solid ${sel === ch.label ? "rgba(212,132,90,0.4)" : "rgba(255,240,210,0.08)"}`,
+                    background: sel === ch.label ? "rgba(212,132,90,0.1)" : "rgba(255,255,255,0.7)",
+                    border: `1px solid ${sel === ch.label ? "rgba(212,132,90,0.3)" : "rgba(139,109,74,0.12)"}`,
                     borderRadius: 12, padding: "9px 10px", display: "flex", alignItems: "center", gap: 7,
-                    fontSize: ".73rem", fontWeight: 500, fontFamily: FN.b, color: "#e8d8c4", textAlign: "left",
+                    fontSize: ".73rem", fontWeight: 500, fontFamily: FN.b, color: "#3a2f24", textAlign: "left",
                     cursor: sel ? "default" : "pointer", transition: "all .3s",
                     animation: `si .3s ${i * .06}s ease-out both`
                   }}
                     onMouseOver={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(212,132,90,0.3)" }}
-                    onMouseOut={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(255,240,210,0.08)" }}>
+                    onMouseOut={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(139,109,74,0.12)" }}>
                     <span style={{ fontSize: ".9rem", flexShrink: 0 }}>{ch.emoji}</span>
                     <span style={{ flex: 1, lineHeight: 1.3 }}>{ch.label}</span>
                   </button>
@@ -1466,16 +1466,16 @@ export default function App() {
               </div>
               {/* Custom input */}
               <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: ".5rem", color: "rgba(255,240,210,0.25)", textAlign: "center", marginBottom: 4 }}>{L.orCustom}</div>
+                <div style={{ fontSize: ".5rem", color: "#a89878", textAlign: "center", marginBottom: 4 }}>{L.orCustom}</div>
                 <div style={{ display: "flex", gap: 5 }}>
                   <input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder="..." style={{
-                    flex: 1, padding: "7px 10px", borderRadius: 10, border: "1px solid rgba(255,240,210,0.08)",
-                    background: "rgba(255,240,210,0.04)", color: "#e8d8c4", fontSize: ".73rem", fontFamily: FN.b, outline: "none"
+                    flex: 1, padding: "7px 10px", borderRadius: 10, border: "1px solid rgba(139,109,74,0.12)",
+                    background: "rgba(255,255,255,0.7)", color: "#3a2f24", fontSize: ".73rem", fontFamily: FN.b, outline: "none"
                   }}/>
                   <button onClick={submitCustom} disabled={!customInput.trim()} style={{
                     padding: "7px 12px", borderRadius: 10, border: "none",
-                    background: customInput.trim() ? "#d4845a" : "rgba(255,240,210,0.06)",
-                    color: customInput.trim() ? "#fff" : "rgba(255,240,210,0.3)",
+                    background: customInput.trim() ? "#c47b4a" : "rgba(139,109,74,0.08)",
+                    color: customInput.trim() ? "#fff" : "#a89878",
                     fontSize: ".73rem", fontWeight: 600, fontFamily: FN.b, cursor: customInput.trim() ? "pointer" : "default"
                   }}>→</button>
                 </div>
@@ -1483,8 +1483,8 @@ export default function App() {
             </div>
           ) : loading && totalReady > 0 ? (
             <div style={{ textAlign: "center" }}>
-              <div style={{ width: 22, height: 22, border: "2px solid rgba(255,240,210,0.08)", borderTopColor: "#d4845a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 10px" }}/>
-              <p style={{ fontSize: ".7rem", color: "rgba(255,240,210,0.4)", fontStyle: "italic" }}>{L.continuing}</p>
+              <div style={{ width: 22, height: 22, border: "2px solid rgba(139,109,74,0.1)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 10px" }}/>
+              <p style={{ fontSize: ".7rem", color: "#a89878", fontStyle: "italic" }}>{L.continuing}</p>
             </div>
           ) : null}
         </div>
