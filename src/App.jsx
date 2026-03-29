@@ -454,6 +454,161 @@ function getFrameStyle(pageIdx) {
   return FRAME_STYLES[pageIdx % FRAME_STYLES.length];
 }
 
+// ── Canvas page curl engine ──
+function drawPageCurl(ctx, w, h, progress, direction) {
+  ctx.clearRect(0, 0, w, h);
+  // Ease progress for natural feel
+  const t = progress;
+  const halfW = w / 2;
+
+  if (direction === "forward") {
+    // Right page curls to the left
+    // foldX: starts at right edge (w), ends at center (halfW - a bit)
+    const foldX = halfW + halfW * (1 - t);
+    const curlDepth = Math.sin(t * Math.PI) * 50; // max curl at midpoint
+    const curlWidth = Math.max(10, (w - foldX) * 0.8 + curlDepth * 0.5);
+
+    // 1. Shadow cast on the underlying page
+    const shadowW = curlDepth * 1.8;
+    if (shadowW > 1) {
+      const sg = ctx.createLinearGradient(foldX - shadowW, 0, foldX + 2, 0);
+      sg.addColorStop(0, "rgba(0,0,0,0)");
+      sg.addColorStop(0.7, `rgba(0,0,0,${0.12 * Math.sin(t * Math.PI)})`);
+      sg.addColorStop(1, `rgba(0,0,0,${0.06 * Math.sin(t * Math.PI)})`);
+      ctx.fillStyle = sg;
+      ctx.fillRect(foldX - shadowW, 0, shadowW + 4, h);
+    }
+
+    // 2. The curling page shape
+    ctx.save();
+    ctx.beginPath();
+    // Left edge of curling page = fold line (slightly curved)
+    ctx.moveTo(foldX - curlDepth * 0.15, 0);
+    // Curve the fold line inward (paper bending)
+    ctx.quadraticCurveTo(foldX - curlDepth * 0.4, h * 0.25, foldX - curlDepth * 0.5, h * 0.5);
+    ctx.quadraticCurveTo(foldX - curlDepth * 0.4, h * 0.75, foldX - curlDepth * 0.15, h);
+    // Bottom edge
+    ctx.lineTo(foldX + curlWidth, h);
+    // Right edge (slightly curled too)
+    ctx.quadraticCurveTo(foldX + curlWidth + curlDepth * 0.1, h * 0.5, foldX + curlWidth, 0);
+    ctx.closePath();
+
+    // Page gradient — light on outside edge, shadow near fold
+    const pg = ctx.createLinearGradient(foldX - curlDepth * 0.5, 0, foldX + curlWidth, 0);
+    if (t < 0.5) {
+      // Front of page visible
+      pg.addColorStop(0, "#e8e2d6");
+      pg.addColorStop(0.05, "#fffdf8");
+      pg.addColorStop(0.6, "#fffdf8");
+      pg.addColorStop(1, "#f8f4ec");
+    } else {
+      // Back of page visible
+      pg.addColorStop(0, "#ece6da");
+      pg.addColorStop(0.05, "#f5f0e5");
+      pg.addColorStop(0.5, "#f8f4ec");
+      pg.addColorStop(1, "#f0ebe0");
+    }
+    ctx.fillStyle = pg;
+    ctx.fill();
+
+    // 3. Fold edge highlight (light catching the bend)
+    ctx.beginPath();
+    ctx.moveTo(foldX - curlDepth * 0.15, 0);
+    ctx.quadraticCurveTo(foldX - curlDepth * 0.5, h * 0.5, foldX - curlDepth * 0.15, h);
+    ctx.strokeStyle = `rgba(255,255,255,${0.4 * Math.sin(t * Math.PI)})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 4. Subtle paper texture lines on the curling page
+    ctx.globalAlpha = 0.04;
+    for (let y = 10; y < h; y += 3) {
+      ctx.beginPath();
+      ctx.moveTo(foldX, y);
+      ctx.lineTo(foldX + curlWidth, y);
+      ctx.strokeStyle = "#8b7a66";
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // 5. Dark edge along the very fold (crease shadow)
+    ctx.beginPath();
+    ctx.moveTo(foldX - curlDepth * 0.15, 0);
+    ctx.quadraticCurveTo(foldX - curlDepth * 0.5, h * 0.5, foldX - curlDepth * 0.15, h);
+    ctx.strokeStyle = `rgba(0,0,0,${0.08 * Math.sin(t * Math.PI)})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.restore();
+  } else {
+    // Back: left page curls to the right (mirror)
+    const foldX = halfW * t;
+    const curlDepth = Math.sin(t * Math.PI) * 50;
+    const curlWidth = Math.max(10, foldX * 0.8 + curlDepth * 0.5);
+
+    const shadowW = curlDepth * 1.8;
+    if (shadowW > 1) {
+      const sg = ctx.createLinearGradient(foldX - 2, 0, foldX + shadowW, 0);
+      sg.addColorStop(0, `rgba(0,0,0,${0.06 * Math.sin(t * Math.PI)})`);
+      sg.addColorStop(0.3, `rgba(0,0,0,${0.12 * Math.sin(t * Math.PI)})`);
+      sg.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = sg;
+      ctx.fillRect(foldX - 2, 0, shadowW + 4, h);
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(foldX + curlDepth * 0.15, 0);
+    ctx.quadraticCurveTo(foldX + curlDepth * 0.4, h * 0.25, foldX + curlDepth * 0.5, h * 0.5);
+    ctx.quadraticCurveTo(foldX + curlDepth * 0.4, h * 0.75, foldX + curlDepth * 0.15, h);
+    ctx.lineTo(foldX - curlWidth, h);
+    ctx.quadraticCurveTo(foldX - curlWidth - curlDepth * 0.1, h * 0.5, foldX - curlWidth, 0);
+    ctx.closePath();
+
+    const pg = ctx.createLinearGradient(foldX - curlWidth, 0, foldX + curlDepth * 0.5, 0);
+    if (t < 0.5) {
+      pg.addColorStop(0, "#f8f4ec");
+      pg.addColorStop(0.4, "#fffdf8");
+      pg.addColorStop(0.95, "#fffdf8");
+      pg.addColorStop(1, "#e8e2d6");
+    } else {
+      pg.addColorStop(0, "#f0ebe0");
+      pg.addColorStop(0.5, "#f8f4ec");
+      pg.addColorStop(0.95, "#f5f0e5");
+      pg.addColorStop(1, "#ece6da");
+    }
+    ctx.fillStyle = pg;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(foldX + curlDepth * 0.15, 0);
+    ctx.quadraticCurveTo(foldX + curlDepth * 0.5, h * 0.5, foldX + curlDepth * 0.15, h);
+    ctx.strokeStyle = `rgba(255,255,255,${0.4 * Math.sin(t * Math.PI)})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.04;
+    for (let y = 10; y < h; y += 3) {
+      ctx.beginPath();
+      ctx.moveTo(foldX - curlWidth, y);
+      ctx.lineTo(foldX, y);
+      ctx.strokeStyle = "#8b7a66";
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(foldX + curlDepth * 0.15, 0);
+    ctx.quadraticCurveTo(foldX + curlDepth * 0.5, h * 0.5, foldX + curlDepth * 0.15, h);
+    ctx.strokeStyle = `rgba(0,0,0,${0.08 * Math.sin(t * Math.PI)})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
 // ── PAPER TEXTURE CSS ──
 const PAPER_BG = "#fffdf8";
 const PAPER_TEXTURE = `repeating-linear-gradient(0deg, rgba(139,109,74,0.015), rgba(139,109,74,0.015) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(139,109,74,0.01), rgba(139,109,74,0.01) 1px, transparent 1px, transparent 4px)`;
@@ -494,6 +649,8 @@ export default function App() {
   const [textDone, setTextDone] = useState(false);
   const storyScrollRef = useRef(null);
   const audioRef = useRef(null);
+  const curlCanvasRef = useRef(null);
+  const curlAnimRef = useRef(null);
   
   // Character consistency state
   const [charDesc, setCharDesc] = useState(null);
@@ -705,6 +862,35 @@ export default function App() {
     const delay = setTimeout(() => setTextDone(true), 1500);
     return () => clearTimeout(delay);
   }, [curPage?.text]);
+
+  // Canvas page curl animation
+  useEffect(() => {
+    if (!flipAnim || view !== "session") return;
+    const canvas = curlCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const rect = canvas.parentElement?.getBoundingClientRect();
+    if (rect) { canvas.width = rect.width; canvas.height = rect.height; }
+    const w = canvas.width, h = canvas.height;
+    const duration = 1000; // ms
+    const start = performance.now();
+    const dir = flipAnim;
+
+    const animate = (now) => {
+      const elapsed = now - start;
+      const rawT = Math.min(elapsed / duration, 1);
+      // easeInOutCubic
+      const t = rawT < 0.5 ? 4 * rawT * rawT * rawT : 1 - Math.pow(-2 * rawT + 2, 3) / 2;
+      drawPageCurl(ctx, w, h, t, dir);
+      if (rawT < 1) {
+        curlAnimRef.current = requestAnimationFrame(animate);
+      } else {
+        ctx.clearRect(0, 0, w, h);
+      }
+    };
+    curlAnimRef.current = requestAnimationFrame(animate);
+    return () => { if (curlAnimRef.current) cancelAnimationFrame(curlAnimRef.current); };
+  }, [flipAnim, view]);
 
   // Generate illustration when page arrives
   // Flow: Page 1 → Flux generates portrait → Kontext generates scene from portrait
@@ -1262,7 +1448,7 @@ export default function App() {
   if (view === "session") {
     const allPages = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
     const totalReady = allPages.length;
-    const BOOK_FONT = "'Literata', 'Cormorant Garamond', Georgia, serif";
+    const BF = "'Literata', 'Cormorant Garamond', Georgia, serif";
     
     const latestSpread = Math.floor(Math.max(0, totalReady - 1) / 2);
     const currentSpread = viewSpread >= 0 ? Math.min(viewSpread, latestSpread) : latestSpread;
@@ -1280,18 +1466,42 @@ export default function App() {
 
     const goToSpread = (idx) => {
       if (idx < 0 || idx > latestSpread || flipAnim) return;
-      const dir = idx > currentSpread ? "forward" : "back";
-      setFlipAnim(dir);
-      setTimeout(() => { setViewSpread(idx === latestSpread ? -1 : idx); }, 400);
-      setTimeout(() => setFlipAnim(null), 850);
+      setFlipAnim(idx > currentSpread ? "forward" : "back");
+      setTimeout(() => { setViewSpread(idx === latestSpread ? -1 : idx); }, 500);
+      setTimeout(() => setFlipAnim(null), 1050);
     };
 
-    const LAYOUTS = ["img-top", "text-top", "img-big", "text-top", "img-top", "img-big"];
+    // ── Auto-fit text size based on length ──
+    const fitSize = (text) => {
+      if (!text) return ".82rem";
+      const len = text.length;
+      if (len < 60) return "1.05rem";
+      if (len < 100) return ".95rem";
+      if (len < 150) return ".86rem";
+      if (len < 220) return ".78rem";
+      return ".72rem";
+    };
+
+    // ── Layouts ──
+    const LAYOUTS = ["img-top", "text-img-text", "img-big", "text-top", "text-img-text", "img-top"];
     const getLayout = (i) => LAYOUTS[i % LAYOUTS.length];
+
+    const splitText = (text) => {
+      if (!text) return ["", ""];
+      const s = text.match(/[^.!?]+[.!?]+/g) || [text];
+      if (s.length < 2) return [text, ""];
+      const m = Math.ceil(s.length / 2);
+      return [s.slice(0, m).join("").trim(), s.slice(m).join("").trim()];
+    };
+
+    const txtStyle = (text) => ({
+      fontSize: fitSize(text), lineHeight: 1.7, color: "#2c2318",
+      fontFamily: BF, fontWeight: 400, margin: 0, textIndent: "1.5em"
+    });
 
     const renderImg = (page, frame, isCur, big) => (
       <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", minHeight: 0 }}>
-        <div style={{ width: "100%", maxWidth: big ? "100%" : "90%", aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f0ebe0", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "relative" }}>
+        <div style={{ width: "100%", maxWidth: big ? "100%" : "88%", aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f0ebe0", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "relative" }}>
           {(isCur && imgLoading) ? (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#f0ebe0" }}><div style={{ fontSize: "1.2rem", opacity: .35 }}>🎨</div></div>
           ) : (page._curImg || page.imgUrl) ? (
@@ -1303,12 +1513,6 @@ export default function App() {
       </div>
     );
 
-    const renderText = (page) => (
-      <div style={{ flex: "1 1 0", overflow: "auto", padding: "0 4px", minHeight: 0 }}>
-        <p style={{ fontSize: "clamp(.8rem,1.7vw,.95rem)", lineHeight: 1.7, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1.5em" }}>{page.text}</p>
-      </div>
-    );
-
     const renderPage = (page, num, frame, isCur, isBlur, side) => {
       const layout = getLayout(num - 1);
       return (
@@ -1317,16 +1521,42 @@ export default function App() {
         {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 20, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
         {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 20, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.06), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
         {page ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "10px 14px 6px", gap: 4 }}>
-            <div style={{ textAlign: "center", marginBottom: 2 }}><span style={{ fontSize: ".6rem", color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
-            {layout === "img-top" && <>{renderImg(page, frame, isCur, false)}{renderText(page)}</>}
-            {layout === "text-top" && <>{renderText(page)}{renderImg(page, frame, isCur, false)}</>}
-            {layout === "img-big" && <>{renderImg(page, frame, isCur, true)}<div style={{ padding: "0 4px" }}><p style={{ fontSize: "clamp(.76rem,1.5vw,.88rem)", lineHeight: 1.65, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1.5em" }}>{page.text}</p></div></>}
-            <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: ".45rem", color: "#c4b498", padding: "0 6px", fontFamily: BOOK_FONT }}>{num}</div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "10px 14px 6px", gap: 3, overflow: "hidden" }}>
+            <div style={{ textAlign: "center" }}><span style={{ fontSize: ".58rem", color: "#b89b78", fontWeight: 500, fontFamily: BF, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
+
+            {layout === "img-top" && <>
+              {renderImg(page, frame, isCur, false)}
+              <div style={{ flex: "1 1 0", overflow: "hidden", padding: "0 4px", minHeight: 0 }}>
+                <p style={txtStyle(page.text)}>{page.text}</p>
+              </div>
+            </>}
+            {layout === "text-top" && <>
+              <div style={{ flex: "1 1 0", overflow: "hidden", padding: "0 4px", minHeight: 0 }}>
+                <p style={txtStyle(page.text)}>{page.text}</p>
+              </div>
+              {renderImg(page, frame, isCur, false)}
+            </>}
+            {layout === "img-big" && <>
+              {renderImg(page, frame, isCur, true)}
+              <div style={{ overflow: "hidden", padding: "0 4px" }}>
+                <p style={txtStyle(page.text)}>{page.text}</p>
+              </div>
+            </>}
+            {layout === "text-img-text" && (() => {
+              const [t1, t2] = splitText(page.text);
+              const fs = fitSize(page.text);
+              return <>
+                {t1 && <div style={{ flex: "0 0 auto", overflow: "hidden", padding: "0 4px" }}><p style={{ ...txtStyle(t1), fontSize: fs }}>{t1}</p></div>}
+                {renderImg(page, frame, isCur, false)}
+                {t2 && <div style={{ flex: "1 1 0", overflow: "hidden", padding: "0 4px", minHeight: 0 }}><p style={{ ...txtStyle(t2), fontSize: fs }}>{t2}</p></div>}
+              </>;
+            })()}
+
+            <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: ".42rem", color: "#c4b498", padding: "0 6px", fontFamily: BF }}>{num}</div>
           </div>
         ) : isBlur ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-            <div style={{ textAlign: "center", opacity: .3 }}><div style={{ fontSize: "2rem", marginBottom: 8 }}>📖</div><div style={{ fontSize: ".65rem", color: "#8b7a66", fontFamily: BOOK_FONT, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
+            <div style={{ textAlign: "center", opacity: .3 }}><div style={{ fontSize: "2rem", marginBottom: 8 }}>📖</div><div style={{ fontSize: ".65rem", color: "#8b7a66", fontFamily: BF, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
           </div>
         ) : (<div style={{ flex: 1, position: "relative", zIndex: 1 }}/>)}
       </div>);
@@ -1334,22 +1564,21 @@ export default function App() {
 
     return (
     <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <style>{CSS}{`
-        @keyframes pageTurnFwd { 0%{transform:perspective(1800px) rotateY(0deg)} 100%{transform:perspective(1800px) rotateY(-180deg)} }
-        @keyframes pageTurnBack { 0%{transform:perspective(1800px) rotateY(-180deg)} 100%{transform:perspective(1800px) rotateY(0deg)} }
-      `}</style>
+      <style>{CSS}</style>
       {showSettings && <SettingsPanel />}
+      {/* Top bar */}
       <div style={{ padding: "7px 16px", background: "rgba(255,250,242,0.95)", borderBottom: "1px solid rgba(139,109,74,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: ".8rem" }}>{theme?.emoji}</span>
-          <span style={{ fontFamily: BOOK_FONT, fontSize: ".85rem", fontWeight: 500, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
+          <span style={{ fontFamily: BF, fontSize: ".85rem", fontWeight: 500, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
           <span style={{ fontSize: ".65rem", color: "#a89878", fontFamily: "monospace" }}>{fmtT(timer)}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: ".6rem", color: "#a89878", fontFamily: BOOK_FONT }}>{lang === "ru" ? "стр." : "p."} {totalReady}/{TOTAL_PAGES}</span>
+          <span style={{ fontSize: ".6rem", color: "#a89878", fontFamily: BF }}>{lang === "ru" ? "стр." : "p."} {totalReady}/{TOTAL_PAGES}</span>
           <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: "rgba(212,132,90,0.08)", border: "1px solid rgba(212,132,90,0.15)", color: "#c47b4a", fontSize: ".68rem", fontWeight: 600, padding: "4px 12px", borderRadius: 16, fontFamily: FN.b, cursor: "pointer" }}>{L.finish}</button>
         </div>
       </div>
+
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* LEFT */}
         <div style={{ width: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "12px 4px", flexShrink: 0 }}>
@@ -1358,43 +1587,47 @@ export default function App() {
           <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: speaking ? "rgba(212,132,90,0.1)" : "rgba(255,255,255,0.5)", color: speaking ? "#c47b4a" : "#8b6f4e", fontSize: ".8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: speaking ? "pulse 2s ease-in-out infinite" : "none" }}>{speaking ? "⏹" : "🔊"}</button>
           {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.06)", background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)", color: sfxEnabled ? "#5a8a5e" : "#8b6f4e", fontSize: ".65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
         </div>
-        {/* CENTER */}
+
+        {/* CENTER: Book */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 0" }}>
           {loading && totalReady === 0 ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ width: 32, height: 32, border: "2px solid rgba(139,109,74,0.08)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
-              <p style={{ fontFamily: BOOK_FONT, fontSize: ".88rem", color: "#8b7a66", fontStyle: "italic" }}>{lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}</p>
+              <p style={{ fontFamily: BF, fontSize: ".88rem", color: "#8b7a66", fontStyle: "italic" }}>{lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}</p>
               {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(196,123,123,0.06)", borderRadius: 12, border: "1px solid rgba(196,123,123,0.15)", fontSize: ".75rem", color: "#C47B7B" }}>{error}<button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Retry failed."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 14px", borderRadius: 14, background: "#c47b4a", color: "#fff", border: "none", fontSize: ".7rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Retry</button></div>}
             </div>
           ) : (
-            <div style={{ position: "relative", width: "min(92vw, 840px)", maxHeight: "78vh", aspectRatio: "1.55/1" }}>
-              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.07), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
+            <div style={{ position: "relative", width: "min(92vw, 850px)", maxHeight: "80vh", aspectRatio: "1.55/1" }}>
+              {/* Shadow under book */}
+              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 14, background: "radial-gradient(ellipse, rgba(0,0,0,0.08), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
+
+              {/* Book container */}
               <div style={{ position: "relative", zIndex: 1, width: "100%", height: "100%", perspective: "2000px" }}>
-                {/* Base spread */}
+                {/* Base spread — always visible */}
                 <div style={{ position: "absolute", inset: 0, display: "flex", borderRadius: "3px 5px 5px 3px", boxShadow: "0 2px 14px rgba(0,0,0,0.07)", overflow: "hidden" }}>
                   {renderPage(leftPage, leftIdx + 1, getFrameStyle(leftIdx), leftPage?._isCurrent && !isViewingPast, false, "left")}
                   <div style={{ width: 4, background: "linear-gradient(to right, rgba(0,0,0,0.04), rgba(0,0,0,0.01), rgba(0,0,0,0.04))", flexShrink: 0, zIndex: 5 }}/>
                   {renderPage(rightPage, rightIdx + 1, getFrameStyle(rightIdx), rightPage?._isCurrent && !isViewingPast, rightIsBlurred, "right")}
                 </div>
-                {/* Page turn overlay */}
-                {flipAnim === "forward" && <div style={{ position: "absolute", top: 0, left: "50%", width: "50%", height: "100%", transformOrigin: "left center", animation: "pageTurnFwd 0.8s ease-in-out forwards", backfaceVisibility: "hidden", zIndex: 10, borderRadius: "0 5px 5px 0", overflow: "hidden", boxShadow: "-4px 0 15px rgba(0,0,0,0.08)" }}>
-                  <div style={{ width: "100%", height: "100%", background: PAPER_BG }}><div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none" }}/></div>
-                </div>}
-                {flipAnim === "back" && <div style={{ position: "absolute", top: 0, left: 0, width: "50%", height: "100%", transformOrigin: "right center", animation: "pageTurnBack 0.8s ease-in-out forwards", backfaceVisibility: "hidden", zIndex: 10, borderRadius: "3px 0 0 3px", overflow: "hidden", boxShadow: "4px 0 15px rgba(0,0,0,0.08)" }}>
-                  <div style={{ width: "100%", height: "100%", background: PAPER_BG }}><div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none" }}/></div>
-                </div>}
+
+                {/* Canvas page curl overlay */}
+                {flipAnim && <canvas ref={curlCanvasRef} style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none", borderRadius: "3px 5px 5px 3px" }}/>}
               </div>
+
+              {/* Page stack edge */}
               <div style={{ position: "absolute", top: 3, right: -2, width: 3, height: "calc(100% - 6px)", background: "repeating-linear-gradient(to bottom, #e6d9c4, #f0e8d8 2px)", borderRadius: "0 1px 1px 0", zIndex: 0 }}/>
               {isViewingPast && <div style={{ position: "absolute", bottom: -22, left: "50%", transform: "translateX(-50%)", background: "rgba(196,123,74,0.06)", border: "1px solid rgba(196,123,74,0.12)", borderRadius: 14, padding: "2px 10px", fontSize: ".55rem", color: "#c47b4a", fontFamily: FN.b, fontWeight: 500, whiteSpace: "nowrap" }}>{lang === "ru" ? "Просмотр" : "Browsing"}</div>}
             </div>
           )}
         </div>
-        {/* RIGHT */}
+
+        {/* RIGHT: Forward + Choices */}
         <div style={{ width: 190, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 12px 12px 4px", flexShrink: 0, gap: 6 }}>
           <button onClick={() => goToSpread(currentSpread + 1)} disabled={currentSpread >= latestSpread || !!flipAnim} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: currentSpread < latestSpread ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)", color: currentSpread < latestSpread ? "#8b6f4e" : "#d0c8b8", fontSize: ".85rem", cursor: currentSpread < latestSpread && !flipAnim ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 4px" }}>▶</button>
+
           {showEnd ? (
             <div style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: BOOK_FONT, fontSize: ".85rem", color: "#c47b4a", fontWeight: 500, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
+              <p style={{ fontFamily: BF, fontSize: ".85rem", color: "#c47b4a", fontWeight: 500, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
               {imgLoading && <p style={{ fontSize: ".58rem", color: "#a89878", marginBottom: 6 }}>{lang === "ru" ? "Ждём иллюстрацию…" : "Waiting..."}</p>}
               <button onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "9px 14px", borderRadius: 12, fontFamily: FN.b, fontSize: ".78rem", fontWeight: 600, border: "none", cursor: imgLoading ? "default" : "pointer", background: imgLoading ? "rgba(196,123,90,0.12)" : "#c47b4a", color: "#fff", opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</button>
             </div>
@@ -1418,7 +1651,7 @@ export default function App() {
           ) : loading && totalReady > 0 && !isViewingPast ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ width: 18, height: 18, border: "2px solid rgba(139,109,74,0.06)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 6px" }}/>
-              <p style={{ fontSize: ".65rem", color: "#a89878", fontStyle: "italic", fontFamily: BOOK_FONT }}>{L.continuing}</p>
+              <p style={{ fontSize: ".65rem", color: "#a89878", fontStyle: "italic", fontFamily: BF }}>{L.continuing}</p>
             </div>
           ) : isViewingPast ? (
             <div style={{ textAlign: "center" }}>
