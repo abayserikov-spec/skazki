@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { PageFlip } from "page-flip";
 
 /* ══════════════════════════════════════════════════════════
    СКАЗКА ВМЕСТЕ — Platform v3
@@ -461,266 +462,6 @@ function getFrameStyle(pageIdx) {
   return FRAME_STYLES[pageIdx % FRAME_STYLES.length];
 }
 
-// ── Canvas page curl engine ──
-function drawPageCurl(ctx, w, h, progress, direction) {
-  ctx.clearRect(0, 0, w, h);
-  if (progress <= 0.01 || progress >= 0.99) return;
-
-  const t = progress;
-  const halfW = w / 2;
-  const curlAmount = Math.sin(t * Math.PI); // peaks at middle of turn
-
-  if (direction === "forward") {
-    // ═══ RIGHT PAGE CURLS TO THE LEFT ═══
-
-    // Fold line X position: moves from right edge → spine
-    const foldX = halfW + halfW * (1 - t);
-
-    // Fold angle: vertical at start/end, tilts diagonally at midpoint
-    const foldAngle = curlAmount * 0.25; // radians, ~14 degrees max
-
-    // Curl geometry
-    const curlRadius = 20 + curlAmount * 35; // how wide the visible curl is
-    const topShift = foldAngle * h * 0.12;   // top of fold shifts right
-
-    // ── 1. CAST SHADOW on the underlying spread ──
-    ctx.save();
-    const shadowW = curlRadius * 2.5;
-    const sg = ctx.createLinearGradient(foldX - shadowW, 0, foldX + 4, 0);
-    sg.addColorStop(0, "rgba(0,0,0,0)");
-    sg.addColorStop(0.5, `rgba(0,0,0,${0.04 * curlAmount})`);
-    sg.addColorStop(0.85, `rgba(0,0,0,${0.1 * curlAmount})`);
-    sg.addColorStop(1, `rgba(0,0,0,${0.06 * curlAmount})`);
-    ctx.fillStyle = sg;
-    // Draw shadow as a skewed rectangle following fold angle
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift - shadowW, 0);
-    ctx.lineTo(foldX + topShift + 4, 0);
-    ctx.lineTo(foldX + 4, h);
-    ctx.lineTo(foldX - shadowW, h);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // ── 2. THE CURLED PAGE (visible flap) ──
-    ctx.save();
-
-    // Build the curl shape with bezier curves for natural paper feel
-    // The curl is wider at bottom (gravity) and narrower at top
-    const topCurlW = curlRadius * 0.4;  // narrower at top
-    const botCurlW = curlRadius * 1.1;  // wider at bottom
-    const midCurlW = curlRadius * 0.85;
-
-    ctx.beginPath();
-    // Start at top of fold line
-    ctx.moveTo(foldX + topShift, 0);
-    // Right edge of curl (the paper curving over) — bezier for organic shape
-    ctx.bezierCurveTo(
-      foldX + topShift + topCurlW * 0.5, h * 0.15,  // control 1
-      foldX + topShift * 0.5 + midCurlW, h * 0.4,    // control 2
-      foldX + botCurlW * 0.6, h * 0.65                // midpoint
-    );
-    ctx.bezierCurveTo(
-      foldX + botCurlW * 0.8, h * 0.78,   // control 1
-      foldX + botCurlW, h * 0.92,          // control 2
-      foldX + botCurlW * 0.7, h            // bottom-right corner
-    );
-    // Bottom edge back to fold
-    ctx.lineTo(foldX, h);
-    // Left edge (the fold line itself — slightly curved inward)
-    ctx.bezierCurveTo(
-      foldX - curlAmount * 2, h * 0.65,
-      foldX - curlAmount * 3, h * 0.35,
-      foldX + topShift, 0
-    );
-    ctx.closePath();
-
-    // Page fill — gradient simulates cylindrical light
-    const pg = ctx.createLinearGradient(foldX - 2, 0, foldX + botCurlW, 0);
-    // Near fold: darker (crease shadow), middle: bright, edge: slightly dark
-    pg.addColorStop(0, "#e4ddd0");
-    pg.addColorStop(0.05, t < 0.5 ? "#fffdf8" : "#f2ece0");
-    pg.addColorStop(0.3, t < 0.5 ? "#fffef9" : "#f5efe3");
-    pg.addColorStop(0.7, t < 0.5 ? "#fdfaf4" : "#f0e9dc");
-    pg.addColorStop(1, "#ece5d8");
-    ctx.fillStyle = pg;
-    ctx.fill();
-
-    // ── 3. PAPER TEXTURE on curl ──
-    ctx.globalAlpha = 0.025 * curlAmount;
-    for (let y = 3; y < h; y += 3) {
-      const xOff = (y / h) * (botCurlW - topCurlW);
-      ctx.beginPath();
-      ctx.moveTo(foldX + 2, y);
-      ctx.lineTo(foldX + topCurlW + xOff * 0.7, y);
-      ctx.strokeStyle = "#8b7a66";
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // ── 4. FOLD EDGE HIGHLIGHT (light catching the paper curve) ──
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift, 0);
-    ctx.bezierCurveTo(
-      foldX - curlAmount * 3, h * 0.35,
-      foldX - curlAmount * 2, h * 0.65,
-      foldX, h
-    );
-    // Bright highlight
-    ctx.strokeStyle = `rgba(255,255,245,${0.55 * curlAmount})`;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    // Thinner bright core
-    ctx.strokeStyle = `rgba(255,255,255,${0.35 * curlAmount})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // ── 5. FOLD CREASE SHADOW (dark line at the bend) ──
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift + 3, 0);
-    ctx.bezierCurveTo(
-      foldX - curlAmount * 2 + 3, h * 0.35,
-      foldX - curlAmount * 1 + 2, h * 0.65,
-      foldX + 2, h
-    );
-    ctx.strokeStyle = `rgba(0,0,0,${0.08 * curlAmount})`;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // ── 6. INNER SHADOW gradient on curl (depth effect) ──
-    const innerShadow = ctx.createLinearGradient(foldX, 0, foldX + 15, 0);
-    innerShadow.addColorStop(0, `rgba(0,0,0,${0.07 * curlAmount})`);
-    innerShadow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = innerShadow;
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift, 0);
-    ctx.lineTo(foldX + topShift + 15, 0);
-    ctx.lineTo(foldX + 15, h);
-    ctx.lineTo(foldX, h);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
-
-  } else {
-    // ═══ LEFT PAGE CURLS TO THE RIGHT (mirror) ═══
-
-    const foldX = halfW * t;
-    const foldAngle = curlAmount * 0.25;
-    const curlRadius = 20 + curlAmount * 35;
-    const topShift = -(foldAngle * h * 0.12);
-    const topCurlW = curlRadius * 0.4;
-    const botCurlW = curlRadius * 1.1;
-    const midCurlW = curlRadius * 0.85;
-
-    // Cast shadow
-    ctx.save();
-    const shadowW = curlRadius * 2.5;
-    const sg = ctx.createLinearGradient(foldX - 4, 0, foldX + shadowW, 0);
-    sg.addColorStop(0, `rgba(0,0,0,${0.06 * curlAmount})`);
-    sg.addColorStop(0.15, `rgba(0,0,0,${0.1 * curlAmount})`);
-    sg.addColorStop(0.5, `rgba(0,0,0,${0.04 * curlAmount})`);
-    sg.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = sg;
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift - 4, 0);
-    ctx.lineTo(foldX + topShift + shadowW, 0);
-    ctx.lineTo(foldX + shadowW, h);
-    ctx.lineTo(foldX - 4, h);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // Curl shape (mirrored)
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift, 0);
-    ctx.bezierCurveTo(
-      foldX + topShift - topCurlW * 0.5, h * 0.15,
-      foldX + topShift * 0.5 - midCurlW, h * 0.4,
-      foldX - botCurlW * 0.6, h * 0.65
-    );
-    ctx.bezierCurveTo(
-      foldX - botCurlW * 0.8, h * 0.78,
-      foldX - botCurlW, h * 0.92,
-      foldX - botCurlW * 0.7, h
-    );
-    ctx.lineTo(foldX, h);
-    ctx.bezierCurveTo(
-      foldX + curlAmount * 2, h * 0.65,
-      foldX + curlAmount * 3, h * 0.35,
-      foldX + topShift, 0
-    );
-    ctx.closePath();
-
-    const pg = ctx.createLinearGradient(foldX - botCurlW, 0, foldX + 2, 0);
-    pg.addColorStop(0, "#ece5d8");
-    pg.addColorStop(0.3, t < 0.5 ? "#fdfaf4" : "#f0e9dc");
-    pg.addColorStop(0.7, t < 0.5 ? "#fffef9" : "#f5efe3");
-    pg.addColorStop(0.95, t < 0.5 ? "#fffdf8" : "#f2ece0");
-    pg.addColorStop(1, "#e4ddd0");
-    ctx.fillStyle = pg;
-    ctx.fill();
-
-    // Paper texture
-    ctx.globalAlpha = 0.025 * curlAmount;
-    for (let y = 3; y < h; y += 3) {
-      const xOff = (y / h) * (botCurlW - topCurlW);
-      ctx.beginPath();
-      ctx.moveTo(foldX - topCurlW - xOff * 0.7, y);
-      ctx.lineTo(foldX - 2, y);
-      ctx.strokeStyle = "#8b7a66";
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // Fold highlight
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift, 0);
-    ctx.bezierCurveTo(
-      foldX + curlAmount * 3, h * 0.35,
-      foldX + curlAmount * 2, h * 0.65,
-      foldX, h
-    );
-    ctx.strokeStyle = `rgba(255,255,245,${0.55 * curlAmount})`;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(255,255,255,${0.35 * curlAmount})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Fold crease
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift - 3, 0);
-    ctx.bezierCurveTo(
-      foldX + curlAmount * 2 - 3, h * 0.35,
-      foldX + curlAmount * 1 - 2, h * 0.65,
-      foldX - 2, h
-    );
-    ctx.strokeStyle = `rgba(0,0,0,${0.08 * curlAmount})`;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Inner shadow
-    const innerShadow = ctx.createLinearGradient(foldX, 0, foldX - 15, 0);
-    innerShadow.addColorStop(0, `rgba(0,0,0,${0.07 * curlAmount})`);
-    innerShadow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = innerShadow;
-    ctx.beginPath();
-    ctx.moveTo(foldX + topShift, 0);
-    ctx.lineTo(foldX + topShift - 15, 0);
-    ctx.lineTo(foldX - 15, h);
-    ctx.lineTo(foldX, h);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
-  }
-}
-
-// ── PAPER TEXTURE CSS ──
 const PAPER_BG = "#fffdf8";
 const PAPER_TEXTURE = `repeating-linear-gradient(0deg, rgba(139,109,74,0.015), rgba(139,109,74,0.015) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(139,109,74,0.01), rgba(139,109,74,0.01) 1px, transparent 1px, transparent 4px)`;
 
@@ -760,9 +501,12 @@ export default function App() {
   const [textDone, setTextDone] = useState(false);
   const storyScrollRef = useRef(null);
   const audioRef = useRef(null);
-  const curlCanvasRef = useRef(null);
-  const curlAnimRef = useRef(null);
-  const curlOverlayRef = useRef(null);
+  const curlCanvasRef = useRef(null);  // unused, kept for compat
+  const curlAnimRef = useRef(null);   // unused
+  const curlOverlayRef = useRef(null); // unused
+  const bookContainerRef = useRef(null);
+  const pageFlipRef = useRef(null);
+  const pageContentRefs = useRef([]);
   
   // Character consistency state
   const [charDesc, setCharDesc] = useState(null);
@@ -975,64 +719,107 @@ export default function App() {
     return () => clearTimeout(delay);
   }, [curPage?.text]);
 
-  // Canvas page curl animation
+  // ── StPageFlip initialization ──
   useEffect(() => {
-    if (!flipAnim || view !== "session") return;
-    const canvas = curlCanvasRef.current;
-    const overlay = curlOverlayRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const rect = canvas.parentElement?.getBoundingClientRect();
-    if (rect) { canvas.width = rect.width; canvas.height = rect.height; }
-    const w = canvas.width, h = canvas.height;
-    const duration = 1200;
-    const start = performance.now();
-    const dir = flipAnim;
+    if (view !== "session" || !bookContainerRef.current) return;
+    // Destroy previous instance
+    if (pageFlipRef.current) { try { pageFlipRef.current.destroy(); } catch {} pageFlipRef.current = null; }
 
-    // Show overlay during animation
-    if (overlay) { overlay.style.display = "block"; overlay.style.opacity = "1"; }
+    const container = bookContainerRef.current;
+    const pageDivs = container.querySelectorAll(".book-page");
+    if (pageDivs.length < 2) return;
 
-    const animate = (now) => {
-      const elapsed = now - start;
-      const rawT = Math.min(elapsed / duration, 1);
-      const t = rawT < 0.3
-        ? 2.78 * rawT * rawT
-        : rawT < 0.7
-        ? 0.25 + (rawT - 0.3) * 1.25
-        : 1 - 2.78 * (1 - rawT) * (1 - rawT);
-      const clampedT = Math.max(0.01, Math.min(0.99, t));
-      drawPageCurl(ctx, w, h, clampedT, dir);
+    const pf = new PageFlip(container, {
+      width: 400,
+      height: 540,
+      size: "stretch",
+      minWidth: 280,
+      maxWidth: 600,
+      minHeight: 380,
+      maxHeight: 750,
+      showCover: false,
+      flippingTime: 1200,
+      maxShadowOpacity: 0.4,
+      drawShadow: true,
+      usePortrait: false,
+      mobileScrollSupport: true,
+      swipeDistance: 30,
+      startPage: 0,
+    });
 
-      // Move overlay to cover content being "turned away"
-      if (overlay) {
-        if (dir === "forward") {
-          // Cover right page from fold line to right edge
-          const coverPercent = clampedT * 50; // 0-50% of total book width
-          overlay.style.left = (50 + 50 - coverPercent) + "%";
-          overlay.style.width = coverPercent + "%";
-          overlay.style.right = "auto";
-        } else {
-          // Cover left page from fold line to left edge
-          const coverPercent = clampedT * 50;
-          overlay.style.left = "0";
-          overlay.style.width = coverPercent + "%";
-          overlay.style.right = "auto";
-        }
-      }
+    pf.loadFromHTML(pageDivs);
+    pageFlipRef.current = pf;
 
-      if (rawT < 1) {
-        curlAnimRef.current = requestAnimationFrame(animate);
-      } else {
-        ctx.clearRect(0, 0, w, h);
-        if (overlay) { overlay.style.display = "none"; overlay.style.width = "0"; }
-      }
-    };
-    curlAnimRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (curlAnimRef.current) cancelAnimationFrame(curlAnimRef.current);
-      if (overlay) { overlay.style.display = "none"; overlay.style.width = "0"; }
-    };
-  }, [flipAnim, view]);
+    return () => { try { pf.destroy(); } catch {} pageFlipRef.current = null; };
+  }, [view]);
+
+  // ── Update page content when story progresses ──
+  const BOOK_FONT = "'Literata', 'Cormorant Garamond', Georgia, serif";
+  const LAYOUTS = ["img-top", "text-img-text", "img-big", "text-top", "img-top", "img-big"];
+  const getLayout = (i) => LAYOUTS[i % LAYOUTS.length];
+
+  const buildPageHTML = useCallback((page, idx, isCurrent) => {
+    if (!page) return `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.25;font-family:${BOOK_FONT}"><div style="text-align:center;font-size:2rem">📖</div></div>`;
+    const layout = getLayout(idx);
+    const imgUrl = isCurrent ? (curImg || "") : (page.imgUrl || "");
+    const isImgLoading = isCurrent && imgLoading && !imgUrl;
+    const title = page.title || "✦";
+    const text = page.text || "";
+    const num = idx + 1;
+    const frame = FRAME_STYLES[idx % FRAME_STYLES.length];
+    const borderRadius = frame.borderRadius || "12px";
+
+    const imgHTML = imgUrl
+      ? `<div style="display:flex;justify-content:center"><div style="width:92%;max-width:320px;aspect-ratio:${layout === "img-big" ? "3/2" : "16/10"};overflow:hidden;border-radius:${borderRadius};background:#f0ebe0;box-shadow:0 1px 6px rgba(0,0,0,0.06)"><img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy"/></div></div>`
+      : isImgLoading
+      ? `<div style="display:flex;justify-content:center"><div style="width:92%;max-width:320px;aspect-ratio:16/10;border-radius:${borderRadius};background:#f0ebe0;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px rgba(0,0,0,0.06)"><span style="font-size:1.2rem;opacity:.35">🎨</span></div></div>`
+      : `<div style="display:flex;justify-content:center"><div style="width:92%;max-width:320px;aspect-ratio:16/10;border-radius:${borderRadius};background:#f0ebe0;display:flex;align-items:center;justify-content:center"><span style="font-size:1.5rem;opacity:.1">🖼</span></div></div>`;
+
+    const textHTML = `<div style="flex:1;overflow:auto;padding:0 8px;text-align:center"><p style="font-size:clamp(.78rem,1.6vw,.92rem);line-height:1.75;color:#2c2318;font-family:${BOOK_FONT};font-weight:400;margin:0;text-indent:1.5em">${text}</p></div>`;
+    const titleHTML = `<div style="text-align:center;margin-bottom:4px"><span style="font-size:.6rem;color:#b89b78;font-weight:500;font-family:${BOOK_FONT};font-style:italic">${title}</span></div>`;
+    const numHTML = `<div style="text-align:${num % 2 === 1 ? 'left' : 'right'};font-size:.45rem;color:#c4b498;padding:0 8px;font-family:${BOOK_FONT}">${num}</div>`;
+
+    let contentHTML;
+    if (layout === "img-top") contentHTML = imgHTML + textHTML;
+    else if (layout === "text-top") contentHTML = textHTML + imgHTML;
+    else if (layout === "img-big") contentHTML = imgHTML + `<div style="padding:0 8px;text-align:center"><p style="font-size:clamp(.74rem,1.4vw,.85rem);line-height:1.65;color:#2c2318;font-family:${BOOK_FONT};font-weight:400;margin:0;text-indent:1.5em">${text}</p></div>`;
+    else if (layout === "text-img-text") {
+      const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+      const mid = Math.ceil(sentences.length / 2);
+      const t1 = sentences.slice(0, mid).join("").trim();
+      const t2 = sentences.slice(mid).join("").trim();
+      contentHTML = `<div style="padding:0 8px;text-align:center"><p style="font-size:clamp(.74rem,1.4vw,.85rem);line-height:1.65;color:#2c2318;font-family:${BOOK_FONT};font-weight:400;margin:0;text-indent:1.5em">${t1}</p></div>${imgHTML}<div style="flex:1;overflow:auto;padding:0 8px;text-align:center"><p style="font-size:clamp(.74rem,1.4vw,.85rem);line-height:1.65;color:#2c2318;font-family:${BOOK_FONT};font-weight:400;margin:0;text-indent:1.5em">${t2}</p></div>`;
+    }
+    else contentHTML = imgHTML + textHTML;
+
+    return `<div style="display:flex;flex-direction:column;height:100%;padding:10px 14px 6px;gap:4px">${titleHTML}${contentHTML}${numHTML}</div>`;
+  }, [curImg, imgLoading]);
+
+  // Update page divs content
+  useEffect(() => {
+    if (view !== "session") return;
+    const allPg = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
+    // Update each page div content
+    for (let i = 0; i < 6; i++) {
+      const ref = pageContentRefs.current[i];
+      if (!ref) continue;
+      const page = allPg[i] || null;
+      const isCurrent = page?._isCurrent || false;
+      ref.innerHTML = buildPageHTML(page, i, isCurrent);
+    }
+    // Auto-flip to latest page
+    if (pageFlipRef.current && allPg.length > 0) {
+      const targetPage = Math.min(allPg.length - 1, 5);
+      setTimeout(() => {
+        try {
+          const currentIdx = pageFlipRef.current.getCurrentPageIndex();
+          if (currentIdx < targetPage) {
+            pageFlipRef.current.flip(targetPage);
+          }
+        } catch {}
+      }, 200);
+    }
+  }, [view, pages.length, curPage?.text, curImg, imgLoading, buildPageHTML]);
 
   // Generate illustration when page arrives
   // Flow: Page 1 → Flux generates portrait → Kontext generates scene from portrait
@@ -1586,149 +1373,55 @@ export default function App() {
 
 
 
-  // ═══ SESSION (Open Book Spread) ═══
-  if (view === "session") {
-    const allPages = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
-    const totalReady = allPages.length;
-    const BF = "'Literata', 'Cormorant Garamond', Georgia, serif";
-    
-    const latestSpread = Math.floor(Math.max(0, totalReady - 1) / 2);
-    const currentSpread = viewSpread >= 0 ? Math.min(viewSpread, latestSpread) : latestSpread;
-    const isViewingPast = currentSpread < latestSpread;
 
-    const leftIdx = currentSpread * 2;
-    const rightIdx = currentSpread * 2 + 1;
-    const leftPage = allPages[leftIdx] || null;
-    const rightPage = allPages[rightIdx] || null;
-    const rightIsBlurred = !rightPage && leftPage && !isViewingPast;
-    
-    const showChoices = curPage && !curPage.isEnd && textDone && !loading && !sel && !isViewingPast;
-    const showEnd = curPage && curPage.isEnd && !isViewingPast;
+  // ═══ SESSION (StPageFlip Book) ═══
+  if (view === "session") {
+    const allPg = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
+    const totalReady = allPg.length;
+    const showChoices = curPage && !curPage.isEnd && textDone && !loading && !sel;
+    const showEnd = curPage && curPage.isEnd;
     const childName = activeChild?.name || "";
 
-    const goToSpread = (idx) => {
-      if (idx < 0 || idx > latestSpread || flipAnim) return;
-      setFlipAnim(idx > currentSpread ? "forward" : "back");
-      // Switch content at midpoint of animation
-      setTimeout(() => { setViewSpread(idx === latestSpread ? -1 : idx); }, 600);
-      setTimeout(() => setFlipAnim(null), 1300);
-    };
-
-    // ── Auto-fit text size based on length ──
-    const fitSize = (text) => {
-      if (!text) return ".82rem";
-      const len = text.length;
-      if (len < 60) return "1.05rem";
-      if (len < 100) return ".95rem";
-      if (len < 150) return ".86rem";
-      if (len < 220) return ".78rem";
-      return ".72rem";
-    };
-
-    // ── Layouts ──
-    const LAYOUTS = ["img-top", "text-img-text", "img-big", "text-top", "text-img-text", "img-top"];
-    const getLayout = (i) => LAYOUTS[i % LAYOUTS.length];
-
-    const splitText = (text) => {
-      if (!text) return ["", ""];
-      const s = text.match(/[^.!?]+[.!?]+/g) || [text];
-      if (s.length < 2) return [text, ""];
-      const m = Math.ceil(s.length / 2);
-      return [s.slice(0, m).join("").trim(), s.slice(m).join("").trim()];
-    };
-
-    const txtStyle = (text) => ({
-      fontSize: fitSize(text), lineHeight: 1.7, color: "#2c2318",
-      fontFamily: BF, fontWeight: 400, margin: 0, textIndent: "1.5em"
-    });
-
-    const renderImg = (page, frame, isCur, big) => (
-      <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", minHeight: 0 }}>
-        <div style={{ width: "100%", maxWidth: big ? "100%" : "88%", aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f0ebe0", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "relative" }}>
-          {(isCur && imgLoading) ? (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#f0ebe0" }}><div style={{ fontSize: "1.2rem", opacity: .35 }}>🎨</div></div>
-          ) : (page._curImg || page.imgUrl) ? (
-            <img src={page._curImg || page.imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
-          ) : (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.5rem", opacity: .1 }}>🖼</span></div>
-          )}
-        </div>
-      </div>
-    );
-
-    const renderPage = (page, num, frame, isCur, isBlur, side) => {
-      const layout = getLayout(num - 1);
-      return (
-      <div style={{ flex: 1, height: "100%", background: PAPER_BG, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", filter: isBlur ? "blur(8px) brightness(0.95)" : "none", transition: "filter 0.8s ease-out" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none", zIndex: 0 }}/>
-        {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 20, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
-        {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 20, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.06), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
-        {page ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "10px 14px 6px", gap: 3, overflow: "hidden" }}>
-            <div style={{ textAlign: "center" }}><span style={{ fontSize: ".58rem", color: "#b89b78", fontWeight: 500, fontFamily: BF, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
-
-            {layout === "img-top" && <>
-              {renderImg(page, frame, isCur, false)}
-              <div style={{ flex: "1 1 0", overflow: "hidden", padding: "0 4px", minHeight: 0 }}>
-                <p style={txtStyle(page.text)}>{page.text}</p>
-              </div>
-            </>}
-            {layout === "text-top" && <>
-              <div style={{ flex: "1 1 0", overflow: "hidden", padding: "0 4px", minHeight: 0 }}>
-                <p style={txtStyle(page.text)}>{page.text}</p>
-              </div>
-              {renderImg(page, frame, isCur, false)}
-            </>}
-            {layout === "img-big" && <>
-              {renderImg(page, frame, isCur, true)}
-              <div style={{ overflow: "hidden", padding: "0 4px" }}>
-                <p style={txtStyle(page.text)}>{page.text}</p>
-              </div>
-            </>}
-            {layout === "text-img-text" && (() => {
-              const [t1, t2] = splitText(page.text);
-              const fs = fitSize(page.text);
-              return <>
-                {t1 && <div style={{ flex: "0 0 auto", overflow: "hidden", padding: "0 4px" }}><p style={{ ...txtStyle(t1), fontSize: fs }}>{t1}</p></div>}
-                {renderImg(page, frame, isCur, false)}
-                {t2 && <div style={{ flex: "1 1 0", overflow: "hidden", padding: "0 4px", minHeight: 0 }}><p style={{ ...txtStyle(t2), fontSize: fs }}>{t2}</p></div>}
-              </>;
-            })()}
-
-            <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: ".42rem", color: "#c4b498", padding: "0 6px", fontFamily: BF }}>{num}</div>
-          </div>
-        ) : isBlur ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-            <div style={{ textAlign: "center", opacity: .3 }}><div style={{ fontSize: "2rem", marginBottom: 8 }}>📖</div><div style={{ fontSize: ".65rem", color: "#8b7a66", fontFamily: BF, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
-          </div>
-        ) : (<div style={{ flex: 1, position: "relative", zIndex: 1 }}/>)}
-      </div>);
-    };
+    const flipNext = () => { try { pageFlipRef.current?.flipNext(); } catch {} };
+    const flipPrev = () => { try { pageFlipRef.current?.flipPrev(); } catch {} };
 
     return (
     <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <style>{CSS}</style>
       {showSettings && <SettingsPanel />}
+
       {/* Top bar */}
       <div style={{ padding: "7px 16px", background: "rgba(255,250,242,0.95)", borderBottom: "1px solid rgba(139,109,74,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: ".8rem" }}>{theme?.emoji}</span>
-          <span style={{ fontFamily: BF, fontSize: ".85rem", fontWeight: 500, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
+          <span style={{ fontFamily: "'Literata', Georgia, serif", fontSize: ".85rem", fontWeight: 500, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
           <span style={{ fontSize: ".65rem", color: "#a89878", fontFamily: "monospace" }}>{fmtT(timer)}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: ".6rem", color: "#a89878", fontFamily: BF }}>{lang === "ru" ? "стр." : "p."} {totalReady}/{TOTAL_PAGES}</span>
+          <span style={{ fontSize: ".6rem", color: "#a89878" }}>{totalReady}/{TOTAL_PAGES}</span>
           <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: "rgba(212,132,90,0.08)", border: "1px solid rgba(212,132,90,0.15)", color: "#c47b4a", fontSize: ".68rem", fontWeight: 600, padding: "4px 12px", borderRadius: 16, fontFamily: FN.b, cursor: "pointer" }}>{L.finish}</button>
         </div>
       </div>
 
+      {/* Main layout: LEFT | BOOK | RIGHT */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* LEFT */}
+
+        {/* LEFT: Nav + TTS */}
         <div style={{ width: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "12px 4px", flexShrink: 0 }}>
-          <button onClick={() => goToSpread(currentSpread - 1)} disabled={currentSpread <= 0 || !!flipAnim} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: currentSpread > 0 ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)", color: currentSpread > 0 ? "#8b6f4e" : "#d0c8b8", fontSize: ".85rem", cursor: currentSpread > 0 && !flipAnim ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>◀</button>
-          <div style={{ display: "flex", gap: 3 }}>{Array.from({ length: Math.max(1, Math.ceil(totalReady / 2)) }).map((_, i) => (<div key={i} onClick={() => !flipAnim && goToSpread(i)} style={{ width: 5, height: 5, borderRadius: "50%", cursor: flipAnim ? "default" : "pointer", background: i === currentSpread ? "#c47b4a" : "rgba(139,109,74,0.15)", transition: "all .3s" }}/>))}</div>
-          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: speaking ? "rgba(212,132,90,0.1)" : "rgba(255,255,255,0.5)", color: speaking ? "#c47b4a" : "#8b6f4e", fontSize: ".8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: speaking ? "pulse 2s ease-in-out infinite" : "none" }}>{speaking ? "⏹" : "🔊"}</button>
-          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.06)", background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)", color: sfxEnabled ? "#5a8a5e" : "#8b6f4e", fontSize: ".65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
+          <button onClick={flipPrev} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: "rgba(255,255,255,0.5)", color: "#8b6f4e", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>◀</button>
+          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{
+            width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)",
+            background: speaking ? "rgba(212,132,90,0.1)" : "rgba(255,255,255,0.5)",
+            color: speaking ? "#c47b4a" : "#8b6f4e", fontSize: ".8rem", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            animation: speaking ? "pulse 2s ease-in-out infinite" : "none"
+          }}>{speaking ? "⏹" : "🔊"}</button>
+          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{
+            width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.06)",
+            background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)",
+            color: sfxEnabled ? "#5a8a5e" : "#8b6f4e", fontSize: ".65rem", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
         </div>
 
         {/* CENTER: Book */}
@@ -1736,45 +1429,41 @@ export default function App() {
           {loading && totalReady === 0 ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ width: 32, height: 32, border: "2px solid rgba(139,109,74,0.08)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
-              <p style={{ fontFamily: BF, fontSize: ".88rem", color: "#8b7a66", fontStyle: "italic" }}>{lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}</p>
-              {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(196,123,123,0.06)", borderRadius: 12, border: "1px solid rgba(196,123,123,0.15)", fontSize: ".75rem", color: "#C47B7B" }}>{error}<button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Retry failed."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 14px", borderRadius: 14, background: "#c47b4a", color: "#fff", border: "none", fontSize: ".7rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Retry</button></div>}
+              <p style={{ fontFamily: "'Literata', Georgia, serif", fontSize: ".88rem", color: "#8b7a66", fontStyle: "italic" }}>
+                {lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}
+              </p>
+              {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(196,123,123,0.06)", borderRadius: 12, border: "1px solid rgba(196,123,123,0.15)", fontSize: ".75rem", color: "#C47B7B" }}>
+                {error}
+                <button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Retry failed."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 14px", borderRadius: 14, background: "#c47b4a", color: "#fff", border: "none", fontSize: ".7rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Retry</button>
+              </div>}
             </div>
           ) : (
-            <div style={{ position: "relative", width: "min(92vw, 850px)", maxHeight: "80vh", aspectRatio: "1.55/1" }}>
-              {/* Shadow under book */}
-              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 14, background: "radial-gradient(ellipse, rgba(0,0,0,0.08), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
+            <div style={{ position: "relative", width: "min(90vw, 820px)", height: "min(75vh, 560px)" }}>
+              {/* Book shadow */}
+              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.07), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
 
-              {/* Book container */}
-              <div style={{ position: "relative", zIndex: 1, width: "100%", height: "100%", perspective: "2000px" }}>
-                {/* Base spread — always visible */}
-                <div style={{ position: "absolute", inset: 0, display: "flex", borderRadius: "3px 5px 5px 3px", boxShadow: "0 2px 14px rgba(0,0,0,0.07)", overflow: "hidden" }}>
-                  {renderPage(leftPage, leftIdx + 1, getFrameStyle(leftIdx), leftPage?._isCurrent && !isViewingPast, false, "left")}
-                  <div style={{ width: 4, background: "linear-gradient(to right, rgba(0,0,0,0.04), rgba(0,0,0,0.01), rgba(0,0,0,0.04))", flexShrink: 0, zIndex: 5 }}/>
-                  {renderPage(rightPage, rightIdx + 1, getFrameStyle(rightIdx), rightPage?._isCurrent && !isViewingPast, rightIsBlurred, "right")}
-                </div>
-
-                {/* Content cover — moves with curl to hide content being turned */}
-                <div ref={curlOverlayRef} style={{ position: "absolute", top: 0, height: "100%", background: PAPER_BG, zIndex: 10, pointerEvents: "none", display: "none", width: 0 }}>
-                  <div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none" }}/>
-                </div>
-                {/* Canvas page curl overlay */}
-                {flipAnim && <canvas ref={curlCanvasRef} style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none", borderRadius: "3px 5px 5px 3px" }}/>}
+              {/* StPageFlip container */}
+              <div ref={bookContainerRef} style={{ width: "100%", height: "100%" }}>
+                {/* 6 story pages — content updated via refs/useEffect */}
+                {[0,1,2,3,4,5].map(i => (
+                  <div key={i} className="book-page" ref={el => { pageContentRefs.current[i] = el; }} style={{
+                    background: PAPER_BG,
+                    backgroundImage: PAPER_TEXTURE,
+                    fontFamily: "'Literata', Georgia, serif",
+                  }}/>
+                ))}
               </div>
-
-              {/* Page stack edge */}
-              <div style={{ position: "absolute", top: 3, right: -2, width: 3, height: "calc(100% - 6px)", background: "repeating-linear-gradient(to bottom, #e6d9c4, #f0e8d8 2px)", borderRadius: "0 1px 1px 0", zIndex: 0 }}/>
-              {isViewingPast && <div style={{ position: "absolute", bottom: -22, left: "50%", transform: "translateX(-50%)", background: "rgba(196,123,74,0.06)", border: "1px solid rgba(196,123,74,0.12)", borderRadius: 14, padding: "2px 10px", fontSize: ".55rem", color: "#c47b4a", fontFamily: FN.b, fontWeight: 500, whiteSpace: "nowrap" }}>{lang === "ru" ? "Просмотр" : "Browsing"}</div>}
             </div>
           )}
         </div>
 
         {/* RIGHT: Forward + Choices */}
         <div style={{ width: 190, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 12px 12px 4px", flexShrink: 0, gap: 6 }}>
-          <button onClick={() => goToSpread(currentSpread + 1)} disabled={currentSpread >= latestSpread || !!flipAnim} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: currentSpread < latestSpread ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)", color: currentSpread < latestSpread ? "#8b6f4e" : "#d0c8b8", fontSize: ".85rem", cursor: currentSpread < latestSpread && !flipAnim ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 4px" }}>▶</button>
+          <button onClick={flipNext} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: "rgba(255,255,255,0.5)", color: "#8b6f4e", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 4px" }}>▶</button>
 
           {showEnd ? (
             <div style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: BF, fontSize: ".85rem", color: "#c47b4a", fontWeight: 500, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
+              <p style={{ fontFamily: "'Literata', Georgia, serif", fontSize: ".85rem", color: "#c47b4a", fontWeight: 500, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
               {imgLoading && <p style={{ fontSize: ".58rem", color: "#a89878", marginBottom: 6 }}>{lang === "ru" ? "Ждём иллюстрацию…" : "Waiting..."}</p>}
               <button onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "9px 14px", borderRadius: 12, fontFamily: FN.b, fontSize: ".78rem", fontWeight: 600, border: "none", cursor: imgLoading ? "default" : "pointer", background: imgLoading ? "rgba(196,123,90,0.12)" : "#c47b4a", color: "#fff", opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</button>
             </div>
@@ -1795,14 +1484,10 @@ export default function App() {
                 </div>
               </div>
             </div>
-          ) : loading && totalReady > 0 && !isViewingPast ? (
+          ) : loading && totalReady > 0 ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ width: 18, height: 18, border: "2px solid rgba(139,109,74,0.06)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 6px" }}/>
-              <p style={{ fontSize: ".65rem", color: "#a89878", fontStyle: "italic", fontFamily: BF }}>{L.continuing}</p>
-            </div>
-          ) : isViewingPast ? (
-            <div style={{ textAlign: "center" }}>
-              <button onClick={() => { setViewSpread(-1); setFlipAnim(null); }} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid rgba(212,132,90,0.15)", background: "rgba(212,132,90,0.06)", color: "#c47b4a", fontSize: ".68rem", fontWeight: 600, fontFamily: FN.b, cursor: "pointer" }}>{lang === "ru" ? "К текущей →" : "Current →"}</button>
+              <p style={{ fontSize: ".65rem", color: "#a89878", fontStyle: "italic" }}>{L.continuing}</p>
             </div>
           ) : null}
         </div>
