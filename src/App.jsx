@@ -464,153 +464,257 @@ function getFrameStyle(pageIdx) {
 // ── Canvas page curl engine ──
 function drawPageCurl(ctx, w, h, progress, direction) {
   ctx.clearRect(0, 0, w, h);
-  // Ease progress for natural feel
+  if (progress <= 0.01 || progress >= 0.99) return;
+
   const t = progress;
   const halfW = w / 2;
+  const curlAmount = Math.sin(t * Math.PI); // peaks at middle of turn
 
   if (direction === "forward") {
-    // Right page curls to the left
-    // foldX: starts at right edge (w), ends at center (halfW - a bit)
+    // ═══ RIGHT PAGE CURLS TO THE LEFT ═══
+
+    // Fold line X position: moves from right edge → spine
     const foldX = halfW + halfW * (1 - t);
-    const curlDepth = Math.sin(t * Math.PI) * 50; // max curl at midpoint
-    const curlWidth = Math.max(10, (w - foldX) * 0.8 + curlDepth * 0.5);
 
-    // 1. Shadow cast on the underlying page
-    const shadowW = curlDepth * 1.8;
-    if (shadowW > 1) {
-      const sg = ctx.createLinearGradient(foldX - shadowW, 0, foldX + 2, 0);
-      sg.addColorStop(0, "rgba(0,0,0,0)");
-      sg.addColorStop(0.7, `rgba(0,0,0,${0.12 * Math.sin(t * Math.PI)})`);
-      sg.addColorStop(1, `rgba(0,0,0,${0.06 * Math.sin(t * Math.PI)})`);
-      ctx.fillStyle = sg;
-      ctx.fillRect(foldX - shadowW, 0, shadowW + 4, h);
-    }
+    // Fold angle: vertical at start/end, tilts diagonally at midpoint
+    const foldAngle = curlAmount * 0.25; // radians, ~14 degrees max
 
-    // 2. The curling page shape
+    // Curl geometry
+    const curlRadius = 20 + curlAmount * 35; // how wide the visible curl is
+    const topShift = foldAngle * h * 0.12;   // top of fold shifts right
+
+    // ── 1. CAST SHADOW on the underlying spread ──
     ctx.save();
+    const shadowW = curlRadius * 2.5;
+    const sg = ctx.createLinearGradient(foldX - shadowW, 0, foldX + 4, 0);
+    sg.addColorStop(0, "rgba(0,0,0,0)");
+    sg.addColorStop(0.5, `rgba(0,0,0,${0.04 * curlAmount})`);
+    sg.addColorStop(0.85, `rgba(0,0,0,${0.1 * curlAmount})`);
+    sg.addColorStop(1, `rgba(0,0,0,${0.06 * curlAmount})`);
+    ctx.fillStyle = sg;
+    // Draw shadow as a skewed rectangle following fold angle
     ctx.beginPath();
-    // Left edge of curling page = fold line (slightly curved)
-    ctx.moveTo(foldX - curlDepth * 0.15, 0);
-    // Curve the fold line inward (paper bending)
-    ctx.quadraticCurveTo(foldX - curlDepth * 0.4, h * 0.25, foldX - curlDepth * 0.5, h * 0.5);
-    ctx.quadraticCurveTo(foldX - curlDepth * 0.4, h * 0.75, foldX - curlDepth * 0.15, h);
-    // Bottom edge
-    ctx.lineTo(foldX + curlWidth, h);
-    // Right edge (slightly curled too)
-    ctx.quadraticCurveTo(foldX + curlWidth + curlDepth * 0.1, h * 0.5, foldX + curlWidth, 0);
+    ctx.moveTo(foldX + topShift - shadowW, 0);
+    ctx.lineTo(foldX + topShift + 4, 0);
+    ctx.lineTo(foldX + 4, h);
+    ctx.lineTo(foldX - shadowW, h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // ── 2. THE CURLED PAGE (visible flap) ──
+    ctx.save();
+
+    // Build the curl shape with bezier curves for natural paper feel
+    // The curl is wider at bottom (gravity) and narrower at top
+    const topCurlW = curlRadius * 0.4;  // narrower at top
+    const botCurlW = curlRadius * 1.1;  // wider at bottom
+    const midCurlW = curlRadius * 0.85;
+
+    ctx.beginPath();
+    // Start at top of fold line
+    ctx.moveTo(foldX + topShift, 0);
+    // Right edge of curl (the paper curving over) — bezier for organic shape
+    ctx.bezierCurveTo(
+      foldX + topShift + topCurlW * 0.5, h * 0.15,  // control 1
+      foldX + topShift * 0.5 + midCurlW, h * 0.4,    // control 2
+      foldX + botCurlW * 0.6, h * 0.65                // midpoint
+    );
+    ctx.bezierCurveTo(
+      foldX + botCurlW * 0.8, h * 0.78,   // control 1
+      foldX + botCurlW, h * 0.92,          // control 2
+      foldX + botCurlW * 0.7, h            // bottom-right corner
+    );
+    // Bottom edge back to fold
+    ctx.lineTo(foldX, h);
+    // Left edge (the fold line itself — slightly curved inward)
+    ctx.bezierCurveTo(
+      foldX - curlAmount * 2, h * 0.65,
+      foldX - curlAmount * 3, h * 0.35,
+      foldX + topShift, 0
+    );
     ctx.closePath();
 
-    // Page gradient — light on outside edge, shadow near fold
-    const pg = ctx.createLinearGradient(foldX - curlDepth * 0.5, 0, foldX + curlWidth, 0);
-    if (t < 0.5) {
-      // Front of page visible
-      pg.addColorStop(0, "#e8e2d6");
-      pg.addColorStop(0.05, "#fffdf8");
-      pg.addColorStop(0.6, "#fffdf8");
-      pg.addColorStop(1, "#f8f4ec");
-    } else {
-      // Back of page visible
-      pg.addColorStop(0, "#ece6da");
-      pg.addColorStop(0.05, "#f5f0e5");
-      pg.addColorStop(0.5, "#f8f4ec");
-      pg.addColorStop(1, "#f0ebe0");
-    }
+    // Page fill — gradient simulates cylindrical light
+    const pg = ctx.createLinearGradient(foldX - 2, 0, foldX + botCurlW, 0);
+    // Near fold: darker (crease shadow), middle: bright, edge: slightly dark
+    pg.addColorStop(0, "#e4ddd0");
+    pg.addColorStop(0.05, t < 0.5 ? "#fffdf8" : "#f2ece0");
+    pg.addColorStop(0.3, t < 0.5 ? "#fffef9" : "#f5efe3");
+    pg.addColorStop(0.7, t < 0.5 ? "#fdfaf4" : "#f0e9dc");
+    pg.addColorStop(1, "#ece5d8");
     ctx.fillStyle = pg;
     ctx.fill();
 
-    // 3. Fold edge highlight (light catching the bend)
-    ctx.beginPath();
-    ctx.moveTo(foldX - curlDepth * 0.15, 0);
-    ctx.quadraticCurveTo(foldX - curlDepth * 0.5, h * 0.5, foldX - curlDepth * 0.15, h);
-    ctx.strokeStyle = `rgba(255,255,255,${0.4 * Math.sin(t * Math.PI)})`;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // 4. Subtle paper texture lines on the curling page
-    ctx.globalAlpha = 0.04;
-    for (let y = 10; y < h; y += 3) {
+    // ── 3. PAPER TEXTURE on curl ──
+    ctx.globalAlpha = 0.025 * curlAmount;
+    for (let y = 3; y < h; y += 3) {
+      const xOff = (y / h) * (botCurlW - topCurlW);
       ctx.beginPath();
-      ctx.moveTo(foldX, y);
-      ctx.lineTo(foldX + curlWidth, y);
+      ctx.moveTo(foldX + 2, y);
+      ctx.lineTo(foldX + topCurlW + xOff * 0.7, y);
       ctx.strokeStyle = "#8b7a66";
       ctx.lineWidth = 0.5;
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
 
-    // 5. Dark edge along the very fold (crease shadow)
+    // ── 4. FOLD EDGE HIGHLIGHT (light catching the paper curve) ──
     ctx.beginPath();
-    ctx.moveTo(foldX - curlDepth * 0.15, 0);
-    ctx.quadraticCurveTo(foldX - curlDepth * 0.5, h * 0.5, foldX - curlDepth * 0.15, h);
-    ctx.strokeStyle = `rgba(0,0,0,${0.08 * Math.sin(t * Math.PI)})`;
-    ctx.lineWidth = 2;
+    ctx.moveTo(foldX + topShift, 0);
+    ctx.bezierCurveTo(
+      foldX - curlAmount * 3, h * 0.35,
+      foldX - curlAmount * 2, h * 0.65,
+      foldX, h
+    );
+    // Bright highlight
+    ctx.strokeStyle = `rgba(255,255,245,${0.55 * curlAmount})`;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
+    // Thinner bright core
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 * curlAmount})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // ── 5. FOLD CREASE SHADOW (dark line at the bend) ──
+    ctx.beginPath();
+    ctx.moveTo(foldX + topShift + 3, 0);
+    ctx.bezierCurveTo(
+      foldX - curlAmount * 2 + 3, h * 0.35,
+      foldX - curlAmount * 1 + 2, h * 0.65,
+      foldX + 2, h
+    );
+    ctx.strokeStyle = `rgba(0,0,0,${0.08 * curlAmount})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // ── 6. INNER SHADOW gradient on curl (depth effect) ──
+    const innerShadow = ctx.createLinearGradient(foldX, 0, foldX + 15, 0);
+    innerShadow.addColorStop(0, `rgba(0,0,0,${0.07 * curlAmount})`);
+    innerShadow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = innerShadow;
+    ctx.beginPath();
+    ctx.moveTo(foldX + topShift, 0);
+    ctx.lineTo(foldX + topShift + 15, 0);
+    ctx.lineTo(foldX + 15, h);
+    ctx.lineTo(foldX, h);
+    ctx.closePath();
+    ctx.fill();
 
     ctx.restore();
+
   } else {
-    // Back: left page curls to the right (mirror)
+    // ═══ LEFT PAGE CURLS TO THE RIGHT (mirror) ═══
+
     const foldX = halfW * t;
-    const curlDepth = Math.sin(t * Math.PI) * 50;
-    const curlWidth = Math.max(10, foldX * 0.8 + curlDepth * 0.5);
+    const foldAngle = curlAmount * 0.25;
+    const curlRadius = 20 + curlAmount * 35;
+    const topShift = -(foldAngle * h * 0.12);
+    const topCurlW = curlRadius * 0.4;
+    const botCurlW = curlRadius * 1.1;
+    const midCurlW = curlRadius * 0.85;
 
-    const shadowW = curlDepth * 1.8;
-    if (shadowW > 1) {
-      const sg = ctx.createLinearGradient(foldX - 2, 0, foldX + shadowW, 0);
-      sg.addColorStop(0, `rgba(0,0,0,${0.06 * Math.sin(t * Math.PI)})`);
-      sg.addColorStop(0.3, `rgba(0,0,0,${0.12 * Math.sin(t * Math.PI)})`);
-      sg.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = sg;
-      ctx.fillRect(foldX - 2, 0, shadowW + 4, h);
-    }
+    // Cast shadow
+    ctx.save();
+    const shadowW = curlRadius * 2.5;
+    const sg = ctx.createLinearGradient(foldX - 4, 0, foldX + shadowW, 0);
+    sg.addColorStop(0, `rgba(0,0,0,${0.06 * curlAmount})`);
+    sg.addColorStop(0.15, `rgba(0,0,0,${0.1 * curlAmount})`);
+    sg.addColorStop(0.5, `rgba(0,0,0,${0.04 * curlAmount})`);
+    sg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = sg;
+    ctx.beginPath();
+    ctx.moveTo(foldX + topShift - 4, 0);
+    ctx.lineTo(foldX + topShift + shadowW, 0);
+    ctx.lineTo(foldX + shadowW, h);
+    ctx.lineTo(foldX - 4, h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 
+    // Curl shape (mirrored)
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(foldX + curlDepth * 0.15, 0);
-    ctx.quadraticCurveTo(foldX + curlDepth * 0.4, h * 0.25, foldX + curlDepth * 0.5, h * 0.5);
-    ctx.quadraticCurveTo(foldX + curlDepth * 0.4, h * 0.75, foldX + curlDepth * 0.15, h);
-    ctx.lineTo(foldX - curlWidth, h);
-    ctx.quadraticCurveTo(foldX - curlWidth - curlDepth * 0.1, h * 0.5, foldX - curlWidth, 0);
+    ctx.moveTo(foldX + topShift, 0);
+    ctx.bezierCurveTo(
+      foldX + topShift - topCurlW * 0.5, h * 0.15,
+      foldX + topShift * 0.5 - midCurlW, h * 0.4,
+      foldX - botCurlW * 0.6, h * 0.65
+    );
+    ctx.bezierCurveTo(
+      foldX - botCurlW * 0.8, h * 0.78,
+      foldX - botCurlW, h * 0.92,
+      foldX - botCurlW * 0.7, h
+    );
+    ctx.lineTo(foldX, h);
+    ctx.bezierCurveTo(
+      foldX + curlAmount * 2, h * 0.65,
+      foldX + curlAmount * 3, h * 0.35,
+      foldX + topShift, 0
+    );
     ctx.closePath();
 
-    const pg = ctx.createLinearGradient(foldX - curlWidth, 0, foldX + curlDepth * 0.5, 0);
-    if (t < 0.5) {
-      pg.addColorStop(0, "#f8f4ec");
-      pg.addColorStop(0.4, "#fffdf8");
-      pg.addColorStop(0.95, "#fffdf8");
-      pg.addColorStop(1, "#e8e2d6");
-    } else {
-      pg.addColorStop(0, "#f0ebe0");
-      pg.addColorStop(0.5, "#f8f4ec");
-      pg.addColorStop(0.95, "#f5f0e5");
-      pg.addColorStop(1, "#ece6da");
-    }
+    const pg = ctx.createLinearGradient(foldX - botCurlW, 0, foldX + 2, 0);
+    pg.addColorStop(0, "#ece5d8");
+    pg.addColorStop(0.3, t < 0.5 ? "#fdfaf4" : "#f0e9dc");
+    pg.addColorStop(0.7, t < 0.5 ? "#fffef9" : "#f5efe3");
+    pg.addColorStop(0.95, t < 0.5 ? "#fffdf8" : "#f2ece0");
+    pg.addColorStop(1, "#e4ddd0");
     ctx.fillStyle = pg;
     ctx.fill();
 
-    ctx.beginPath();
-    ctx.moveTo(foldX + curlDepth * 0.15, 0);
-    ctx.quadraticCurveTo(foldX + curlDepth * 0.5, h * 0.5, foldX + curlDepth * 0.15, h);
-    ctx.strokeStyle = `rgba(255,255,255,${0.4 * Math.sin(t * Math.PI)})`;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.globalAlpha = 0.04;
-    for (let y = 10; y < h; y += 3) {
+    // Paper texture
+    ctx.globalAlpha = 0.025 * curlAmount;
+    for (let y = 3; y < h; y += 3) {
+      const xOff = (y / h) * (botCurlW - topCurlW);
       ctx.beginPath();
-      ctx.moveTo(foldX - curlWidth, y);
-      ctx.lineTo(foldX, y);
+      ctx.moveTo(foldX - topCurlW - xOff * 0.7, y);
+      ctx.lineTo(foldX - 2, y);
       ctx.strokeStyle = "#8b7a66";
       ctx.lineWidth = 0.5;
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
 
+    // Fold highlight
     ctx.beginPath();
-    ctx.moveTo(foldX + curlDepth * 0.15, 0);
-    ctx.quadraticCurveTo(foldX + curlDepth * 0.5, h * 0.5, foldX + curlDepth * 0.15, h);
-    ctx.strokeStyle = `rgba(0,0,0,${0.08 * Math.sin(t * Math.PI)})`;
-    ctx.lineWidth = 2;
+    ctx.moveTo(foldX + topShift, 0);
+    ctx.bezierCurveTo(
+      foldX + curlAmount * 3, h * 0.35,
+      foldX + curlAmount * 2, h * 0.65,
+      foldX, h
+    );
+    ctx.strokeStyle = `rgba(255,255,245,${0.55 * curlAmount})`;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 * curlAmount})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Fold crease
+    ctx.beginPath();
+    ctx.moveTo(foldX + topShift - 3, 0);
+    ctx.bezierCurveTo(
+      foldX + curlAmount * 2 - 3, h * 0.35,
+      foldX + curlAmount * 1 - 2, h * 0.65,
+      foldX - 2, h
+    );
+    ctx.strokeStyle = `rgba(0,0,0,${0.08 * curlAmount})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Inner shadow
+    const innerShadow = ctx.createLinearGradient(foldX, 0, foldX - 15, 0);
+    innerShadow.addColorStop(0, `rgba(0,0,0,${0.07 * curlAmount})`);
+    innerShadow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = innerShadow;
+    ctx.beginPath();
+    ctx.moveTo(foldX + topShift, 0);
+    ctx.lineTo(foldX + topShift - 15, 0);
+    ctx.lineTo(foldX - 15, h);
+    ctx.lineTo(foldX, h);
+    ctx.closePath();
+    ctx.fill();
 
     ctx.restore();
   }
@@ -879,16 +983,20 @@ export default function App() {
     const rect = canvas.parentElement?.getBoundingClientRect();
     if (rect) { canvas.width = rect.width; canvas.height = rect.height; }
     const w = canvas.width, h = canvas.height;
-    const duration = 1000; // ms
+    const duration = 1200; // ms — slower for visible curl
     const start = performance.now();
     const dir = flipAnim;
 
     const animate = (now) => {
       const elapsed = now - start;
       const rawT = Math.min(elapsed / duration, 1);
-      // easeInOutCubic
-      const t = rawT < 0.5 ? 4 * rawT * rawT * rawT : 1 - Math.pow(-2 * rawT + 2, 3) / 2;
-      drawPageCurl(ctx, w, h, t, dir);
+      // Custom easing: slow start, smooth middle, gentle end
+      const t = rawT < 0.3
+        ? 2.78 * rawT * rawT // slow ramp up
+        : rawT < 0.7
+        ? 0.25 + (rawT - 0.3) * 1.25 // steady middle
+        : 1 - 2.78 * (1 - rawT) * (1 - rawT); // slow end
+      drawPageCurl(ctx, w, h, Math.max(0.01, Math.min(0.99, t)), dir);
       if (rawT < 1) {
         curlAnimRef.current = requestAnimationFrame(animate);
       } else {
@@ -1474,8 +1582,9 @@ export default function App() {
     const goToSpread = (idx) => {
       if (idx < 0 || idx > latestSpread || flipAnim) return;
       setFlipAnim(idx > currentSpread ? "forward" : "back");
-      setTimeout(() => { setViewSpread(idx === latestSpread ? -1 : idx); }, 500);
-      setTimeout(() => setFlipAnim(null), 1050);
+      // Switch content at midpoint of animation
+      setTimeout(() => { setViewSpread(idx === latestSpread ? -1 : idx); }, 600);
+      setTimeout(() => setFlipAnim(null), 1300);
     };
 
     // ── Auto-fit text size based on length ──
