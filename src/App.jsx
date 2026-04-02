@@ -762,6 +762,7 @@ export default function App() {
   const audioRef = useRef(null);
   const curlCanvasRef = useRef(null);
   const curlAnimRef = useRef(null);
+  const curlOverlayRef = useRef(null);
   
   // Character consistency state
   const [charDesc, setCharDesc] = useState(null);
@@ -978,33 +979,59 @@ export default function App() {
   useEffect(() => {
     if (!flipAnim || view !== "session") return;
     const canvas = curlCanvasRef.current;
+    const overlay = curlOverlayRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const rect = canvas.parentElement?.getBoundingClientRect();
     if (rect) { canvas.width = rect.width; canvas.height = rect.height; }
     const w = canvas.width, h = canvas.height;
-    const duration = 1200; // ms — slower for visible curl
+    const duration = 1200;
     const start = performance.now();
     const dir = flipAnim;
+
+    // Show overlay during animation
+    if (overlay) { overlay.style.display = "block"; overlay.style.opacity = "1"; }
 
     const animate = (now) => {
       const elapsed = now - start;
       const rawT = Math.min(elapsed / duration, 1);
-      // Custom easing: slow start, smooth middle, gentle end
       const t = rawT < 0.3
-        ? 2.78 * rawT * rawT // slow ramp up
+        ? 2.78 * rawT * rawT
         : rawT < 0.7
-        ? 0.25 + (rawT - 0.3) * 1.25 // steady middle
-        : 1 - 2.78 * (1 - rawT) * (1 - rawT); // slow end
-      drawPageCurl(ctx, w, h, Math.max(0.01, Math.min(0.99, t)), dir);
+        ? 0.25 + (rawT - 0.3) * 1.25
+        : 1 - 2.78 * (1 - rawT) * (1 - rawT);
+      const clampedT = Math.max(0.01, Math.min(0.99, t));
+      drawPageCurl(ctx, w, h, clampedT, dir);
+
+      // Move overlay to cover content being "turned away"
+      if (overlay) {
+        if (dir === "forward") {
+          // Cover right page from fold line to right edge
+          const coverPercent = clampedT * 50; // 0-50% of total book width
+          overlay.style.left = (50 + 50 - coverPercent) + "%";
+          overlay.style.width = coverPercent + "%";
+          overlay.style.right = "auto";
+        } else {
+          // Cover left page from fold line to left edge
+          const coverPercent = clampedT * 50;
+          overlay.style.left = "0";
+          overlay.style.width = coverPercent + "%";
+          overlay.style.right = "auto";
+        }
+      }
+
       if (rawT < 1) {
         curlAnimRef.current = requestAnimationFrame(animate);
       } else {
         ctx.clearRect(0, 0, w, h);
+        if (overlay) { overlay.style.display = "none"; overlay.style.width = "0"; }
       }
     };
     curlAnimRef.current = requestAnimationFrame(animate);
-    return () => { if (curlAnimRef.current) cancelAnimationFrame(curlAnimRef.current); };
+    return () => {
+      if (curlAnimRef.current) cancelAnimationFrame(curlAnimRef.current);
+      if (overlay) { overlay.style.display = "none"; overlay.style.width = "0"; }
+    };
   }, [flipAnim, view]);
 
   // Generate illustration when page arrives
@@ -1726,6 +1753,10 @@ export default function App() {
                   {renderPage(rightPage, rightIdx + 1, getFrameStyle(rightIdx), rightPage?._isCurrent && !isViewingPast, rightIsBlurred, "right")}
                 </div>
 
+                {/* Content cover — moves with curl to hide content being turned */}
+                <div ref={curlOverlayRef} style={{ position: "absolute", top: 0, height: "100%", background: PAPER_BG, zIndex: 10, pointerEvents: "none", display: "none", width: 0 }}>
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none" }}/>
+                </div>
                 {/* Canvas page curl overlay */}
                 {flipAnim && <canvas ref={curlCanvasRef} style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none", borderRadius: "3px 5px 5px 3px" }}/>}
               </div>
