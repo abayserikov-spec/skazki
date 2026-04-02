@@ -271,7 +271,7 @@ async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 6 } })
+      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } })
     });
     const resp = await res.json();
     console.log("Flux 2 Pro HTTP status:", res.status, "response:", resp.status || resp.error || resp.detail);
@@ -288,7 +288,7 @@ async function genCharPortrait(token, charDesc, scene, artStyleKey) {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 6 } })
+      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } })
     });
     const resp = await res.json();
     console.log("Portrait generation:", resp.status || resp.error);
