@@ -280,44 +280,27 @@ async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
   } catch (err) { console.error("Flux 2 Pro error:", err); return null; }
 }
 
-// ── CHARACTER PORTRAIT: 2-step process ──
-// Step 1: Flux 2 Pro → clean accurate portrait (will be CGI-style, that's OK)
-// Step 2: Kontext Fast → repaint in traditional book illustration style
+// ── CHARACTER PORTRAIT: Kontext Fast text-to-image (traditional style) ──
 async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   if (!token) return null;
   
-  // Step 1: Flux generates accurate character (simple prompt, no style pressure)
-  const fluxPrompt = `Children's book character design. Full body shot on plain beige background. Main character: ${charDesc}. Clear details on face, hair, clothing. Friendly expression. No text.`;
-  let rawPortrait = null;
-  try {
-    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt: fluxPrompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } })
-    });
-    const resp = await res.json();
-    console.log("Portrait Step 1 (Flux):", resp.status || resp.error);
-    rawPortrait = await pollPrediction(token, resp);
-  } catch (err) { console.error("Portrait Flux error:", err); return null; }
-
-  if (!rawPortrait) return null;
-  console.log("Portrait Step 1 done. Repaining style...");
-
-  // Step 2: Kontext repaints in traditional book style
   const stylePrompt = artStyleKey === "anime" 
-    ? "Repaint this character in Studio Ghibli anime style. Keep exact same character appearance but change art style to hand-drawn anime. Soft cel shading."
-    : "Repaint this exact character as a scanned gouache illustration from a vintage 1970s children's picture book. Thick visible brushstrokes on textured cream paper, paint bleeding at edges, warm muted earthy colors, rough hand-painted quality. Keep the same character but change the art medium to traditional gouache painting. NOT digital, NOT CGI.";
+    ? "Studio Ghibli hand-drawn anime style."
+    : "Scanned gouache painting from a vintage 1970s European children's picture book. Thick rough brushstrokes on cream paper, visible paint texture, warm muted earthy palette, hand-painted imperfect quality.";
+  
+  const prompt = `${stylePrompt} Character portrait: ${charDesc}. Full body, standing on plain beige background. Clear face details. No text.`;
+  
+  console.log("Portrait generation (Kontext text-to-image):", prompt.length, "chars");
   try {
     const res = await fetch("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt: stylePrompt, img_cond_path: rawPortrait, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } })
+      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } })
     });
     const resp = await res.json();
-    console.log("Portrait Step 2 (Style transfer):", resp.status, resp.id || resp.error);
-    const styledPortrait = await pollPrediction(token, resp);
-    return styledPortrait || rawPortrait; // fallback to raw if style transfer fails
-  } catch (err) { console.error("Portrait style transfer error:", err); return rawPortrait; }
+    console.log("Portrait response:", resp.status, resp.id || resp.error);
+    return await pollPrediction(token, resp);
+  } catch (err) { console.error("Portrait error:", err); return null; }
 }
 
 // ── PAGES 2-6: Kontext Pro Fast (image-to-image, character consistency) ──
