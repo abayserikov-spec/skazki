@@ -280,7 +280,7 @@ async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
   } catch (err) { console.error("Flux 2 Pro error:", err); return null; }
 }
 
-// ── CHARACTER PORTRAIT: lucataco/flux-watercolor LoRA (watercolor style) ──
+// ── CHARACTER PORTRAIT: lucataco/flux-watercolor LoRA ──
 async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   if (!token) return null;
   
@@ -290,10 +290,10 @@ async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   
   console.log("Portrait (flux-watercolor LoRA):", prompt.length, "chars");
   try {
-    const res = await fetch("/api/replicate/v1/models/lucataco/flux-watercolor/predictions", {
+    const res = await fetch("/api/replicate/v1/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "png", num_outputs: 1 } })
+      body: JSON.stringify({ version: "846d1eb37059ed2ed268ff8dd4aa1531487fcdc3425a7a44c2a0a10723ef8383", input: { prompt, aspect_ratio: "16:9", output_format: "png", num_outputs: 1 } })
     });
     const resp = await res.json();
     console.log("Portrait response:", resp.status, resp.id || resp.error);
