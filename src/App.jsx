@@ -122,8 +122,8 @@ const I18N = {
 // ── ART STYLES ──
 const ART_STYLES = {
   book: {
-    fantasy: "Storybook illustration, classic children's book style, watercolor and ink on soft textured paper, hand-painted look with soft outlines, pastel colors, warm tones, whimsical, highly detailed, expressive characters with warm light, soft shading, playful and lively composition, modern storybook quality",
-    realistic: "Children's book illustration, watercolor and colored pencil, soft hand-drawn lines, expressive characters, warm light, pastel colors, soft shading, textured paper, playful and lively composition, modern storybook style, highly detailed, consistent style"
+    fantasy: "Traditional gouache painting on textured cream paper, visible brushstrokes, slightly imperfect hand-painted quality like classic children's book illustration by Beatrix Potter or Jon Klassen. Warm muted color palette, soft earthy tones with pops of color. Thick paint texture visible, organic shapes, gentle lighting. NOT digital art, NOT 3D render, NOT cartoon. Real painted illustration feel",
+    realistic: "Traditional watercolor and gouache on rough paper, loose brushwork, visible paper texture showing through transparent washes. Soft muted palette like vintage children's book. Hand-drawn ink outlines with slight wobble. NOT clean digital lines, NOT CGI. Authentic hand-illustrated quality"
   },
   anime: {
     fantasy: "Anime-inspired digital illustration, vibrant colors, expressive characters with large eyes. Style like Studio Ghibli or Makoto Shinkai. Cinematic lighting, magical atmosphere. Professional animation quality",
@@ -302,7 +302,7 @@ async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleK
   if (!token || !portraitUrl) return null;
   const shortStyle = artStyleKey === "anime" ? "Anime children's illustration." 
     : artStyleKey === "realistic" ? "Realistic children's book illustration." 
-    : "Watercolor children's book illustration.";
+    : "Gouache painting, children's book, visible brushstrokes, textured paper.";
   const shortScene = scene.split(/[.!]/).slice(0, 2).join(". ").trim().slice(0, 200);
   // Detect negative emotion and add anti-smile reinforcement
   const negWords = /frown|tear|cry|sad|scared|afraid|angry|worried|lonely|upset|nervous|anxious|hurt|pain|lost|confused|guilt|shame/i;
