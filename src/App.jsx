@@ -342,19 +342,19 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
   };
 
 
-  // Auto-size font: shorter text = bigger font, longer = smaller
+  // Auto-size font for 300px rendered page width
   const autoFontSize = (text) => {
-    if (!text) return 9;
+    if (!text) return 13;
     const len = text.length;
-    if (len < 60) return 11;
-    if (len < 100) return 10;
-    if (len < 160) return 9;
-    if (len < 240) return 8;
-    return 7;
+    if (len < 80) return 16;
+    if (len < 140) return 14;
+    if (len < 200) return 13;
+    if (len < 280) return 12;
+    return 11;
   };
 
   const ImgBlock = ({ big }) => (
-    <div style={{ width: "88%", margin: "0 auto", height: big ? 190 : 160, overflow: "hidden", ...frame, background: "#f5f5f5", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "relative", flexShrink: 0 }}>
+    <div style={{ width: "88%", margin: "0 auto", height: big ? 150 : 130, overflow: "hidden", ...frame, background: "#f5f5f5", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "relative", flexShrink: 0 }}>
       {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 12, opacity: .35 }}>🎨</span></div>
       : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
       : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 14, opacity: .1 }}>🖼</span></div>}
@@ -362,30 +362,30 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
   );
 
   const TextBlock = ({ text }) => (
-    <div style={{ overflow: "hidden", padding: "2px 6px", flex: "1 1 0", minHeight: 0 }}>
-      <p style={{ fontSize: autoFontSize(text), lineHeight: 1.5, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1em" }}>{text}</p>
+    <div style={{ overflow: "hidden", padding: "2px 6px", flex: "1 1 auto", minHeight: 20 }}>
+      <p style={{ fontSize: autoFontSize(text), lineHeight: 1.45, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "0.8em" }}>{text}</p>
     </div>
   );
 
   return (
-    <div ref={ref} style={{ width: "100%", height: "100%", background: "#fff", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <div ref={ref} style={{ width: "100%", height: "100%", background: "#fff", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
       {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 15, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.03), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
       {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 15, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
       {page ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "8px 10px 4px", gap: 3, overflow: "hidden" }}>
-          <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: "8px", color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
+        <div style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "8px 10px 4px", gap: 3, overflow: "hidden", boxSizing: "border-box" }}>
+          <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: 11, color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
           {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text}/></>}
           {layout === "text-top" && <><TextBlock text={page.text}/><ImgBlock/></>}
           {layout === "img-big" && <><ImgBlock big/><TextBlock text={page.text}/></>}
           {layout === "text-img-text" && (() => { const [t1, t2] = splitText(page.text); return <><TextBlock text={t1}/><ImgBlock/><TextBlock text={t2}/></>; })()}
-          <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: "7px", color: "#c4b498", padding: "0 8px", fontFamily: BOOK_FONT }}>{pageNum}</div>
+          <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: 9, color: "#c4b498", padding: "0 8px", fontFamily: BOOK_FONT }}>{pageNum}</div>
         </div>
       ) : isBlurred ? (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
+        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
           <div style={{ textAlign: "center", opacity: .3 }}><div style={{ fontSize: "2rem", marginBottom: 8 }}>📖</div><div style={{ fontSize: ".65rem", color: "#8b7a66", fontFamily: BOOK_FONT, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
         </div>
       ) : (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
+        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
           <div style={{ opacity: .15, fontSize: "1.5rem" }}>📖</div>
         </div>
       )}
