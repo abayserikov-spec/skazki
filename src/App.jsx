@@ -286,7 +286,7 @@ async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   
   const prompt = artStyleKey === "anime"
     ? `Anime style children's book character. ${charDesc}. Full body, plain beige background. No text.`
-    : `Watercolor painting of a children's book character. ${charDesc}. Full body standing on plain cream background. Soft watercolor washes, visible paper texture, warm gentle colors. No text.`;
+    : `TOK watercolor painting of a children's book character. ${charDesc}. Full body standing on plain cream background. Soft watercolor washes, visible paper texture, warm gentle colors. No text.`;
   
   console.log("Portrait (flux-watercolor LoRA):", prompt.length, "chars");
   try {
