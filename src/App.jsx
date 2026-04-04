@@ -351,9 +351,21 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
     </div>
   );
 
+  // Auto-size font: shorter text = bigger font, longer = smaller
+  const autoFontSize = (text) => {
+    if (!text) return 11;
+    const len = text.length;
+    if (len < 80) return 13;
+    if (len < 120) return 12;
+    if (len < 180) return 11;
+    if (len < 250) return 10;
+    if (len < 350) return 9;
+    return 8;
+  };
+
   const TextBlock = ({ text, flex1 }) => (
     <div style={{ flex: flex1 ? "1 1 0" : "0 0 auto", overflow: "hidden", padding: "0 6px", minHeight: 0 }}>
-      <p style={{ fontSize: "11px", lineHeight: 1.55, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1em" }}>{text}</p>
+      <p style={{ fontSize: autoFontSize(text) + "px", lineHeight: 1.55, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1em" }}>{text}</p>
     </div>
   );
 
@@ -366,7 +378,7 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
           <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: "8px", color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
           {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text} flex1/></>}
           {layout === "text-top" && <><TextBlock text={page.text} flex1/><ImgBlock/></>}
-          {layout === "img-big" && <><ImgBlock big/><div style={{ padding: "0 6px", overflow: "hidden", flex: "1 1 0", minHeight: 0 }}><p style={{ fontSize: "10px", lineHeight: 1.5, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1em" }}>{page.text}</p></div></>}
+          {layout === "img-big" && <><ImgBlock big/><div style={{ padding: "0 6px", overflow: "hidden", flex: "1 1 0", minHeight: 0 }}><p style={{ fontSize: (autoFontSize(page.text) - 1) + "px", lineHeight: 1.5, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1em" }}>{page.text}</p></div></>}
           {layout === "text-img-text" && (() => { const [t1, t2] = splitText(page.text); return <><TextBlock text={t1}/><ImgBlock/><TextBlock text={t2} flex1/></>; })()}
           <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: "7px", color: "#c4b498", padding: "0 8px", fontFamily: BOOK_FONT }}>{pageNum}</div>
         </div>
