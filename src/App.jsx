@@ -343,7 +343,7 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
 
   const ImgBlock = ({ big }) => (
     <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", minHeight: 0 }}>
-      <div style={{ width: "92%", maxWidth: big ? "100%" : 320, aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f0ebe0", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "relative" }}>
+      <div style={{ width: "92%", maxWidth: big ? "100%" : 320, aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f5f5f5", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "relative" }}>
         {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.2rem", opacity: .35 }}>🎨</span></div>
         : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
         : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.5rem", opacity: .1 }}>🖼</span></div>}
@@ -524,8 +524,8 @@ function getFrameStyle(pageIdx) {
   return FRAME_STYLES[pageIdx % FRAME_STYLES.length];
 }
 
-const PAPER_BG = "#fffdf8";
-const PAPER_TEXTURE = `repeating-linear-gradient(0deg, rgba(139,109,74,0.015), rgba(139,109,74,0.015) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(139,109,74,0.01), rgba(139,109,74,0.01) 1px, transparent 1px, transparent 4px)`;
+const PAPER_BG = "#ffffff";
+const PAPER_TEXTURE = "none";
 
 export default function App() {
   const [dark, setDark] = useState(false);
@@ -1344,9 +1344,16 @@ export default function App() {
     const flipNext = () => { try { bookRef.current?.flipNext(); } catch {} };
     const flipPrev = () => { try { bookRef.current?.flipPrev(); } catch {} };
 
-    // Auto-flip to latest spread when new page arrives
-    const latestPageIdx = Math.min(totalReady - 1, 5);
-    const targetSpread = latestPageIdx >= 0 ? (latestPageIdx % 2 === 0 ? latestPageIdx : latestPageIdx - 1) : 0;
+    // Auto-flip to latest spread when NEW page arrives (not on every render)
+    const prevPageCount = useRef(0);
+    useEffect(() => {
+      if (totalReady > prevPageCount.current && totalReady > 1 && bookRef.current) {
+        const target = totalReady - 1;
+        const spreadPage = target % 2 === 0 ? target : target - 1;
+        setTimeout(() => { try { bookRef.current?.flip(spreadPage); } catch {} }, 300);
+      }
+      prevPageCount.current = totalReady;
+    }, [totalReady]);
 
     return (
     <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -1395,6 +1402,7 @@ export default function App() {
               <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.07), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
 
               <ReactFlipBook
+                key={`book-${pages.length}-${curImg ? "img" : "noimg"}`}
                 ref={bookRef}
                 width={380}
                 height={520}
@@ -1409,7 +1417,6 @@ export default function App() {
                 showCover={false}
                 maxShadowOpacity={0.4}
                 mobileScrollSupport={true}
-                currentPage={targetSpread}
                 style={{ boxShadow: "0 2px 14px rgba(0,0,0,0.07)" }}
               >
                 {[0,1,2,3,4,5].map(i => {
