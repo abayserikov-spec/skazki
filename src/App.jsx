@@ -719,38 +719,62 @@ export default function App() {
     return () => clearTimeout(delay);
   }, [curPage?.text]);
 
-  // ── StPageFlip initialization ──
+  // ── StPageFlip initialization (pure DOM, no React conflict) ──
   useEffect(() => {
     if (view !== "session" || !bookContainerRef.current) return;
-    // Destroy previous instance
-    if (pageFlipRef.current) { try { pageFlipRef.current.destroy(); } catch {} pageFlipRef.current = null; }
 
-    const container = bookContainerRef.current;
-    const pageDivs = container.querySelectorAll(".book-page");
-    if (pageDivs.length < 2) return;
+    const initTimer = setTimeout(() => {
+      const container = bookContainerRef.current;
+      if (!container) return;
 
-    const pf = new PageFlip(container, {
-      width: 400,
-      height: 540,
-      size: "stretch",
-      minWidth: 280,
-      maxWidth: 600,
-      minHeight: 380,
-      maxHeight: 750,
-      showCover: false,
-      flippingTime: 1200,
-      maxShadowOpacity: 0.4,
-      drawShadow: true,
-      usePortrait: false,
-      mobileScrollSupport: true,
-      swipeDistance: 30,
-      startPage: 0,
-    });
+      // Destroy previous
+      if (pageFlipRef.current) { try { pageFlipRef.current.destroy(); } catch {} pageFlipRef.current = null; }
+      // Clear container
+      container.innerHTML = "";
 
-    pf.loadFromHTML(pageDivs);
-    pageFlipRef.current = pf;
+      // Create 6 page divs via DOM (not React-managed)
+      const pageEls = [];
+      for (let i = 0; i < 6; i++) {
+        const pg = document.createElement("div");
+        pg.className = "book-page";
+        pg.style.cssText = `background:#fffdf8;font-family:'Literata',Georgia,serif;overflow:hidden;box-sizing:border-box;`;
+        pg.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.2;font-size:1.5rem">📖</div>`;
+        container.appendChild(pg);
+        pageEls.push(pg);
+      }
+      pageContentRefs.current = pageEls;
 
-    return () => { try { pf.destroy(); } catch {} pageFlipRef.current = null; };
+      const rect = container.getBoundingClientRect();
+      const w = Math.floor(rect.width / 2);
+      const h = Math.floor(rect.height);
+      console.log("PageFlip init:", w, "x", h);
+
+      if (w < 50 || h < 50) { console.error("Container too small:", w, h); return; }
+
+      try {
+        const pf = new PageFlip(container, {
+          width: w,
+          height: h,
+          size: "fixed",
+          showCover: false,
+          flippingTime: 1200,
+          maxShadowOpacity: 0.5,
+          drawShadow: true,
+          usePortrait: false,
+          mobileScrollSupport: true,
+          swipeDistance: 30,
+          startPage: 0,
+        });
+        pf.loadFromHTML(container.querySelectorAll(".book-page"));
+        pageFlipRef.current = pf;
+        console.log("PageFlip OK");
+      } catch (err) { console.error("PageFlip error:", err); }
+    }, 600);
+
+    return () => {
+      clearTimeout(initTimer);
+      if (pageFlipRef.current) { try { pageFlipRef.current.destroy(); } catch {} pageFlipRef.current = null; }
+    };
   }, [view]);
 
   // ── Update page content when story progresses ──
@@ -807,17 +831,18 @@ export default function App() {
       const isCurrent = page?._isCurrent || false;
       ref.innerHTML = buildPageHTML(page, i, isCurrent);
     }
-    // Auto-flip to latest page
+    // Auto-flip to spread containing latest page
     if (pageFlipRef.current && allPg.length > 0) {
-      const targetPage = Math.min(allPg.length - 1, 5);
+      const latestIdx = Math.min(allPg.length - 1, 5);
+      const targetSpreadPage = latestIdx % 2 === 0 ? latestIdx : latestIdx - 1; // always even
       setTimeout(() => {
         try {
           const currentIdx = pageFlipRef.current.getCurrentPageIndex();
-          if (currentIdx < targetPage) {
-            pageFlipRef.current.flip(targetPage);
+          if (currentIdx < targetSpreadPage) {
+            pageFlipRef.current.flip(targetSpreadPage);
           }
         } catch {}
-      }, 200);
+      }, 300);
     }
   }, [view, pages.length, curPage?.text, curImg, imgLoading, buildPageHTML]);
 
@@ -1387,7 +1412,10 @@ export default function App() {
 
     return (
     <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <style>{CSS}</style>
+      <style>{CSS}{`
+        .book-page { position: absolute; top: 0; left: 0; }
+        .stf__parent { width: 100% !important; height: 100% !important; }
+      `}</style>
       {showSettings && <SettingsPanel />}
 
       {/* Top bar */}
@@ -1442,17 +1470,8 @@ export default function App() {
               {/* Book shadow */}
               <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.07), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
 
-              {/* StPageFlip container */}
-              <div ref={bookContainerRef} style={{ width: "100%", height: "100%" }}>
-                {/* 6 story pages — content updated via refs/useEffect */}
-                {[0,1,2,3,4,5].map(i => (
-                  <div key={i} className="book-page" ref={el => { pageContentRefs.current[i] = el; }} style={{
-                    background: PAPER_BG,
-                    backgroundImage: PAPER_TEXTURE,
-                    fontFamily: "'Literata', Georgia, serif",
-                  }}/>
-                ))}
-              </div>
+              {/* StPageFlip container — pages created via DOM in useEffect */}
+              <div ref={bookContainerRef} style={{ width: "100%", height: "100%", position: "relative" }}/>
             </div>
           )}
         </div>
