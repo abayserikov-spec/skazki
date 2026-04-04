@@ -564,6 +564,7 @@ export default function App() {
   const storyScrollRef = useRef(null);
   const audioRef = useRef(null);
   const bookRef = useRef(null);
+  const prevPageCountRef = useRef(0);
   
   // Character consistency state
   const [charDesc, setCharDesc] = useState(null);
@@ -768,6 +769,18 @@ export default function App() {
 
   // Auto-scroll
   useEffect(() => { if (curPage && storyScrollRef.current) { storyScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }) } }, [curPage]);
+
+  // Auto-flip book to latest spread when new page arrives
+  const allPagesLen = curPage ? pages.length + 1 : pages.length;
+  useEffect(() => {
+    if (view !== "session") return;
+    if (allPagesLen > prevPageCountRef.current && allPagesLen > 1 && bookRef.current) {
+      const target = allPagesLen - 1;
+      const spreadPage = target % 2 === 0 ? target : target - 1;
+      setTimeout(() => { try { bookRef.current?.flip(spreadPage); } catch {} }, 300);
+    }
+    prevPageCountRef.current = allPagesLen;
+  }, [allPagesLen, view]);
 
   // In book mode, set textDone after a short reading delay (no Typewriter)
   useEffect(() => {
@@ -1344,16 +1357,7 @@ export default function App() {
     const flipNext = () => { try { bookRef.current?.flipNext(); } catch {} };
     const flipPrev = () => { try { bookRef.current?.flipPrev(); } catch {} };
 
-    // Auto-flip to latest spread when NEW page arrives (not on every render)
-    const prevPageCount = useRef(0);
-    useEffect(() => {
-      if (totalReady > prevPageCount.current && totalReady > 1 && bookRef.current) {
-        const target = totalReady - 1;
-        const spreadPage = target % 2 === 0 ? target : target - 1;
-        setTimeout(() => { try { bookRef.current?.flip(spreadPage); } catch {} }, 300);
-      }
-      prevPageCount.current = totalReady;
-    }, [totalReady]);
+    // Auto-flip handled by top-level useEffect
 
     return (
     <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
