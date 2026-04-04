@@ -280,22 +280,20 @@ async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
   } catch (err) { console.error("Flux 2 Pro error:", err); return null; }
 }
 
-// ── CHARACTER PORTRAIT: Kontext Fast text-to-image (traditional style) ──
+// ── CHARACTER PORTRAIT: flux-childbook-illustration LoRA (native book style) ──
 async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   if (!token) return null;
   
-  const stylePrompt = artStyleKey === "anime" 
-    ? "Studio Ghibli hand-drawn anime style."
-    : "Scanned gouache painting from a vintage 1970s European children's picture book. Thick rough brushstrokes on cream paper, visible paint texture, warm muted earthy palette, hand-painted imperfect quality.";
+  const prompt = artStyleKey === "anime"
+    ? `Anime style children's book character portrait. ${charDesc}. Full body, plain beige background. Clear face details. No text.`
+    : `Character portrait in the style of TOK. ${charDesc}. Full body standing on plain cream paper background. Warm colors, soft brushstrokes. Clear face and clothing details. No text.`;
   
-  const prompt = `${stylePrompt} Character portrait: ${charDesc}. Full body, standing on plain beige background. Clear face details. No text.`;
-  
-  console.log("Portrait generation (Kontext text-to-image):", prompt.length, "chars");
+  console.log("Portrait (childbook-illustration LoRA):", prompt.length, "chars");
   try {
-    const res = await fetch("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
+    const res = await fetch("/api/replicate/v1/models/samsa-ai/flux-childbook-illustration/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } })
+      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "png", num_outputs: 1 } })
     });
     const resp = await res.json();
     console.log("Portrait response:", resp.status, resp.id || resp.error);
