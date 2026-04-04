@@ -280,17 +280,17 @@ async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
   } catch (err) { console.error("Flux 2 Pro error:", err); return null; }
 }
 
-// ── CHARACTER PORTRAIT: flux-childbook-illustration LoRA (native book style) ──
+// ── CHARACTER PORTRAIT: lucataco/flux-watercolor LoRA (watercolor style) ──
 async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   if (!token) return null;
   
   const prompt = artStyleKey === "anime"
-    ? `Anime style children's book character portrait. ${charDesc}. Full body, plain beige background. Clear face details. No text.`
-    : `Character portrait in the style of TOK. ${charDesc}. Full body standing on plain cream paper background. Warm colors, soft brushstrokes. Clear face and clothing details. No text.`;
+    ? `Anime style children's book character. ${charDesc}. Full body, plain beige background. No text.`
+    : `Watercolor painting of a children's book character. ${charDesc}. Full body standing on plain cream background. Soft watercolor washes, visible paper texture, warm gentle colors. No text.`;
   
-  console.log("Portrait (childbook-illustration LoRA):", prompt.length, "chars");
+  console.log("Portrait (flux-watercolor LoRA):", prompt.length, "chars");
   try {
-    const res = await fetch("/api/replicate/v1/models/samsa-ai/flux-childbook-illustration/predictions", {
+    const res = await fetch("/api/replicate/v1/models/lucataco/flux-watercolor/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "png", num_outputs: 1 } })
