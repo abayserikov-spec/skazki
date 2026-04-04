@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { PageFlip } from "page-flip";
+import { useState, useEffect, useRef, useCallback, useMemo, forwardRef } from "react";
+import { ReactFlipBook } from "@vuvandinh203/react-flipbook";
 
 /* ══════════════════════════════════════════════════════════
    СКАЗКА ВМЕСТЕ — Platform v3
@@ -322,6 +322,68 @@ async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleK
 }
 
 // ── TYPEWRITER COMPONENT ──
+// ── BOOK PAGE (forwardRef for react-flipbook) ──
+const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgLoading, lang }, ref) => {
+  const BOOK_FONT = "'Literata', 'Cormorant Garamond', Georgia, serif";
+  const LAYOUTS = ["img-top", "text-img-text", "img-big", "text-top", "img-top", "img-big"];
+  const layout = LAYOUTS[(pageNum - 1) % LAYOUTS.length];
+  const frame = FRAME_STYLES[(pageNum - 1) % FRAME_STYLES.length];
+  const side = pageNum % 2 === 1 ? "left" : "right";
+
+  const imgUrl = isCurrent ? (curImg || page?.imgUrl) : page?.imgUrl;
+  const isImgLoading = isCurrent && imgLoading && !imgUrl;
+
+  const splitText = (text) => {
+    if (!text) return ["", ""];
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    if (sentences.length < 2) return [text, ""];
+    const mid = Math.ceil(sentences.length / 2);
+    return [sentences.slice(0, mid).join("").trim(), sentences.slice(mid).join("").trim()];
+  };
+
+  const ImgBlock = ({ big }) => (
+    <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", minHeight: 0 }}>
+      <div style={{ width: "92%", maxWidth: big ? "100%" : 320, aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f0ebe0", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "relative" }}>
+        {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.2rem", opacity: .35 }}>🎨</span></div>
+        : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
+        : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.5rem", opacity: .1 }}>🖼</span></div>}
+      </div>
+    </div>
+  );
+
+  const TextBlock = ({ text, flex1 }) => (
+    <div style={{ flex: flex1 ? "1 1 0" : "0 0 auto", overflow: "auto", padding: "0 8px", minHeight: 0 }}>
+      <p style={{ fontSize: "clamp(.78rem,1.6vw,.92rem)", lineHeight: 1.75, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1.5em" }}>{text}</p>
+    </div>
+  );
+
+  return (
+    <div ref={ref} style={{ width: "100%", height: "100%", background: PAPER_BG, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", filter: isBlurred ? "blur(8px) brightness(0.95)" : "none", transition: "filter 0.8s", boxSizing: "border-box" }}>
+      <div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none", zIndex: 0 }}/>
+      {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 20, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
+      {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 20, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.06), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
+      {page ? (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "10px 14px 6px", gap: 4 }}>
+          <div style={{ textAlign: "center", marginBottom: 2 }}><span style={{ fontSize: ".6rem", color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
+          {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text} flex1/></>}
+          {layout === "text-top" && <><TextBlock text={page.text} flex1/><ImgBlock/></>}
+          {layout === "img-big" && <><ImgBlock big/><TextBlock text={page.text}/></>}
+          {layout === "text-img-text" && (() => { const [t1, t2] = splitText(page.text); return <><TextBlock text={t1}/><ImgBlock/><TextBlock text={t2} flex1/></>; })()}
+          <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: ".45rem", color: "#c4b498", padding: "0 8px", fontFamily: BOOK_FONT }}>{pageNum}</div>
+        </div>
+      ) : isBlurred ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
+          <div style={{ textAlign: "center", opacity: .3 }}><div style={{ fontSize: "2rem", marginBottom: 8 }}>📖</div><div style={{ fontSize: ".65rem", color: "#8b7a66", fontFamily: BOOK_FONT, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
+        </div>
+      ) : (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
+          <div style={{ opacity: .15, fontSize: "1.5rem" }}>📖</div>
+        </div>
+      )}
+    </div>
+  );
+});
+
 function Typewriter({ text, speed = 30, onDone, style }) {
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(false);
@@ -501,12 +563,7 @@ export default function App() {
   const [textDone, setTextDone] = useState(false);
   const storyScrollRef = useRef(null);
   const audioRef = useRef(null);
-  const curlCanvasRef = useRef(null);  // unused, kept for compat
-  const curlAnimRef = useRef(null);   // unused
-  const curlOverlayRef = useRef(null); // unused
-  const bookContainerRef = useRef(null);
-  const pageFlipRef = useRef(null);
-  const pageContentRefs = useRef([]);
+  const bookRef = useRef(null);
   
   // Character consistency state
   const [charDesc, setCharDesc] = useState(null);
@@ -719,132 +776,6 @@ export default function App() {
     return () => clearTimeout(delay);
   }, [curPage?.text]);
 
-  // ── StPageFlip initialization (pure DOM, no React conflict) ──
-  useEffect(() => {
-    if (view !== "session" || !bookContainerRef.current) return;
-
-    const initTimer = setTimeout(() => {
-      const container = bookContainerRef.current;
-      if (!container) return;
-
-      // Destroy previous
-      if (pageFlipRef.current) { try { pageFlipRef.current.destroy(); } catch {} pageFlipRef.current = null; }
-      // Clear container
-      container.innerHTML = "";
-
-      // Create 6 page divs via DOM (not React-managed)
-      const pageEls = [];
-      for (let i = 0; i < 6; i++) {
-        const pg = document.createElement("div");
-        pg.className = "book-page";
-        pg.style.cssText = `background:#fffdf8;font-family:'Literata',Georgia,serif;overflow:hidden;box-sizing:border-box;`;
-        pg.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.2;font-size:1.5rem">📖</div>`;
-        container.appendChild(pg);
-        pageEls.push(pg);
-      }
-      pageContentRefs.current = pageEls;
-
-      const rect = container.getBoundingClientRect();
-      const w = Math.floor(rect.width / 2);
-      const h = Math.floor(rect.height);
-      console.log("PageFlip init:", w, "x", h);
-
-      if (w < 50 || h < 50) { console.error("Container too small:", w, h); return; }
-
-      try {
-        const pf = new PageFlip(container, {
-          width: w,
-          height: h,
-          size: "fixed",
-          showCover: false,
-          flippingTime: 1200,
-          maxShadowOpacity: 0.5,
-          drawShadow: true,
-          usePortrait: false,
-          mobileScrollSupport: true,
-          swipeDistance: 30,
-          startPage: 0,
-        });
-        pf.loadFromHTML(container.querySelectorAll(".book-page"));
-        pageFlipRef.current = pf;
-        console.log("PageFlip OK");
-      } catch (err) { console.error("PageFlip error:", err); }
-    }, 600);
-
-    return () => {
-      clearTimeout(initTimer);
-      if (pageFlipRef.current) { try { pageFlipRef.current.destroy(); } catch {} pageFlipRef.current = null; }
-    };
-  }, [view]);
-
-  // ── Update page content when story progresses ──
-  const BOOK_FONT = "'Literata', 'Cormorant Garamond', Georgia, serif";
-  const LAYOUTS = ["img-top", "text-img-text", "img-big", "text-top", "img-top", "img-big"];
-  const getLayout = (i) => LAYOUTS[i % LAYOUTS.length];
-
-  const buildPageHTML = useCallback((page, idx, isCurrent) => {
-    if (!page) return `<div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:.25;font-family:${BOOK_FONT}"><div style="text-align:center;font-size:2rem">📖</div></div>`;
-    const layout = getLayout(idx);
-    const imgUrl = isCurrent ? (curImg || "") : (page.imgUrl || "");
-    const isImgLoading = isCurrent && imgLoading && !imgUrl;
-    const title = page.title || "✦";
-    const text = page.text || "";
-    const num = idx + 1;
-    const frame = FRAME_STYLES[idx % FRAME_STYLES.length];
-    const borderRadius = frame.borderRadius || "12px";
-
-    const imgHTML = imgUrl
-      ? `<div style="display:flex;justify-content:center"><div style="width:92%;max-width:320px;aspect-ratio:${layout === "img-big" ? "3/2" : "16/10"};overflow:hidden;border-radius:${borderRadius};background:#f0ebe0;box-shadow:0 1px 6px rgba(0,0,0,0.06)"><img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy"/></div></div>`
-      : isImgLoading
-      ? `<div style="display:flex;justify-content:center"><div style="width:92%;max-width:320px;aspect-ratio:16/10;border-radius:${borderRadius};background:#f0ebe0;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px rgba(0,0,0,0.06)"><span style="font-size:1.2rem;opacity:.35">🎨</span></div></div>`
-      : `<div style="display:flex;justify-content:center"><div style="width:92%;max-width:320px;aspect-ratio:16/10;border-radius:${borderRadius};background:#f0ebe0;display:flex;align-items:center;justify-content:center"><span style="font-size:1.5rem;opacity:.1">🖼</span></div></div>`;
-
-    const textHTML = `<div style="flex:1;overflow:auto;padding:0 8px;text-align:center"><p style="font-size:clamp(.78rem,1.6vw,.92rem);line-height:1.75;color:#2c2318;font-family:${BOOK_FONT};font-weight:400;margin:0;text-indent:1.5em">${text}</p></div>`;
-    const titleHTML = `<div style="text-align:center;margin-bottom:4px"><span style="font-size:.6rem;color:#b89b78;font-weight:500;font-family:${BOOK_FONT};font-style:italic">${title}</span></div>`;
-    const numHTML = `<div style="text-align:${num % 2 === 1 ? 'left' : 'right'};font-size:.45rem;color:#c4b498;padding:0 8px;font-family:${BOOK_FONT}">${num}</div>`;
-
-    let contentHTML;
-    if (layout === "img-top") contentHTML = imgHTML + textHTML;
-    else if (layout === "text-top") contentHTML = textHTML + imgHTML;
-    else if (layout === "img-big") contentHTML = imgHTML + `<div style="padding:0 8px;text-align:center"><p style="font-size:clamp(.74rem,1.4vw,.85rem);line-height:1.65;color:#2c2318;font-family:${BOOK_FONT};font-weight:400;margin:0;text-indent:1.5em">${text}</p></div>`;
-    else if (layout === "text-img-text") {
-      const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-      const mid = Math.ceil(sentences.length / 2);
-      const t1 = sentences.slice(0, mid).join("").trim();
-      const t2 = sentences.slice(mid).join("").trim();
-      contentHTML = `<div style="padding:0 8px;text-align:center"><p style="font-size:clamp(.74rem,1.4vw,.85rem);line-height:1.65;color:#2c2318;font-family:${BOOK_FONT};font-weight:400;margin:0;text-indent:1.5em">${t1}</p></div>${imgHTML}<div style="flex:1;overflow:auto;padding:0 8px;text-align:center"><p style="font-size:clamp(.74rem,1.4vw,.85rem);line-height:1.65;color:#2c2318;font-family:${BOOK_FONT};font-weight:400;margin:0;text-indent:1.5em">${t2}</p></div>`;
-    }
-    else contentHTML = imgHTML + textHTML;
-
-    return `<div style="display:flex;flex-direction:column;height:100%;padding:10px 14px 6px;gap:4px">${titleHTML}${contentHTML}${numHTML}</div>`;
-  }, [curImg, imgLoading]);
-
-  // Update page divs content
-  useEffect(() => {
-    if (view !== "session") return;
-    const allPg = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
-    // Update each page div content
-    for (let i = 0; i < 6; i++) {
-      const ref = pageContentRefs.current[i];
-      if (!ref) continue;
-      const page = allPg[i] || null;
-      const isCurrent = page?._isCurrent || false;
-      ref.innerHTML = buildPageHTML(page, i, isCurrent);
-    }
-    // Auto-flip to spread containing latest page
-    if (pageFlipRef.current && allPg.length > 0) {
-      const latestIdx = Math.min(allPg.length - 1, 5);
-      const targetSpreadPage = latestIdx % 2 === 0 ? latestIdx : latestIdx - 1; // always even
-      setTimeout(() => {
-        try {
-          const currentIdx = pageFlipRef.current.getCurrentPageIndex();
-          if (currentIdx < targetSpreadPage) {
-            pageFlipRef.current.flip(targetSpreadPage);
-          }
-        } catch {}
-      }, 300);
-    }
-  }, [view, pages.length, curPage?.text, curImg, imgLoading, buildPageHTML]);
 
   // Generate illustration when page arrives
   // Flow: Page 1 → Flux generates portrait → Kontext generates scene from portrait
@@ -1399,30 +1330,34 @@ export default function App() {
 
 
 
-  // ═══ SESSION (StPageFlip Book) ═══
+
+
+  // ═══ SESSION (react-flipbook) ═══
   if (view === "session") {
-    const allPg = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
-    const totalReady = allPg.length;
+    const BF = "'Literata', 'Cormorant Garamond', Georgia, serif";
+    const allPages = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
+    const totalReady = allPages.length;
     const showChoices = curPage && !curPage.isEnd && textDone && !loading && !sel;
     const showEnd = curPage && curPage.isEnd;
     const childName = activeChild?.name || "";
 
-    const flipNext = () => { try { pageFlipRef.current?.flipNext(); } catch {} };
-    const flipPrev = () => { try { pageFlipRef.current?.flipPrev(); } catch {} };
+    const flipNext = () => { try { bookRef.current?.flipNext(); } catch {} };
+    const flipPrev = () => { try { bookRef.current?.flipPrev(); } catch {} };
+
+    // Auto-flip to latest spread when new page arrives
+    const latestPageIdx = Math.min(totalReady - 1, 5);
+    const targetSpread = latestPageIdx >= 0 ? (latestPageIdx % 2 === 0 ? latestPageIdx : latestPageIdx - 1) : 0;
 
     return (
     <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <style>{CSS}{`
-        .book-page { position: absolute; top: 0; left: 0; }
-        .stf__parent { width: 100% !important; height: 100% !important; }
-      `}</style>
+      <style>{CSS}</style>
       {showSettings && <SettingsPanel />}
 
       {/* Top bar */}
       <div style={{ padding: "7px 16px", background: "rgba(255,250,242,0.95)", borderBottom: "1px solid rgba(139,109,74,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: ".8rem" }}>{theme?.emoji}</span>
-          <span style={{ fontFamily: "'Literata', Georgia, serif", fontSize: ".85rem", fontWeight: 500, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
+          <span style={{ fontFamily: BF, fontSize: ".85rem", fontWeight: 500, color: "#5c4a3a", fontStyle: "italic" }}>{childName}</span>
           <span style={{ fontSize: ".65rem", color: "#a89878", fontFamily: "monospace" }}>{fmtT(timer)}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1431,25 +1366,14 @@ export default function App() {
         </div>
       </div>
 
-      {/* Main layout: LEFT | BOOK | RIGHT */}
+      {/* Main: LEFT | BOOK | RIGHT */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
         {/* LEFT: Nav + TTS */}
         <div style={{ width: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "12px 4px", flexShrink: 0 }}>
           <button onClick={flipPrev} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: "rgba(255,255,255,0.5)", color: "#8b6f4e", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>◀</button>
-          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{
-            width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)",
-            background: speaking ? "rgba(212,132,90,0.1)" : "rgba(255,255,255,0.5)",
-            color: speaking ? "#c47b4a" : "#8b6f4e", fontSize: ".8rem", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            animation: speaking ? "pulse 2s ease-in-out infinite" : "none"
-          }}>{speaking ? "⏹" : "🔊"}</button>
-          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{
-            width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.06)",
-            background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)",
-            color: sfxEnabled ? "#5a8a5e" : "#8b6f4e", fontSize: ".65rem", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
+          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.08)", background: speaking ? "rgba(212,132,90,0.1)" : "rgba(255,255,255,0.5)", color: speaking ? "#c47b4a" : "#8b6f4e", fontSize: ".8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: speaking ? "pulse 2s ease-in-out infinite" : "none" }}>{speaking ? "⏹" : "🔊"}</button>
+          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(139,109,74,0.06)", background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)", color: sfxEnabled ? "#5a8a5e" : "#8b6f4e", fontSize: ".65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
         </div>
 
         {/* CENTER: Book */}
@@ -1457,7 +1381,7 @@ export default function App() {
           {loading && totalReady === 0 ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ width: 32, height: 32, border: "2px solid rgba(139,109,74,0.08)", borderTopColor: "#c47b4a", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
-              <p style={{ fontFamily: "'Literata', Georgia, serif", fontSize: ".88rem", color: "#8b7a66", fontStyle: "italic" }}>
+              <p style={{ fontFamily: BF, fontSize: ".88rem", color: "#8b7a66", fontStyle: "italic" }}>
                 {lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}
               </p>
               {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(196,123,123,0.06)", borderRadius: 12, border: "1px solid rgba(196,123,123,0.15)", fontSize: ".75rem", color: "#C47B7B" }}>
@@ -1466,12 +1390,46 @@ export default function App() {
               </div>}
             </div>
           ) : (
-            <div style={{ position: "relative", width: "min(90vw, 820px)", height: "min(75vh, 560px)" }}>
+            <div style={{ position: "relative" }}>
               {/* Book shadow */}
               <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.07), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
 
-              {/* StPageFlip container — pages created via DOM in useEffect */}
-              <div ref={bookContainerRef} style={{ width: "100%", height: "100%", position: "relative" }}/>
+              <ReactFlipBook
+                ref={bookRef}
+                width={380}
+                height={520}
+                size="stretch"
+                minWidth={280}
+                maxWidth={450}
+                minHeight={380}
+                maxHeight={620}
+                drawShadow={true}
+                flippingTime={1200}
+                usePortrait={false}
+                showCover={false}
+                maxShadowOpacity={0.4}
+                mobileScrollSupport={true}
+                currentPage={targetSpread}
+                style={{ boxShadow: "0 2px 14px rgba(0,0,0,0.07)" }}
+              >
+                {[0,1,2,3,4,5].map(i => {
+                  const pg = allPages[i] || null;
+                  const isCur = pg?._isCurrent || false;
+                  const isBlur = !pg && i > 0 && allPages[i-1] && i === totalReady;
+                  return (
+                    <BookPage
+                      key={i}
+                      page={pg}
+                      pageNum={i + 1}
+                      isCurrent={isCur}
+                      isBlurred={isBlur}
+                      curImg={curImg}
+                      imgLoading={imgLoading}
+                      lang={lang}
+                    />
+                  );
+                })}
+              </ReactFlipBook>
             </div>
           )}
         </div>
@@ -1482,7 +1440,7 @@ export default function App() {
 
           {showEnd ? (
             <div style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: "'Literata', Georgia, serif", fontSize: ".85rem", color: "#c47b4a", fontWeight: 500, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
+              <p style={{ fontFamily: BF, fontSize: ".85rem", color: "#c47b4a", fontWeight: 500, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
               {imgLoading && <p style={{ fontSize: ".58rem", color: "#a89878", marginBottom: 6 }}>{lang === "ru" ? "Ждём иллюстрацию…" : "Waiting..."}</p>}
               <button onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "9px 14px", borderRadius: 12, fontFamily: FN.b, fontSize: ".78rem", fontWeight: 600, border: "none", cursor: imgLoading ? "default" : "pointer", background: imgLoading ? "rgba(196,123,90,0.12)" : "#c47b4a", color: "#fff", opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</button>
             </div>
