@@ -793,6 +793,20 @@ export default function App() {
     prevPageCountRef.current = allPagesLen;
   }, [allPagesLen, view]);
 
+  // Retroactive image fix: if a page was committed without imgUrl and curImg loads after, update it
+  useEffect(() => {
+    if (curImg && !curPage && pages.length > 0) {
+      const lastPage = pages[pages.length - 1];
+      if (lastPage && !lastPage.imgUrl) {
+        setPages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], imgUrl: curImg };
+          return updated;
+        });
+      }
+    }
+  }, [curImg, curPage, pages.length]);
+
   // In book mode, set textDone after a short reading delay (no Typewriter)
   useEffect(() => {
     if (!curPage?.text) return;
@@ -1421,7 +1435,7 @@ export default function App() {
               <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.07), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
 
               <ReactFlipBook
-                key={`book-${pages.length}-${curImg ? "img" : "noimg"}`}
+                key={`book-${allPages.map((p,i) => `${p?.text?.length||0}${p?.imgUrl?'I':'_'}${(i===totalReady-1 && curImg)?'C':''}`).join('-')}`}
                 ref={bookRef}
                 width={420}
                 height={580}
@@ -1436,6 +1450,7 @@ export default function App() {
                 showCover={false}
                 maxShadowOpacity={0.4}
                 mobileScrollSupport={true}
+                startPage={Math.max(0, (totalReady > 1 ? (totalReady % 2 === 0 ? totalReady - 2 : totalReady - 1) : 0))}
                 style={{ boxShadow: "0 2px 14px rgba(0,0,0,0.07)" }}
               >
                 {[0,1,2,3,4,5].map(i => {
