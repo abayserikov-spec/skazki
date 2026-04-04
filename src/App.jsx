@@ -342,32 +342,31 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
   };
 
   const ImgBlock = ({ big }) => (
-    <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", minHeight: 0 }}>
-      <div style={{ width: "92%", maxWidth: big ? "100%" : 320, aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f5f5f5", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", position: "relative" }}>
-        {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.2rem", opacity: .35 }}>🎨</span></div>
+    <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", minHeight: 0, maxHeight: big ? "50%" : "40%" }}>
+      <div style={{ width: "88%", maxHeight: "100%", aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f5f5f5", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "relative" }}>
+        {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1rem", opacity: .35 }}>🎨</span></div>
         : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
-        : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.5rem", opacity: .1 }}>🖼</span></div>}
+        : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.2rem", opacity: .1 }}>🖼</span></div>}
       </div>
     </div>
   );
 
   const TextBlock = ({ text, flex1 }) => (
-    <div style={{ flex: flex1 ? "1 1 0" : "0 0 auto", overflow: "auto", padding: "0 8px", minHeight: 0 }}>
-      <p style={{ fontSize: "clamp(.78rem,1.6vw,.92rem)", lineHeight: 1.75, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1.5em" }}>{text}</p>
+    <div style={{ flex: flex1 ? "1 1 0" : "0 0 auto", overflow: "hidden", padding: "0 6px", minHeight: 0 }}>
+      <p style={{ fontSize: "clamp(.68rem,1.4vw,.82rem)", lineHeight: 1.65, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1.2em" }}>{text}</p>
     </div>
   );
 
   return (
-    <div ref={ref} style={{ width: "100%", height: "100%", background: PAPER_BG, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", filter: isBlurred ? "blur(8px) brightness(0.95)" : "none", transition: "filter 0.8s", boxSizing: "border-box" }}>
-      <div style={{ position: "absolute", inset: 0, backgroundImage: PAPER_TEXTURE, pointerEvents: "none", zIndex: 0 }}/>
-      {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 20, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
-      {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 20, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.06), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
+    <div ref={ref} style={{ width: "100%", height: "100%", background: "#fff", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 15, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.03), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
+      {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 15, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
       {page ? (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "10px 14px 6px", gap: 4 }}>
-          <div style={{ textAlign: "center", marginBottom: 2 }}><span style={{ fontSize: ".6rem", color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "8px 10px 4px", gap: 3, overflow: "hidden" }}>
+          <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: ".55rem", color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
           {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text} flex1/></>}
           {layout === "text-top" && <><TextBlock text={page.text} flex1/><ImgBlock/></>}
-          {layout === "img-big" && <><ImgBlock big/><TextBlock text={page.text}/></>}
+          {layout === "img-big" && <><ImgBlock big/><div style={{ padding: "0 6px", overflow: "hidden", flex: "1 1 0", minHeight: 0 }}><p style={{ fontSize: "clamp(.66rem,1.3vw,.78rem)", lineHeight: 1.6, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1.2em" }}>{page.text}</p></div></>}
           {layout === "text-img-text" && (() => { const [t1, t2] = splitText(page.text); return <><TextBlock text={t1}/><ImgBlock/><TextBlock text={t2} flex1/></>; })()}
           <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: ".45rem", color: "#c4b498", padding: "0 8px", fontFamily: BOOK_FONT }}>{pageNum}</div>
         </div>
@@ -1361,7 +1360,11 @@ export default function App() {
 
     return (
     <div style={{ height: "100vh", background: "linear-gradient(160deg, #f5efe6, #ebe4d8, #e8e0d0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <style>{CSS}</style>
+      <style>{CSS}{`
+        .stf__parent { background: transparent !important; }
+        .stf__block { background: #fff !important; }
+        .stf__item { background: #fff !important; }
+      `}</style>
       {showSettings && <SettingsPanel />}
 
       {/* Top bar */}
@@ -1408,13 +1411,13 @@ export default function App() {
               <ReactFlipBook
                 key={`book-${pages.length}-${curImg ? "img" : "noimg"}`}
                 ref={bookRef}
-                width={380}
-                height={520}
+                width={420}
+                height={580}
                 size="stretch"
-                minWidth={280}
-                maxWidth={450}
-                minHeight={380}
-                maxHeight={620}
+                minWidth={300}
+                maxWidth={500}
+                minHeight={400}
+                maxHeight={680}
                 drawShadow={true}
                 flippingTime={1200}
                 usePortrait={false}
