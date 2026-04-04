@@ -286,7 +286,7 @@ async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   
   const prompt = artStyleKey === "anime"
     ? `Anime style children's book character. ${charDesc}. Full body, plain beige background. No text.`
-    : `TOK rough hand-painted watercolor character from a vintage children's book. Thick visible brushstrokes, wobbly imperfect outlines, paint drips, grainy paper texture. ${charDesc}. Full body on plain cream background. Muted earthy warm colors. NOT clean lines, NOT smooth shading, NOT perfect. No text.`;
+    : `TOK watercolor painting of a children's book character. ${charDesc}. Full body standing on plain cream background. Soft watercolor washes, visible paper texture, warm gentle colors. No text.`;
   
   console.log("Portrait (flux-watercolor LoRA):", prompt.length, "chars");
   try {
@@ -321,7 +321,7 @@ async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleK
   if (!token || !portraitUrl) return null;
   const shortStyle = artStyleKey === "anime" ? "Anime children's illustration." 
     : artStyleKey === "realistic" ? "Realistic children's book illustration." 
-    : "Rough hand-painted gouache illustration, thick uneven brushstrokes, wobbly imperfect outlines, paint texture and paper grain visible, muted earthy palette. NOT clean, NOT smooth, NOT digital.";
+    : "Watercolor children's book illustration, soft washes, paper texture visible.";
   const shortScene = scene.split(/[.!]/).slice(0, 2).join(". ").trim().slice(0, 200);
   const negWords = /frown|tear|cry|sad|scared|afraid|angry|worried|lonely|upset|nervous|anxious|hurt|pain|lost|confused|guilt|shame/i;
   const antiSmile = negWords.test(scene) ? " Character is NOT smiling, NOT happy." : "";
