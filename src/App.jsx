@@ -302,19 +302,33 @@ async function genCharPortrait(token, charDesc, scene, artStyleKey) {
 }
 
 // ── PAGES 2-6: Kontext Pro Fast (image-to-image, character consistency) ──
+// ── Helper: retry fetch on 429 rate limit ──
+async function fetchWithRetry(url, opts, maxRetries = 3) {
+  for (let i = 0; i <= maxRetries; i++) {
+    const res = await fetch(url, opts);
+    if (res.status === 429 && i < maxRetries) {
+      const data = await res.json();
+      const wait = (data.retry_after || 5) * 1000 + 1000;
+      console.log(`Rate limited, waiting ${wait/1000}s... (retry ${i+1}/${maxRetries})`);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    return res;
+  }
+}
+
 async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey) {
   if (!token || !portraitUrl) return null;
   const shortStyle = artStyleKey === "anime" ? "Anime children's illustration." 
     : artStyleKey === "realistic" ? "Realistic children's book illustration." 
     : "Scanned gouache painting from vintage children's book, rough brushstrokes, paper texture.";
   const shortScene = scene.split(/[.!]/).slice(0, 2).join(". ").trim().slice(0, 200);
-  // Detect negative emotion and add anti-smile reinforcement
   const negWords = /frown|tear|cry|sad|scared|afraid|angry|worried|lonely|upset|nervous|anxious|hurt|pain|lost|confused|guilt|shame/i;
   const antiSmile = negWords.test(scene) ? " Character is NOT smiling, NOT happy." : "";
   const prompt = `${shortStyle} ${shortScene}.${antiSmile} Same character from reference image. No text.`;
   console.log("Kontext Fast prompt:", prompt.length, "chars,", prompt.split(" ").length, "words");
   try {
-    const res = await fetch("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
+    const res = await fetchWithRetry("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({ input: { prompt, img_cond_path: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } })
