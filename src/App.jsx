@@ -122,8 +122,8 @@ const I18N = {
 // ── ART STYLES ──
 const ART_STYLES = {
   book: {
-    fantasy: "Traditional gouache painting on textured cream paper, visible brushstrokes, slightly imperfect hand-painted quality like classic children's book illustration by Beatrix Potter or Jon Klassen. Warm muted color palette, soft earthy tones with pops of color. Thick paint texture visible, organic shapes, gentle lighting. NOT digital art, NOT 3D render, NOT cartoon. Real painted illustration feel",
-    realistic: "Traditional watercolor and gouache on rough paper, loose brushwork, visible paper texture showing through transparent washes. Soft muted palette like vintage children's book. Hand-drawn ink outlines with slight wobble. NOT clean digital lines, NOT CGI. Authentic hand-illustrated quality"
+    fantasy: "A scanned page from a vintage 1980s hand-painted children's book. Thick gouache and watercolor on grainy cream paper, rough visible brushstrokes, paint bleeding at edges, slightly uneven color fills, paper texture showing through thin washes. Warm muted earthy palette like ochre, burnt sienna, sage green, dusty blue. Soft imperfect hand-drawn outlines. Style of classic European picture book illustrators. Analog traditional media artwork scan, NOT digital, NOT CGI, NOT 3D, NOT vector, NOT clean lines",
+    realistic: "A scanned watercolor illustration from a handmade children's picture book. Wet-on-wet watercolor technique on cold-pressed paper, visible paper grain and paint puddles, soft color bleeding between areas, pencil sketch lines visible underneath paint. Muted natural palette. Traditional analog artwork scan, NOT digital rendering"
   },
   anime: {
     fantasy: "Anime-inspired digital illustration, vibrant colors, expressive characters with large eyes. Style like Studio Ghibli or Makoto Shinkai. Cinematic lighting, magical atmosphere. Professional animation quality",
@@ -302,7 +302,7 @@ async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleK
   if (!token || !portraitUrl) return null;
   const shortStyle = artStyleKey === "anime" ? "Anime children's illustration." 
     : artStyleKey === "realistic" ? "Realistic children's book illustration." 
-    : "Gouache painting, children's book, visible brushstrokes, textured paper.";
+    : "Scanned gouache painting from vintage children's book, rough brushstrokes, paper texture.";
   const shortScene = scene.split(/[.!]/).slice(0, 2).join(". ").trim().slice(0, 200);
   // Detect negative emotion and add anti-smile reinforcement
   const negWords = /frown|tear|cry|sad|scared|afraid|angry|worried|lonely|upset|nervous|anxious|hurt|pain|lost|confused|guilt|shame/i;
