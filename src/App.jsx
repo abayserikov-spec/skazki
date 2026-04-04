@@ -341,31 +341,29 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
     return [sentences.slice(0, mid).join("").trim(), sentences.slice(mid).join("").trim()];
   };
 
-  const ImgBlock = ({ big }) => (
-    <div style={{ flex: big ? "1 1 0" : "0 0 auto", display: "flex", justifyContent: "center", minHeight: 0, maxHeight: big ? "50%" : "40%" }}>
-      <div style={{ width: "88%", maxHeight: "100%", aspectRatio: big ? "3/2" : "16/10", overflow: "hidden", ...frame, background: "#f5f5f5", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "relative" }}>
-        {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1rem", opacity: .35 }}>🎨</span></div>
-        : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
-        : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: "1.2rem", opacity: .1 }}>🖼</span></div>}
-      </div>
-    </div>
-  );
 
   // Auto-size font: shorter text = bigger font, longer = smaller
   const autoFontSize = (text) => {
-    if (!text) return 11;
+    if (!text) return 9;
     const len = text.length;
-    if (len < 80) return 13;
-    if (len < 120) return 12;
-    if (len < 180) return 11;
-    if (len < 250) return 10;
-    if (len < 350) return 9;
-    return 8;
+    if (len < 60) return 11;
+    if (len < 100) return 10;
+    if (len < 160) return 9;
+    if (len < 240) return 8;
+    return 7;
   };
 
-  const TextBlock = ({ text, flex1 }) => (
-    <div style={{ flex: flex1 ? "1 1 0" : "0 0 auto", overflow: "hidden", padding: "0 6px", minHeight: 0 }}>
-      <p style={{ fontSize: autoFontSize(text) + "px", lineHeight: 1.55, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1em" }}>{text}</p>
+  const ImgBlock = ({ big }) => (
+    <div style={{ width: "88%", margin: "0 auto", height: big ? 190 : 160, overflow: "hidden", ...frame, background: "#f5f5f5", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "relative", flexShrink: 0 }}>
+      {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 12, opacity: .35 }}>🎨</span></div>
+      : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
+      : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 14, opacity: .1 }}>🖼</span></div>}
+    </div>
+  );
+
+  const TextBlock = ({ text }) => (
+    <div style={{ overflow: "hidden", padding: "2px 6px", flex: "1 1 0", minHeight: 0 }}>
+      <p style={{ fontSize: autoFontSize(text), lineHeight: 1.5, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1em" }}>{text}</p>
     </div>
   );
 
@@ -376,10 +374,10 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
       {page ? (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "8px 10px 4px", gap: 3, overflow: "hidden" }}>
           <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: "8px", color: "#b89b78", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
-          {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text} flex1/></>}
-          {layout === "text-top" && <><TextBlock text={page.text} flex1/><ImgBlock/></>}
-          {layout === "img-big" && <><ImgBlock big/><div style={{ padding: "0 6px", overflow: "hidden", flex: "1 1 0", minHeight: 0 }}><p style={{ fontSize: (autoFontSize(page.text) - 1) + "px", lineHeight: 1.5, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "1em" }}>{page.text}</p></div></>}
-          {layout === "text-img-text" && (() => { const [t1, t2] = splitText(page.text); return <><TextBlock text={t1}/><ImgBlock/><TextBlock text={t2} flex1/></>; })()}
+          {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text}/></>}
+          {layout === "text-top" && <><TextBlock text={page.text}/><ImgBlock/></>}
+          {layout === "img-big" && <><ImgBlock big/><TextBlock text={page.text}/></>}
+          {layout === "text-img-text" && (() => { const [t1, t2] = splitText(page.text); return <><TextBlock text={t1}/><ImgBlock/><TextBlock text={t2}/></>; })()}
           <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: "7px", color: "#c4b498", padding: "0 8px", fontFamily: BOOK_FONT }}>{pageNum}</div>
         </div>
       ) : isBlurred ? (
