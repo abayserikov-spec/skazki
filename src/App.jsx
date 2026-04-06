@@ -113,6 +113,84 @@ function AnimBar({ color, pct, delay = 0 }) {
   return <div style={{ height: 8, borderRadius: 8, background: T.border, overflow: "hidden" }}><div style={{ height: "100%", borderRadius: 8, width: `${w}%`, background: color, transition: "width 1.2s cubic-bezier(.22,1,.36,1)" }} /></div>;
 }
 
+// ─── BOOK IMAGE FRAMES ───
+const FRAME_STYLES = [
+  { borderRadius: "12px", transform: "none" },
+  { borderRadius: "50% 50% 50% 50% / 60% 60% 40% 40%", transform: "none" },
+  { borderRadius: "20px 20px 50% 50%", transform: "none" },
+  { borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%", transform: "none" },
+  { borderRadius: "50%", transform: "none" },
+  { borderRadius: "16px", transform: "rotate(-2deg)" },
+];
+
+// ─── BOOK PAGE (forwardRef for react-flipbook) ───
+const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgLoading, lang }, ref) => {
+  const BOOK_FONT = "'Literata', Georgia, serif";
+  const LAYOUTS = ["img-top", "text-img-text", "img-big", "text-top", "img-top", "img-big"];
+  const layout = LAYOUTS[(pageNum - 1) % LAYOUTS.length];
+  const frame = FRAME_STYLES[(pageNum - 1) % FRAME_STYLES.length];
+  const side = pageNum % 2 === 1 ? "left" : "right";
+  const imgUrl = isCurrent ? (curImg || page?.imgUrl) : page?.imgUrl;
+  const isImgLoading = isCurrent && imgLoading && !imgUrl;
+
+  const splitText = (text) => {
+    if (!text) return ["", ""];
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    if (sentences.length < 2) return [text, ""];
+    const mid = Math.ceil(sentences.length / 2);
+    return [sentences.slice(0, mid).join("").trim(), sentences.slice(mid).join("").trim()];
+  };
+
+  const autoFontSize = (text) => {
+    if (!text) return 13;
+    const len = text.length;
+    if (len < 80) return 16;
+    if (len < 140) return 14;
+    if (len < 200) return 13;
+    if (len < 280) return 12;
+    return 11;
+  };
+
+  const ImgBlock = ({ big }) => (
+    <div style={{ width: "88%", margin: "0 auto", height: big ? 150 : 130, overflow: "hidden", ...frame, background: T.bgMuted, boxShadow: T.shadowSm, position: "relative", flexShrink: 0 }}>
+      {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={14} color={T.tx3} style={{ animation: "spin .8s linear infinite" }} /></div>
+      : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
+      : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Image size={14} color={T.tx3} style={{ opacity: 0.3 }} /></div>}
+    </div>
+  );
+
+  const TextBlock = ({ text }) => (
+    <div style={{ overflow: "hidden", padding: "2px 6px", flex: "1 1 auto", minHeight: 20 }}>
+      <p style={{ fontSize: autoFontSize(text), lineHeight: 1.45, color: T.tx, fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "0.8em" }}>{text}</p>
+    </div>
+  );
+
+  return (
+    <div ref={ref} style={{ width: "100%", height: "100%", background: "#fff", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
+      {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 15, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.03), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
+      {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 15, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
+      {page ? (
+        <div style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "8px 10px 4px", gap: 3, overflow: "hidden", boxSizing: "border-box" }}>
+          <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: 11, color: T.tx3, fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || ''}</span></div>
+          {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text}/></>}
+          {layout === "text-top" && <><TextBlock text={page.text}/><ImgBlock/></>}
+          {layout === "img-big" && <><ImgBlock big/><TextBlock text={page.text}/></>}
+          {layout === "text-img-text" && (() => { const [t1, t2] = splitText(page.text); return <><TextBlock text={t1}/><ImgBlock/><TextBlock text={t2}/></>; })()}
+          <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: 9, color: T.tx3, padding: "0 8px", fontFamily: BOOK_FONT }}>{pageNum}</div>
+        </div>
+      ) : isBlurred ? (
+        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ textAlign: "center", opacity: .3 }}><BookOpen size={28} style={{ opacity: .4, marginBottom: 8, color: T.tx3 }}/><div style={{ fontSize: 11, color: T.tx3, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
+        </div>
+      ) : (
+        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <BookOpen size={22} color={T.tx3} style={{ opacity: .15 }}/>
+        </div>
+      )}
+    </div>
+  );
+});
+
 // ═══════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════
@@ -168,8 +246,13 @@ export default function App() {
   const [sfxEnabled, setSfxEnabled] = useState(true);
   const sfxRef = useRef(null);
   const sfxCacheRef = useRef(new Map());
+  
+  // Book
+  const bookRef = useRef(null);
+  const prevPageCountRef = useRef(0);
 
   const L = I18N[lang] || I18N.ru;
+  const fmtT = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
 
   // ── Init ──
   useEffect(() => { (async () => {
@@ -278,6 +361,18 @@ export default function App() {
       if (last && !last.imgUrl) setPages(p => { const u = [...p]; u[u.length-1] = { ...u[u.length-1], imgUrl: curImg }; return u; });
     }
   }, [curImg, curPage, pages.length]);
+
+  // ── Auto-flip book to latest spread ──
+  const allPagesLen = curPage ? pages.length + 1 : pages.length;
+  useEffect(() => {
+    if (view !== "session") return;
+    if (allPagesLen > prevPageCountRef.current && allPagesLen > 1 && bookRef.current) {
+      const target = allPagesLen - 1;
+      const spreadPage = target % 2 === 0 ? target : target - 1;
+      setTimeout(() => { try { bookRef.current?.flip(spreadPage); } catch {} }, 300);
+    }
+    prevPageCountRef.current = allPagesLen;
+  }, [allPagesLen, view]);
 
   // ── Save helpers ──
   const saveRepToken = async v => { setRepToken(v); await ST.set("repToken", v); };
@@ -661,130 +756,131 @@ export default function App() {
   );
 
   // ═══════════════════════════════════
-  // SESSION (Mobile-first portrait)
+  // SESSION (Flipbook)
   // ═══════════════════════════════════
   if (view === "session") {
-    const allPages = curPage ? [...pages, { ...curPage, _isCurrent: true }] : [...pages];
+    const allPages = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
     const totalReady = allPages.length;
     const showChoices = curPage && !curPage.isEnd && textDone && !loading && !sel;
     const showEnd = curPage && curPage.isEnd;
+    const childName = activeChild?.name || "";
+    const flipNext = () => { try { bookRef.current?.flipNext(); } catch {} };
+    const flipPrev = () => { try { bookRef.current?.flipPrev(); } catch {} };
 
     return (
-      <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body, position: "relative" }}>
-        <style>{CSS}</style>
-        <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 24px" }}>
-          {/* Top bar */}
-          <AnimIn>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <PillBtn variant="subtle" onClick={() => setView("dashboard")} style={{ padding: "8px 12px", borderRadius: T.r }}><ArrowLeft size={14} /></PillBtn>
-              <ProgressBar current={totalReady} total={TOTAL_PAGES} />
-              <div style={{ display: "flex", gap: 6 }}>
-                <PillBtn variant="subtle" onClick={() => { if (speaking) stopSpeak(); else if (curPage?.text) speakText(curPage.tts_text || curPage.text); }} style={{ padding: "8px", borderRadius: T.r }}>
-                  {speaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                </PillBtn>
-              </div>
-            </div>
-          </AnimIn>
+    <div style={{ height: "100vh", background: T.bg, fontFamily: T.body, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <style>{CSS}</style>
+      {showSettings && <SettingsPanel />}
 
-          {/* Loading state */}
-          {loading && totalReady === 0 && (
-            <div style={{ textAlign: "center", padding: "80px 0" }}>
-              <Loader2 size={28} color={T.accent} style={{ animation: "spin .8s linear infinite", marginBottom: 14 }} />
-              <p style={{ fontFamily: T.display, fontSize: 15, color: T.tx3, fontStyle: "italic" }}>{L.creatingStory} {activeChild?.name}...</p>
-              {error && <div style={{ marginTop: 16, padding: "12px 16px", background: T.coralBg, borderRadius: T.r2, border: `1px solid rgba(255,107,138,0.15)`, fontSize: 13, color: T.coral }}>{error}
-                <PillBtn variant="coral" onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: [], choice: null, charDesc, lang }, antKey).then(r => { if (r.characterDesc) setCharDesc(r.characterDesc); setCurPage(r); setLoading(false); }).catch(() => { setError("Retry failed."); setLoading(false); }); }} style={{ marginTop: 8, padding: "8px 18px", fontSize: 12 }}>Retry</PillBtn>
-              </div>}
-            </div>
-          )}
-
-          {/* Story content */}
-          {curPage && (
-            <>
-              {/* Illustration */}
-              <AnimIn delay={0.05}>
-                <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 20, overflow: "hidden", position: "relative", background: "linear-gradient(135deg,#2A3D2A,#3D5A3D)", marginBottom: 20 }}>
-                  {curImg ? (
-                    <img src={curImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", animation: "kenburns 20s ease-in-out infinite alternate" }} />
-                  ) : imgLoading ? (
-                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
-                      <Loader2 size={24} color="rgba(255,255,255,0.5)" style={{ animation: "spin .8s linear infinite" }} />
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{lang === "ru" ? "Рисуем сцену..." : "Drawing scene..."}</span>
-                    </div>
-                  ) : (
-                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Image size={24} color="rgba(255,255,255,0.15)" />
-                    </div>
-                  )}
-                </div>
-              </AnimIn>
-
-              {/* Chapter title & text */}
-              <AnimIn delay={0.1}>
-                <h2 style={{ fontFamily: T.display, fontStyle: "italic", fontWeight: 400, fontSize: 20, color: T.accent, marginBottom: 12 }}>{curPage.title}</h2>
-                <p style={{ fontFamily: T.story, fontSize: 16, lineHeight: 1.8, color: T.tx2, marginBottom: 24 }}>{curPage.text}</p>
-              </AnimIn>
-
-              {/* Choices */}
-              {showChoices && (
-                <AnimIn delay={0.2}>
-                  <SectionLabel>{L.whatNext}</SectionLabel>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {curPage.choices?.map((ch, i) => {
-                      const valInfo = VALS[ch.value] || {};
-                      const isPos = valInfo.pos !== false;
-                      return (
-                        <div key={i} onClick={() => pickChoice(ch)} style={{
-                          padding: "16px 18px", borderRadius: 20, cursor: sel ? "default" : "pointer",
-                          background: sel === ch.label ? T.accentBg : T.bgCard,
-                          border: `2px solid ${sel === ch.label ? T.accent : T.border}`,
-                          display: "flex", alignItems: "center", gap: 14, transition: "all .25s",
-                        }}>
-                          <IconCircle icon={isPos ? TrendingUp : TrendingDown} size={40}
-                            bg={isPos ? T.tealBg : T.coralBg}
-                            color={isPos ? T.teal : T.coral} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700, fontSize: 14, color: T.tx }}>{ch.label}</div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: isPos ? T.teal : T.coral, marginTop: 2 }}>
-                              {lang === "ru" ? valInfo.n : (valInfo.nEn || ch.value)}
-                            </div>
-                          </div>
-                          <ChevronRight size={16} color={T.tx3} />
-                        </div>
-                      );
-                    })}
-                    {/* Custom input */}
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <input className="skazka-input" value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder={L.customPlaceholder} style={{ flex: 1, padding: "12px 16px", fontSize: 13 }} />
-                      <PillBtn onClick={submitCustom} disabled={!customInput.trim()} style={{ padding: "12px 16px", borderRadius: 14, fontSize: 14 }}><Send size={14} /></PillBtn>
-                    </div>
-                  </div>
-                </AnimIn>
-              )}
-
-              {/* End state */}
-              {showEnd && (
-                <AnimIn delay={0.2}>
-                  <div style={{ textAlign: "center", padding: "20px 0" }}>
-                    <Award size={32} color={T.accent} style={{ marginBottom: 12 }} />
-                    <p style={{ fontFamily: T.display, fontSize: 18, color: T.accent, fontWeight: 600, fontStyle: "italic", marginBottom: 16 }}>{L.end}</p>
-                    <PillBtn onClick={finishSession} disabled={imgLoading} style={{ minWidth: 200 }}>
-                      <BarChart3 size={16} />{L.viewReport}
-                    </PillBtn>
-                  </div>
-                </AnimIn>
-              )}
-
-              {/* Loading next page */}
-              {loading && totalReady > 0 && (
-                <div style={{ textAlign: "center", padding: "20px 0" }}>
-                  <Loader2 size={20} color={T.accent} style={{ animation: "spin .8s linear infinite", marginBottom: 8 }} />
-                  <p style={{ fontSize: 12, color: T.tx3, fontStyle: "italic" }}>{L.continuing}</p>
-                </div>
-              )}
-            </>
-          )}
+      {/* Top bar */}
+      <div style={{ padding: "8px 16px", background: "rgba(248,247,252,0.95)", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <BookOpen size={16} color={T.accent} />
+          <span style={{ fontFamily: T.display, fontSize: 14, fontWeight: 500, color: T.tx, fontStyle: "italic" }}>{childName}</span>
+          <span style={{ fontSize: 11, color: T.tx3, fontFamily: "monospace" }}>{fmtT(timer)}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, color: T.tx3 }}>{totalReady}/{TOTAL_PAGES}</span>
+          <PillBtn variant="ghost" onClick={() => { if (curPage) finishSession(); else setView("dashboard"); }} style={{ padding: "5px 14px", fontSize: 12 }}>{L.finish}</PillBtn>
         </div>
       </div>
+
+      {/* Main: LEFT | BOOK | RIGHT */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
+        {/* LEFT: Nav + TTS */}
+        <div style={{ width: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "12px 4px", flexShrink: 0 }}>
+          <button onClick={flipPrev} style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.bgCard, color: T.tx3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowLeft size={16}/></button>
+          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{ width: 32, height: 32, borderRadius: "50%", border: `1px solid ${T.border}`, background: speaking ? T.accentBg : T.bgCard, color: speaking ? T.accent : T.tx3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{speaking ? <VolumeX size={16}/> : <Volume2 size={16}/>}</button>
+        </div>
+
+        {/* CENTER: Book */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 0" }}>
+          {loading && totalReady === 0 ? (
+            <div style={{ textAlign: "center" }}>
+              <Loader2 size={28} color={T.accent} style={{ animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
+              <p style={{ fontFamily: T.display, fontSize: 14, color: T.tx3, fontStyle: "italic" }}>
+                {L.creatingStory} {childName}...
+              </p>
+              {error && <div style={{ marginTop: 12, padding: "10px 14px", background: T.coralBg, borderRadius: T.r, border: `1px solid rgba(255,107,138,0.15)`, fontSize: 12, color: T.coral }}>
+                {error}
+                <PillBtn variant="coral" onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false); }).catch(() => { setError("Retry failed."); setLoading(false); }); }} style={{ marginTop: 8, padding: "6px 16px", fontSize: 11 }}>Retry</PillBtn>
+              </div>}
+            </div>
+          ) : (
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.05), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
+              <ReactFlipBook
+                key={`book-${allPages.map((p,i) => `${p?.text?.length||0}${p?.imgUrl?'I':'_'}${(i===totalReady-1 && curImg)?'C':''}`).join('-')}`}
+                ref={bookRef}
+                width={420} height={580} size="stretch"
+                minWidth={300} maxWidth={500} minHeight={400} maxHeight={680}
+                drawShadow={true} flippingTime={1200} usePortrait={false} showCover={false}
+                maxShadowOpacity={0.3} mobileScrollSupport={true}
+                startPage={Math.max(0, (totalReady > 1 ? (totalReady % 2 === 0 ? totalReady - 2 : totalReady - 1) : 0))}
+                style={{ boxShadow: T.shadowMd }}
+              >
+                {[0,1,2,3,4,5].map(i => {
+                  const pg = allPages[i] || null;
+                  const isCur = pg?._isCurrent || false;
+                  const isBlur = !pg && i > 0 && allPages[i-1] && i === totalReady;
+                  return <BookPage key={i} page={pg} pageNum={i + 1} isCurrent={isCur} isBlurred={isBlur} curImg={curImg} imgLoading={imgLoading} lang={lang} />;
+                })}
+              </ReactFlipBook>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Forward + Choices */}
+        <div style={{ width: 200, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 14px 12px 4px", flexShrink: 0, gap: 6 }}>
+          <button onClick={flipNext} style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.bgCard, color: T.tx3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px" }}><ArrowRight size={16}/></button>
+
+          {showEnd ? (
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontFamily: T.display, fontSize: 14, color: T.accent, fontWeight: 600, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
+              {imgLoading && <p style={{ fontSize: 10, color: T.tx3, marginBottom: 6 }}>{lang === "ru" ? "Ждём иллюстрацию..." : "Waiting..."}</p>}
+              <PillBtn onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "10px 14px", fontSize: 12 }}>
+                <BarChart3 size={14} />{L.viewReport}
+              </PillBtn>
+            </div>
+          ) : showChoices ? (
+            <div>
+              <div style={{ fontSize: 10, color: T.tx3, textAlign: "center", marginBottom: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>{L.whatNext}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {curPage.choices?.map((ch, i) => {
+                  const valInfo = VALS[ch.value] || {};
+                  const isPos = valInfo.pos !== false;
+                  return (
+                    <button key={i} onClick={() => pickChoice(ch)} disabled={!!sel || loading} style={{
+                      background: sel === ch.label ? T.accentBg : T.bgCard,
+                      border: `1.5px solid ${sel === ch.label ? T.accent : T.border}`,
+                      borderRadius: T.r, padding: "8px 10px", display: "flex", alignItems: "center", gap: 8,
+                      fontSize: 12, fontWeight: 600, fontFamily: T.body, color: T.tx, textAlign: "left",
+                      cursor: sel ? "default" : "pointer", transition: "all .25s",
+                    }}>
+                      {isPos ? <TrendingUp size={12} color={T.teal} style={{ flexShrink: 0 }} /> : <TrendingDown size={12} color={T.coral} style={{ flexShrink: 0 }} />}
+                      <span style={{ flex: 1, lineHeight: 1.3 }}>{ch.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 9, color: T.tx3, textAlign: "center", marginBottom: 4 }}>{L.orCustom}</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder="..." style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: `1px solid ${T.border}`, background: T.bgCard, color: T.tx, fontSize: 12, fontFamily: T.body, outline: "none" }}/>
+                  <button onClick={submitCustom} disabled={!customInput.trim()} style={{ padding: "7px 12px", borderRadius: 8, border: "none", background: customInput.trim() ? T.accent : T.bgMuted, color: customInput.trim() ? "#fff" : T.tx3, fontSize: 12, fontWeight: 700, fontFamily: T.body, cursor: customInput.trim() ? "pointer" : "default" }}><ChevronRight size={14}/></button>
+                </div>
+              </div>
+            </div>
+          ) : loading && totalReady > 0 ? (
+            <div style={{ textAlign: "center" }}>
+              <Loader2 size={16} color={T.accent} style={{ animation: "spin .8s linear infinite", margin: "0 auto 6px" }}/>
+              <p style={{ fontSize: 11, color: T.tx3, fontStyle: "italic" }}>{L.continuing}</p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
     );
   }
 
