@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, forwardRef } from "react";
 import { ReactFlipBook } from "@vuvandinh203/react-flipbook";
+import { Settings, LogOut, Plus, Check, User, BookOpen, Clock, ChevronRight, Volume2, VolumeX, Music, Sparkles, Palette, Play, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
 /* ══════════════════════════════════════════════════════════
    СКАЗКА ВМЕСТЕ — Platform v3
@@ -51,11 +52,11 @@ const I18N = {
     interactiveStories: "Интерактивные сказки",
     skazka: "Сказка", vmeste: "Вместе",
     aiCreates: "ИИ создаёт уникальную сказку.", readTogether: "Вы читаете вместе с ребёнком.",
-    yourName: "Ваше имя", email: "Email", login: "Войти →",
+    yourName: "Ваше имя", email: "Email", login: "Войти",
     back: "← Назад", dashboard: "Dashboard", hello: "Привет",
     children: "Дети", addChild: "+ Добавить", childName: "Имя ребёнка", years: "лет",
     addChildPlaceholder: "Добавьте ребёнка, чтобы начать",
-    newSession: "Новая сессия", forWhom: "Для кого?", createStory: "Создать историю →",
+    newSession: "Новая сессия", forWhom: "Для кого?", createStory: "Создать историю",
     history: "📚 История", min: "мин", pages: "стр.",
     storyFor: "История для", whatAbout: "О чём будет история? Выберите идею или придумайте свою",
     storyIdeas: "✨ Идеи для истории", more: "🔄 Ещё", generating: "Генерируем идеи…",
@@ -63,19 +64,19 @@ const I18N = {
     writeYourOwn: "✏️ Или напишите свою",
     premisePlaceholder: "Например: Мальчик хочет выиграть школьный чемпионат по шахматам...",
     anyGenre: "Реалистичная, фэнтези, фантастика — что угодно.",
-    startStory: "Начать историю →", clear: "Очистить",
-    artStyle: "🎨 Стиль иллюстраций",
+    startStory: "Начать историю", clear: "Очистить",
+    artStyle: "Стиль иллюстраций",
     styleBook: "Книжная иллюстрация", styleBookDesc: "Тёплая акварель, как в детских книгах",
     styleAnime: "Аниме", styleAnimeDesc: "Яркий стиль как Ghibli / Shinkai",
     styleRealistic: "Реалистичный", styleRealisticDesc: "Фотореалистичный стиль",
-    settings: "⚙️ Настройки", done: "Готово", logout: "Выйти",
+    settings: "Настройки", done: "Готово", logout: "Выйти",
     creatingStory: "Создаём сказку", continuing: "Продолжение…",
-    end: "✨ Конец", viewReport: "Смотреть отчёт →",
+    end: "Конец", viewReport: "Смотреть отчёт",
     orCustom: "или придумайте свой вариант:", heroAction: "Что хочет сделать герой?..",
     speak: "Озвучить", stop: "Стоп", auto: "авто", sounds: "звуки", quiet: "тихо",
     sessionReport: "Отчёт сессии", journey: "Путешествие", choices: "выборов",
     choicesOf: "💎 Выборы", fullStory: "📜 Сказка целиком", decisionPath: "🧭 Путь выборов",
-    newSessionBtn: "Новая сессия →", dashboardBtn: "Дашборд",
+    newSessionBtn: "Новая сессия", dashboardBtn: "Дашборд",
     disclaimer: "🛡️ Все истории создаются ИИ с фильтрацией контента по возрасту. Контент безопасен для детей, но рекомендуется присутствие родителя.",
     disclaimerEn: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
     finish: "Завершить", page: "стр.", of: "из",
@@ -86,11 +87,11 @@ const I18N = {
     interactiveStories: "Interactive Fairy Tales",
     skazka: "Story", vmeste: "Together",
     aiCreates: "AI creates a unique story.", readTogether: "Read it together with your child.",
-    yourName: "Your name", email: "Email", login: "Enter →",
+    yourName: "Your name", email: "Email", login: "Enter",
     back: "← Back", dashboard: "Dashboard", hello: "Hello",
     children: "Children", addChild: "+ Add", childName: "Child's name", years: "years old",
     addChildPlaceholder: "Add a child to begin",
-    newSession: "New Session", forWhom: "For whom?", createStory: "Create Story →",
+    newSession: "New Session", forWhom: "For whom?", createStory: "Create Story",
     history: "📚 History", min: "min", pages: "p.",
     storyFor: "Story for", whatAbout: "What will the story be about? Choose an idea or write your own",
     storyIdeas: "✨ Story Ideas", more: "🔄 More", generating: "Generating ideas…",
@@ -98,19 +99,19 @@ const I18N = {
     writeYourOwn: "✏️ Or write your own",
     premisePlaceholder: "E.g.: A boy wants to win the school chess tournament but his rival is his best friend...",
     anyGenre: "Realistic, fantasy, sci-fi — anything goes.",
-    startStory: "Start Story →", clear: "Clear",
-    artStyle: "🎨 Illustration Style",
+    startStory: "Start Story", clear: "Clear",
+    artStyle: "Illustration Style",
     styleBook: "Book Illustration", styleBookDesc: "Warm watercolor, like children's books",
     styleAnime: "Anime", styleAnimeDesc: "Bright Ghibli / Shinkai style",
     styleRealistic: "Realistic", styleRealisticDesc: "Photorealistic style",
-    settings: "⚙️ Settings", done: "Done", logout: "Log out",
+    settings: "Settings", done: "Done", logout: "Log out",
     creatingStory: "Creating story", continuing: "Continuing…",
-    end: "✨ The End", viewReport: "View Report →",
+    end: "The End", viewReport: "View Report",
     orCustom: "or write your own action:", heroAction: "What does the hero want to do?..",
     speak: "Listen", stop: "Stop", auto: "auto", sounds: "sounds", quiet: "quiet",
     sessionReport: "Session Report", journey: "Journey of", choices: "choices",
     choicesOf: "💎 Choices by", fullStory: "📜 Full Story", decisionPath: "🧭 Decision Path",
-    newSessionBtn: "New Session →", dashboardBtn: "Dashboard",
+    newSessionBtn: "New Session", dashboardBtn: "Dashboard",
     disclaimer: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
     disclaimerEn: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
     finish: "Finish", page: "p.", of: "of",
@@ -391,7 +392,7 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
       {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 15, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
       {page ? (
         <div style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "8px 10px 4px", gap: 3, overflow: "hidden", boxSizing: "border-box" }}>
-          <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: 11, color: "#95A5A6", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || "✦"}</span></div>
+          <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: 11, color: "#95A5A6", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || ''}</span></div>
           {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text}/></>}
           {layout === "text-top" && <><TextBlock text={page.text}/><ImgBlock/></>}
           {layout === "img-big" && <><ImgBlock big/><TextBlock text={page.text}/></>}
@@ -400,11 +401,11 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
         </div>
       ) : isBlurred ? (
         <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-          <div style={{ textAlign: "center", opacity: .3 }}><div style={{ fontSize: "2rem", marginBottom: 8 }}>📖</div><div style={{ fontSize: ".65rem", color: "#7F8C8D", fontFamily: BOOK_FONT, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
+          <div style={{ textAlign: "center", opacity: .3 }}><BookOpen size={28} style={{ opacity: .4, marginBottom: 8 }}/><div style={{ fontSize: ".65rem", color: "#7F8C8D", fontFamily: BOOK_FONT, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
         </div>
       ) : (
         <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-          <div style={{ opacity: .15, fontSize: "1.5rem" }}>📖</div>
+          <BookOpen size={22} style={{ opacity: .15 }}/>
         </div>
       )}
     </div>
@@ -1222,12 +1223,12 @@ export default function App() {
         {/* API key prompt */}
         {(!antKey || !repToken) && <div onClick={() => setShowSettings(true)} style={{ background: t.accentBg, border: `1px solid ${t.accent}25`, borderRadius: 16, padding: "14px 18px", marginBottom: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 12, animation: "fu .5s ease-out", transition: "transform .3s" }}
           onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={e => e.currentTarget.style.transform = ""}>
-          <span style={{ fontSize: "1.3rem" }}>🎨</span>
+          <Palette size={20} style={{ color: t.accent }}/>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: ".82rem", fontWeight: 600, color: t.tx, marginBottom: 2 }}>Подключите Flux 2 Pro</div>
             <div style={{ fontSize: ".68rem", color: t.tx3, fontWeight: 300 }}>Добавьте API-ключ Replicate для генерации иллюстраций</div>
           </div>
-          <span style={{ color: t.accent, fontSize: ".75rem", fontWeight: 600 }}>→</span>
+          <ChevronRight size={16} style={{ color: t.accent }}/>
         </div>}
 
         {/* Children */}
@@ -1241,13 +1242,13 @@ export default function App() {
             <select value={newAge} onChange={e => setNewAge(e.target.value)} style={{ padding: "11px", borderRadius: 14, border: `1.5px solid ${t.gb}`, background: dark ? t.bg2 : "#fff", color: t.tx, fontFamily: FN.b, fontSize: ".85rem" }}>
               {[3,4,5,6,7,8,9,10].map(a => <option key={a} value={a}>{a} лет</option>)}
             </select>
-            <button onClick={addChild} style={{ padding: "11px 18px", borderRadius: 14, background: t.accent, color: "#fff", border: "none", fontWeight: 600, fontFamily: FN.b, fontSize: ".88rem", cursor: "pointer" }}>✓</button>
+            <button onClick={addChild} style={{ padding: "11px 18px", borderRadius: 14, background: t.accent, color: "#fff", border: "none", fontWeight: 600, fontFamily: FN.b, fontSize: ".88rem", cursor: "pointer" }}><Check size={16}/></button>
           </div>}
           {children.length === 0
             ? <p style={{ fontSize: ".83rem", color: t.tx3, textAlign: "center", padding: 14, fontWeight: 300 }}>{L.addChildPlaceholder}</p>
             : <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {children.map(ch => <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", background: t.blushBg, borderRadius: 14, border: `1px solid ${t.gb}` }}>
-                  <span style={{ fontSize: "1rem" }}>👶</span>
+                  <User size={16} style={{ color: t.accent, opacity: .7 }}/>
                   <div><div style={{ fontSize: ".83rem", fontWeight: 600, color: t.tx }}>{ch.name}</div><div style={{ fontSize: ".64rem", color: t.tx3, fontWeight: 300 }}>{ch.age} лет</div></div>
                 </div>)}
               </div>}
@@ -1270,7 +1271,7 @@ export default function App() {
           <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, marginBottom: 16, color: t.tx }}>{L.history}</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {sessions.slice(0, 8).map((s, i) => <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: t.blushBg, borderRadius: 14, border: `1px solid ${t.gb}`, animation: `si .35s ${i*.05}s ease-out both` }}>
-              <span style={{ fontSize: "1.1rem" }}>{s.theme?.emoji || "📖"}</span>
+              <BookOpen size={18} style={{ color: t.blush, opacity: .7 }}/>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: ".83rem", fontWeight: 600, color: t.tx }}>{s.theme?.name} — {s.child?.name}</div>
                 <div style={{ fontSize: ".66rem", color: t.tx3, fontWeight: 300 }}>{new Date(s.date).toLocaleDateString("ru")} · {Math.ceil(s.duration/60)} мин · {s.pages?.length || 0} стр.</div>
@@ -1427,9 +1428,9 @@ export default function App() {
 
         {/* LEFT: Nav + TTS */}
         <div style={{ width: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "12px 4px", flexShrink: 0 }}>
-          <button onClick={flipPrev} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: "rgba(255,255,255,0.5)", color: "#7F8C8D", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>◀</button>
-          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: speaking ? "rgba(232,93,117,0.1)" : "rgba(255,255,255,0.5)", color: speaking ? "#E85D75" : "#7F8C8D", fontSize: ".8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: speaking ? "pulse 2s ease-in-out infinite" : "none" }}>{speaking ? "⏹" : "🔊"}</button>
-          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.06)", background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)", color: sfxEnabled ? "#5a8a5e" : "#7F8C8D", fontSize: ".65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{sfxLoading ? "⏳" : sfxEnabled ? "🎵" : "🔇"}</button>}
+          <button onClick={flipPrev} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: "rgba(255,255,255,0.5)", color: "#7F8C8D", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowLeft size={16}/></button>
+          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: speaking ? "rgba(232,93,117,0.1)" : "rgba(255,255,255,0.5)", color: speaking ? "#E85D75" : "#7F8C8D", fontSize: ".8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: speaking ? "pulse 2s ease-in-out infinite" : "none" }}>{speaking ? <VolumeX size={16}/> : <Volume2 size={16}/>}</button>
+          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.06)", background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)", color: sfxEnabled ? "#5a8a5e" : "#7F8C8D", fontSize: ".65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{sfxEnabled ? <Music size={14}/> : <VolumeX size={14}/>}</button>}
         </div>
 
         {/* CENTER: Book */}
@@ -1493,7 +1494,7 @@ export default function App() {
 
         {/* RIGHT: Forward + Choices */}
         <div style={{ width: 190, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 12px 12px 4px", flexShrink: 0, gap: 6 }}>
-          <button onClick={flipNext} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: "rgba(255,255,255,0.5)", color: "#7F8C8D", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 4px" }}>▶</button>
+          <button onClick={flipNext} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: "rgba(255,255,255,0.5)", color: "#7F8C8D", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 4px" }}><ArrowRight size={16}/></button>
 
           {showEnd ? (
             <div style={{ textAlign: "center" }}>
@@ -1514,7 +1515,7 @@ export default function App() {
                 <div style={{ fontSize: ".45rem", color: "#95A5A6", textAlign: "center", marginBottom: 3, fontFamily: FN.b }}>{L.orCustom}</div>
                 <div style={{ display: "flex", gap: 4 }}>
                   <input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder="..." style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "1px solid rgba(45,52,54,0.08)", background: "rgba(255,255,255,0.65)", color: "#2D3436", fontSize: ".7rem", fontFamily: FN.b, outline: "none" }}/>
-                  <button onClick={submitCustom} disabled={!customInput.trim()} style={{ padding: "6px 10px", borderRadius: 8, border: "none", background: customInput.trim() ? "#E85D75" : "rgba(45,52,54,0.05)", color: customInput.trim() ? "#fff" : "#95A5A6", fontSize: ".7rem", fontWeight: 600, fontFamily: FN.b, cursor: customInput.trim() ? "pointer" : "default" }}>→</button>
+                  <button onClick={submitCustom} disabled={!customInput.trim()} style={{ padding: "6px 10px", borderRadius: 8, border: "none", background: customInput.trim() ? "#E85D75" : "rgba(45,52,54,0.05)", color: customInput.trim() ? "#fff" : "#95A5A6", fontSize: ".7rem", fontWeight: 600, fontFamily: FN.b, cursor: customInput.trim() ? "pointer" : "default" }}><ChevronRight size={14}/></button>
                 </div>
               </div>
             </div>

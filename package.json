@@ -11,6 +11,7 @@
   "dependencies": {
     "@vuvandinh203/react-flipbook": "^1.0.2",
     "framer-motion": "^12.38.0",
+    "lucide-react": "^1.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
