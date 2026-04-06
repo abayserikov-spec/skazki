@@ -113,22 +113,11 @@ function AnimBar({ color, pct, delay = 0 }) {
   return <div style={{ height: 8, borderRadius: 8, background: T.border, overflow: "hidden" }}><div style={{ height: "100%", borderRadius: 8, width: `${w}%`, background: color, transition: "width 1.2s cubic-bezier(.22,1,.36,1)" }} /></div>;
 }
 
-// ─── BOOK IMAGE FRAMES ───
-const FRAME_STYLES = [
-  { borderRadius: "12px", transform: "none" },
-  { borderRadius: "50% 50% 50% 50% / 60% 60% 40% 40%", transform: "none" },
-  { borderRadius: "20px 20px 50% 50%", transform: "none" },
-  { borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%", transform: "none" },
-  { borderRadius: "50%", transform: "none" },
-  { borderRadius: "16px", transform: "rotate(-2deg)" },
-];
-
 // ─── BOOK PAGE (forwardRef for react-flipbook) ───
 const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgLoading, lang }, ref) => {
   const BOOK_FONT = "'Literata', Georgia, serif";
   const LAYOUTS = ["img-top", "text-img-text", "img-big", "text-top", "img-top", "img-big"];
   const layout = LAYOUTS[(pageNum - 1) % LAYOUTS.length];
-  const frame = FRAME_STYLES[(pageNum - 1) % FRAME_STYLES.length];
   const side = pageNum % 2 === 1 ? "left" : "right";
   const imgUrl = isCurrent ? (curImg || page?.imgUrl) : page?.imgUrl;
   const isImgLoading = isCurrent && imgLoading && !imgUrl;
@@ -152,10 +141,25 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
   };
 
   const ImgBlock = ({ big }) => (
-    <div style={{ width: "88%", margin: "0 auto", height: big ? 150 : 130, overflow: "hidden", ...frame, background: T.bgMuted, boxShadow: T.shadowSm, position: "relative", flexShrink: 0 }}>
-      {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Loader2 size={14} color={T.tx3} style={{ animation: "spin .8s linear infinite" }} /></div>
-      : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
-      : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><Image size={14} color={T.tx3} style={{ opacity: 0.3 }} /></div>}
+    <div style={{
+      width: "92%", margin: "0 auto", height: big ? 160 : 140,
+      position: "relative", flexShrink: 0, overflow: "visible",
+    }}>
+      {isImgLoading ? (
+        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.3 }}>
+          <Loader2 size={14} color={T.tx3} style={{ animation: "spin .8s linear infinite" }} />
+        </div>
+      ) : imgUrl ? (
+        <img src={imgUrl} alt="" style={{
+          width: "100%", height: "100%", objectFit: "cover", display: "block",
+          maskImage: "radial-gradient(ellipse 85% 80% at 50% 50%, black 40%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 85% 80% at 50% 50%, black 40%, transparent 100%)",
+        }} loading="lazy"/>
+      ) : (
+        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.15 }}>
+          <Image size={14} color={T.tx3} />
+        </div>
+      )}
     </div>
   );
 
