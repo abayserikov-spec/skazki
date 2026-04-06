@@ -9,11 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vuvandinh203/react-flipbook": "^1.0.2",
-    "lucide-react": "^0.460.0",
-    "motion": "^12.0.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "motion": "^12.0.0",
+    "lucide-react": "^0.460.0",
+    "@vuvandinh203/react-flipbook": "^1.0.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

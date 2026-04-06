@@ -8,7 +8,7 @@ import {
   BookMarked, Star, Heart, Shield, Swords, TreePine, Rocket,
   GraduationCap, RefreshCw, X, Eye, Lightbulb, TrendingUp,
   TrendingDown, Award, MessageCircle, Send, Image, Mic, MicOff,
-  BookImage, Brush, Camera, Pencil, CircleDot, BarChart3
+  BookImage, Brush, Camera, Pencil, CircleDot, BarChart3, Map
 } from "lucide-react";
 
 import ST from "./lib/storage.js";
