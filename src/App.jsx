@@ -142,7 +142,7 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
 
   const ImgBlock = ({ big }) => (
     <div style={{
-      width: "92%", margin: "0 auto", height: big ? 160 : 140,
+      width: "100%", margin: "0 auto", height: big ? 180 : 155,
       position: "relative", flexShrink: 0, overflow: "visible",
     }}>
       {isImgLoading ? (
@@ -152,8 +152,10 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
       ) : imgUrl ? (
         <img src={imgUrl} alt="" style={{
           width: "100%", height: "100%", objectFit: "cover", display: "block",
-          maskImage: "radial-gradient(ellipse 85% 80% at 50% 50%, black 40%, transparent 100%)",
-          WebkitMaskImage: "radial-gradient(ellipse 85% 80% at 50% 50%, black 40%, transparent 100%)",
+          maskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 75%, transparent 100%), linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 75%, transparent 100%), linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
+          maskComposite: "intersect",
+          WebkitMaskComposite: "destination-in",
         }} loading="lazy"/>
       ) : (
         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.15 }}>
