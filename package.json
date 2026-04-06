@@ -1,7 +1,7 @@
 {
   "name": "skazka-vmeste",
   "private": true,
-  "version": "1.0.0",
+  "version": "4.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,13 +10,13 @@
   },
   "dependencies": {
     "@vuvandinh203/react-flipbook": "^1.0.2",
-    "framer-motion": "^12.38.0",
-    "lucide-react": "^1.7.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "lucide-react": "^0.460.0",
+    "motion": "^12.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.0",
-    "vite": "^5.0.0"
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.0"
   }
 }

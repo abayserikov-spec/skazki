@@ -1,575 +1,140 @@
 import { useState, useEffect, useRef, useCallback, useMemo, forwardRef } from "react";
+import { motion, useMotionValue, useAnimationFrame, useTransform, AnimatePresence } from "motion/react";
 import { ReactFlipBook } from "@vuvandinh203/react-flipbook";
-import { Settings, LogOut, Plus, Check, User, BookOpen, Clock, ChevronRight, Volume2, VolumeX, Music, Sparkles, Palette, Play, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import {
+  Settings, LogOut, Plus, Check, User, BookOpen, Clock,
+  ChevronRight, ChevronLeft, Volume2, VolumeX, Music, Sparkles, Palette,
+  Play, ArrowLeft, ArrowRight, Loader2, Globe, PenLine, Wand2,
+  BookMarked, Star, Heart, Shield, Swords, TreePine, Rocket,
+  GraduationCap, RefreshCw, X, Eye, Lightbulb, TrendingUp,
+  TrendingDown, Award, MessageCircle, Send, Image, Mic, MicOff,
+  BookImage, Brush, Camera, Pencil, CircleDot, BarChart3
+} from "lucide-react";
+
+import ST from "./lib/storage.js";
+import { TOTAL_PAGES, VALS, ART_STYLES, I18N } from "./lib/constants.js";
+import { genPage, genFirstImage, genCharPortrait, genNextImage } from "./lib/ai.js";
+import BlurText from "./components/reactbits/BlurText.jsx";
+import GradientText from "./components/reactbits/GradientText.jsx";
+import ShinyText from "./components/reactbits/ShinyText.jsx";
 
 /* ══════════════════════════════════════════════════════════
-   СКАЗКА ВМЕСТЕ — Platform v3
-   Тёплая палитра «Вечернее чтение»
-   Auth → Dashboard → Session → Report
-   
-   v3: Flux 2 Pro (Replicate) иллюстрации с character consistency,
-       свободный ответ, typewriter, прогресс, пересказ
+   СКАЗКА ВМЕСТЕ — Full Redesign v4
+   Clean light theme · No emojis · Lucide icons · React Bits
    ══════════════════════════════════════════════════════════ */
 
-// ── STORAGE ──
-const ST = {
-  async get(k){try{const v=localStorage.getItem("skazka_"+k);return v?JSON.parse(v):null}catch{return null}},
-  async set(k,v){try{localStorage.setItem("skazka_"+k,JSON.stringify(v))}catch{}},
-  async del(k){try{localStorage.removeItem("skazka_"+k)}catch{}},
+// ─── DESIGN TOKENS ───
+const T = {
+  bg: "#F8F7FC", bgCard: "#FFFFFF", bgHover: "#F3F1FA",
+  bgAccent: "#EEEAFC", bgMuted: "#F5F3FB",
+  tx: "#1E1B2E", tx2: "#4A4560", tx3: "#8E86A8", txWhite: "#FFFFFF",
+  accent: "#6C63FF", accentSoft: "#9B8AFF", accentBg: "#F0EDFF",
+  coral: "#FF6B8A", coralBg: "#FFF0F3",
+  teal: "#2EC4A0", tealBg: "#E8FBF5",
+  amber: "#F5A623", amberBg: "#FFF8EC",
+  border: "rgba(30,27,46,0.06)", borderMed: "rgba(30,27,46,0.10)",
+  borderFocus: "rgba(108,99,255,0.3)",
+  shadowSm: "0 1px 3px rgba(30,27,46,0.04),0 1px 2px rgba(30,27,46,0.02)",
+  shadowMd: "0 4px 16px rgba(30,27,46,0.06),0 1px 3px rgba(30,27,46,0.04)",
+  shadowLg: "0 8px 32px rgba(108,99,255,0.08),0 2px 8px rgba(30,27,46,0.04)",
+  r: 12, r2: 18, r3: 24, rF: 9999,
+  display: "'Fraunces', Georgia, serif",
+  body: "'Nunito', system-ui, sans-serif",
+  story: "'Literata', Georgia, serif",
 };
 
-// ── PALETTE ──
-const FN = { d: "'Cormorant Garamond', Georgia, serif", b: "'Outfit', system-ui, sans-serif" };
-const LIGHT = {
-  bg:"#FFFBF7", bg2:"#FFF5EE", bg3:"#FFEDE0",
-  tx:"#2D3436", tx2:"#4A4A5A", tx3:"#7F8C8D",
-  accent:"#E85D75", accentSoft:"#FF8FA3", accentBg:"#FFF0F3",
-  sage:"#00B894", sageSoft:"#55EFC4", sageBg:"#E8FFF5",
-  gold:"#FDCB6E", blush:"#A29BFE", blushBg:"#F0EDFF",
-  gb:"rgba(45,52,54,.08)", gl:"rgba(45,52,54,.025)", gl2:"rgba(45,52,54,.04)",
-  card:"linear-gradient(160deg,#FFFFFF,#FFFCFA,#FFF8F3)",
-  shadow:"0 12px 40px rgba(232,93,117,.08)",
-  storyTx:"#2D3436", ph:"#BDC3C7", selBg:"rgba(232,93,117,.08)",
-};
-const DARK = {
-  bg:"#1A1A2E", bg2:"#16213E", bg3:"#0F3460",
-  tx:"#ECF0F1", tx2:"#BDC3C7", tx3:"#7F8C8D",
-  accent:"#E85D75", accentSoft:"#FF8FA3", accentBg:"rgba(232,93,117,.12)",
-  sage:"#00B894", sageSoft:"#55EFC4", sageBg:"rgba(0,184,148,.1)",
-  gold:"#FDCB6E", blush:"#A29BFE", blushBg:"rgba(162,155,254,.08)",
-  gb:"rgba(236,240,241,.08)", gl:"rgba(236,240,241,.03)", gl2:"rgba(236,240,241,.05)",
-  card:"linear-gradient(160deg,#16213E,#1A1A2E,#0F3460)",
-  shadow:"0 16px 50px rgba(0,0,0,.4)",
-  storyTx:"#ECF0F1", ph:"#5D6D7E", selBg:"rgba(232,93,117,.12)",
-};
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Nunito:wght@400;500;600;700;800&family=Literata:ital,wght@0,400;1,400&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+::selection{background:rgba(108,99,255,0.12)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes kenburns{0%{transform:scale(1) translate(0,0)}50%{transform:scale(1.06) translate(-1%,-1%)}100%{transform:scale(1.03) translate(0.5%,0.5%)}}
+.skazka-input{width:100%;padding:13px 16px;border-radius:${T.r2}px;border:1.5px solid ${T.border};background:${T.bgCard};font-family:${T.body};font-size:15px;font-weight:500;color:${T.tx};outline:none;transition:border-color .25s,box-shadow .25s}
+.skazka-input::placeholder{color:${T.tx3};font-weight:400}
+.skazka-input:focus{border-color:${T.accent};box-shadow:0 0 0 3px ${T.borderFocus}}
+.skazka-card{background:${T.bgCard};border-radius:${T.r3}px;border:1px solid ${T.border};box-shadow:${T.shadowSm};padding:24px;transition:box-shadow .3s}
+.stf__parent{background:transparent !important}
+`;
 
-// ── STORY CONFIG ──
-const TOTAL_PAGES = 6;
-
-// ── i18n ──
-const I18N = {
-  ru: {
-    interactiveStories: "Интерактивные сказки",
-    skazka: "Сказка", vmeste: "Вместе",
-    aiCreates: "ИИ создаёт уникальную сказку.", readTogether: "Вы читаете вместе с ребёнком.",
-    yourName: "Ваше имя", email: "Email", login: "Войти",
-    back: "← Назад", dashboard: "Dashboard", hello: "Привет",
-    children: "Дети", addChild: "+ Добавить", childName: "Имя ребёнка", years: "лет",
-    addChildPlaceholder: "Добавьте ребёнка, чтобы начать",
-    newSession: "Новая сессия", forWhom: "Для кого?", createStory: "Создать историю",
-    history: "📚 История", min: "мин", pages: "стр.",
-    storyFor: "История для", whatAbout: "О чём будет история? Выберите идею или придумайте свою",
-    storyIdeas: "✨ Идеи для истории", more: "🔄 Ещё", generating: "Генерируем идеи…",
-    noIdeas: "Не удалось загрузить. Нажмите 🔄", needKey: "Нужен API ключ для генерации идей",
-    writeYourOwn: "✏️ Или напишите свою",
-    premisePlaceholder: "Например: Мальчик хочет выиграть школьный чемпионат по шахматам...",
-    anyGenre: "Реалистичная, фэнтези, фантастика — что угодно.",
-    startStory: "Начать историю", clear: "Очистить",
-    artStyle: "Стиль иллюстраций",
-    styleBook: "Книжная иллюстрация", styleBookDesc: "Тёплая акварель, как в детских книгах",
-    styleAnime: "Аниме", styleAnimeDesc: "Яркий стиль как Ghibli / Shinkai",
-    styleRealistic: "Реалистичный", styleRealisticDesc: "Фотореалистичный стиль",
-    settings: "Настройки", done: "Готово", logout: "Выйти",
-    creatingStory: "Создаём сказку", continuing: "Продолжение…",
-    end: "Конец", viewReport: "Смотреть отчёт",
-    orCustom: "или придумайте свой вариант:", heroAction: "Что хочет сделать герой?..",
-    speak: "Озвучить", stop: "Стоп", auto: "авто", sounds: "звуки", quiet: "тихо",
-    sessionReport: "Отчёт сессии", journey: "Путешествие", choices: "выборов",
-    choicesOf: "💎 Выборы", fullStory: "📜 Сказка целиком", decisionPath: "🧭 Путь выборов",
-    newSessionBtn: "Новая сессия", dashboardBtn: "Дашборд",
-    disclaimer: "🛡️ Все истории создаются ИИ с фильтрацией контента по возрасту. Контент безопасен для детей, но рекомендуется присутствие родителя.",
-    disclaimerEn: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
-    finish: "Завершить", page: "стр.", of: "из",
-    parentPremise: "Предыстория от родителя", discussionQ: "💡 Вопрос для звонка",
-    ending: { good: "Счастливый конец ✨", mixed: "Неоднозначный финал ⚖️", sad: "Грустный конец 💔" },
-  },
-  en: {
-    interactiveStories: "Interactive Fairy Tales",
-    skazka: "Story", vmeste: "Together",
-    aiCreates: "AI creates a unique story.", readTogether: "Read it together with your child.",
-    yourName: "Your name", email: "Email", login: "Enter",
-    back: "← Back", dashboard: "Dashboard", hello: "Hello",
-    children: "Children", addChild: "+ Add", childName: "Child's name", years: "years old",
-    addChildPlaceholder: "Add a child to begin",
-    newSession: "New Session", forWhom: "For whom?", createStory: "Create Story",
-    history: "📚 History", min: "min", pages: "p.",
-    storyFor: "Story for", whatAbout: "What will the story be about? Choose an idea or write your own",
-    storyIdeas: "✨ Story Ideas", more: "🔄 More", generating: "Generating ideas…",
-    noIdeas: "Failed to load. Press 🔄", needKey: "API key needed for ideas",
-    writeYourOwn: "✏️ Or write your own",
-    premisePlaceholder: "E.g.: A boy wants to win the school chess tournament but his rival is his best friend...",
-    anyGenre: "Realistic, fantasy, sci-fi — anything goes.",
-    startStory: "Start Story", clear: "Clear",
-    artStyle: "Illustration Style",
-    styleBook: "Book Illustration", styleBookDesc: "Warm watercolor, like children's books",
-    styleAnime: "Anime", styleAnimeDesc: "Bright Ghibli / Shinkai style",
-    styleRealistic: "Realistic", styleRealisticDesc: "Photorealistic style",
-    settings: "Settings", done: "Done", logout: "Log out",
-    creatingStory: "Creating story", continuing: "Continuing…",
-    end: "The End", viewReport: "View Report",
-    orCustom: "or write your own action:", heroAction: "What does the hero want to do?..",
-    speak: "Listen", stop: "Stop", auto: "auto", sounds: "sounds", quiet: "quiet",
-    sessionReport: "Session Report", journey: "Journey of", choices: "choices",
-    choicesOf: "💎 Choices by", fullStory: "📜 Full Story", decisionPath: "🧭 Decision Path",
-    newSessionBtn: "New Session", dashboardBtn: "Dashboard",
-    disclaimer: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
-    disclaimerEn: "🛡️ All stories are AI-generated with age-appropriate content filtering. Content is safe for children, but parental supervision is recommended.",
-    finish: "Finish", page: "p.", of: "of",
-    parentPremise: "Parent's premise", discussionQ: "💡 Discussion question",
-    ending: { good: "Happy ending ✨", mixed: "Mixed ending ⚖️", sad: "Sad ending 💔" },
-  }
-};
-
-// ── ART STYLES ──
-const ART_STYLES = {
-  book: {
-    fantasy: "A scanned page from a vintage 1980s hand-painted children's book. Thick gouache and watercolor on grainy cream paper, rough visible brushstrokes, paint bleeding at edges, slightly uneven color fills, paper texture showing through thin washes. Warm muted earthy palette like ochre, burnt sienna, sage green, dusty blue. Soft imperfect hand-drawn outlines. Style of classic European picture book illustrators. Analog traditional media artwork scan, NOT digital, NOT CGI, NOT 3D, NOT vector, NOT clean lines",
-    realistic: "A scanned watercolor illustration from a handmade children's picture book. Wet-on-wet watercolor technique on cold-pressed paper, visible paper grain and paint puddles, soft color bleeding between areas, pencil sketch lines visible underneath paint. Muted natural palette. Traditional analog artwork scan, NOT digital rendering"
-  },
-  anime: {
-    fantasy: "Anime-inspired digital illustration, vibrant colors, expressive characters with large eyes. Style like Studio Ghibli or Makoto Shinkai. Cinematic lighting, magical atmosphere. Professional animation quality",
-    realistic: "Anime-inspired semi-realistic illustration, similar to Makoto Shinkai. Rich real-world environment, warm natural lighting. Expressive character faces. Professional quality"
-  },
-  realistic: {
-    fantasy: "Photorealistic fantasy illustration, cinematic lighting and composition. Detailed magical environment with realistic textures. Characters with realistic proportions and expressions. High quality digital art",
-    realistic: "Photorealistic illustration, cinematic composition with depth of field. Detailed real-world environment. Natural lighting with warm tones. Characters with realistic proportions. High quality"
-  }
-};
-const VALS = {
-  // Positive
-  generosity:  { n:"Щедрость",      e:"💛", c:"#D4845A", pos: true },
-  empathy:     { n:"Сочувствие",    e:"💜", c:"#9B7CB8", pos: true },
-  courage:     { n:"Смелость",      e:"🦁", c:"#E85D75", pos: true },
-  curiosity:   { n:"Любопытство",   e:"🔍", c:"#7A9E7E", pos: true },
-  kindness:    { n:"Доброта",       e:"🤗", c:"#C49A5C", pos: true },
-  honesty:     { n:"Честность",     e:"⭐", c:"#8BA88E", pos: true },
-  patience:    { n:"Терпение",      e:"🕊️", c:"#6B9DAB", pos: true },
-  teamwork:    { n:"Дружба",        e:"🤝", c:"#7B8EC4", pos: true },
-  // Negative
-  selfishness: { n:"Жадность",      e:"🫣", c:"#8B4C4C", pos: false },
-  cowardice:   { n:"Трусость",      e:"😰", c:"#7B6B5C", pos: false },
-  cruelty:     { n:"Жестокость",    e:"💔", c:"#6B3A3A", pos: false },
-  greed:       { n:"Алчность",      e:"🪙", c:"#8B7B3C", pos: false },
-  laziness:    { n:"Лень",          e:"😴", c:"#6B6B6B", pos: false },
-  dishonesty:  { n:"Обман",         e:"🎭", c:"#5C4C6B", pos: false },
-  aggression:  { n:"Агрессия",      e:"😠", c:"#8B3C3C", pos: false },
-  indifference:{ n:"Равнодушие",    e:"🧊", c:"#5C6B7B", pos: false },
-};
-
-// ── AI: Story Generation (Sonnet) ──
-async function genPage(ctx, apiKey) {
-  const { name, age, theme, history, choice, charDesc, backstory, lang: storyLang } = ctx;
-  const pn = history.length + 1, isEnd = pn >= TOTAL_PAGES;
-  const hist = history.map((h,i) => "P" + (i+1) + ": " + h.text + (h.sceneSummary ? " [location: " + h.sceneSummary + "]" : "") + (h.actionSummary ? " [action: " + h.actionSummary + "]" : "") + (h.choice ? " [chose: " + h.choice.label + "/" + h.choice.value + "]" : "")).join("\n");
-  
-  const charBlock = charDesc
-    ? "\n- The main characters have been established: " + charDesc + ". Keep ALL characters visually consistent.\n- NEW MAIN CHARACTER: If an important new character JOINS the party/group (a new friend, companion, rival who will stay in the story), return a \"newMainCharacter\" field with their detailed English visual description. Only for IMPORTANT recurring characters, not random NPCs or background people."
-    : '\n- FIRST PAGE: You MUST also return a "characterDesc" field with detailed English visual descriptions of the MAIN CHARACTER and any other key characters who will appear throughout the story. Describe each character separately. Example: "Main: a small red fox cub with bright green eyes, wearing a blue scarf and brown leather satchel, fluffy tail with white tip. Friend: a tall grey wolf pup with amber eyes, wearing a green vest and carrying a wooden staff". Include: species/type, hair/fur color, eye color, clothing, accessories, body build, distinctive features for EACH character.';
-
-  const charDescJson = !charDesc ? ',"characterDesc":"...detailed english visual description of main character AND other key characters..."' : '';
-  
-  // Analyze moral path from history
-  const positiveValues = ["generosity","empathy","courage","curiosity","kindness","honesty","patience","teamwork"];
-  const negativeValues = ["selfishness","cowardice","cruelty","greed","laziness","dishonesty","aggression","indifference"];
-  
-  let endingInstruction;
-  if (isEnd) {
-    const choiceValues = history.filter(h => h.choice).map(h => h.choice.value || "custom");
-    const negCount = choiceValues.filter(v => negativeValues.includes(v)).length;
-    const posCount = choiceValues.filter(v => positiveValues.includes(v)).length;
-    
-    if (negCount > posCount) {
-      endingInstruction = "LAST PAGE — SAD/CONSEQUENCES ENDING. The character's selfish/cruel/cowardly choices led to a sad outcome. Friends left, trust was broken, or an opportunity was lost forever. Write a bittersweet ending that clearly shows the CONSEQUENCES of bad choices. The character should feel regret and understand what they lost. Do NOT rescue them with a happy twist. The moral should be clear: our choices shape our world. End with a reflective tone — the character learned a hard lesson.";
-    } else if (negCount === posCount && negCount > 0) {
-      endingInstruction = "LAST PAGE — MIXED ENDING. The character made both good and bad choices. Write an ending where things partly work out but something is lost due to the bad choices. The character reflects on what could have been different. Bittersweet but hopeful.";
-    } else {
-      endingInstruction = "LAST PAGE — HAPPY ENDING. The character's kind/brave/generous choices paid off! Write a warm, satisfying ending where friendships are strengthened and the world is better because of the character's good heart. Include a gentle, uplifting moral.";
-    }
-  }
-  
-  const choicesOrEnd = isEnd ? '"isEnd":true,"ending":"good|mixed|sad"' : '"choices":[{"label":"...","emoji":"...","value":"one of: generosity|empathy|courage|curiosity|kindness|honesty|patience|teamwork|selfishness|cowardice|cruelty|greed|laziness|dishonesty|aggression|indifference"}]';
-  
-  const choicesInstruction = isEnd ? endingInstruction : "Give 2-3 choices. IMPORTANT: Always include at least one POSITIVE choice (generosity, empathy, courage, kindness, curiosity, honesty, patience, teamwork) AND at least one NEGATIVE/TEMPTING choice (selfishness, cowardice, cruelty, greed, laziness, dishonesty, aggression, indifference). The negative choice should feel tempting or easy — like taking a shortcut, keeping something for yourself, running away, being mean, or ignoring someone in need. Make consequences feel natural, not preachy.";
-
-  const backstoryBlock = backstory ? "\n- STORY PREMISE: " + backstory + ". This is the core situation. Build the story around this premise." : "";
-
-  const langInstr = storyLang === "en" ? "Write the story text in ENGLISH." : "Write the story text in RUSSIAN.";
-  const prevLocations = history.map(h => h.mood || "").filter(Boolean).join(", ");
-  const prevScenes = history.map((h,i) => {
-    const parts = [h.sceneSummary, h.actionSummary].filter(Boolean).join(", ");
-    return parts ? `P${i+1}: ${parts}` : "";
-  }).filter(Boolean);
-  const prevScenesList = prevScenes.length > 0 ? prevScenes.map((s,i) => `P${i+1}: ${s}`).join("; ") : "";
-  const diversityInstr = history.length > 0 ? `\n- LOCATION DIVERSITY (CRITICAL): Previous scenes were: [${prevScenesList || prevLocations}]. You MUST move the story to a COMPLETELY DIFFERENT PHYSICAL PLACE. NOT the same building from a different angle. NOT the same street at a different time. A BRAND NEW LOCATION the reader has never seen. Examples of GOOD changes: bedroom→park, school→forest, city street→mountain, shop→river, arena→home kitchen. If the story has been near the same place for 2+ pages, MOVE AWAY entirely.\n- ACTION DIVERSITY (CRITICAL): The character must be doing something PHYSICALLY DIFFERENT from all previous pages. If they were standing still → make them run. If they were inside a vehicle → take them out on foot. If they were alone → surround them with new characters. If they were looking at something → make them actively DO something with their hands. NEVER have the character in the same pose or activity as any previous page. Each page should feel like a completely new moment.` : "\n- Start with a vivid, unique setting.";
-  const copyrightInstr = "\n- COPYRIGHT CHARACTERS: If the child mentions a character from movies/cartoons/comics/games (Spider-Man, Elsa, Batman, etc.), create an ORIGINAL character INSPIRED by them as a REAL LIVING CHARACTER in the story — with real superpowers, real actions, real dialogue. Do NOT reduce them to a drawing, poster, toy, or picture. The inspired character must be a FULL PARTICIPANT in the story. Give them a new name, keep their iconic abilities and personality. Examples: Spider-Man → Арахнид/Arachnid (a boy with spider powers who shoots webs and climbs walls), Elsa → Ледяная Принцесса Аврора (a princess who controls ice and snow), Batman → Тёмный Страж (a masked hero who fights crime at night). Add a fun comment like 'В нашем мире этого героя зовут по-другому!' For visuals, describe the character through colors, costume design, and powers WITHOUT using brand names.";
-
-  const sys = "You are a master storyteller creating interactive stories for children. " + langInstr + " This is a STORY WITH CONSEQUENCES — the child's choices DIRECTLY shape the outcome.\nRules:\n- Child: " + name + ", age " + age + charBlock + backstoryBlock + "\n- Page " + pn + "/" + TOTAL_PAGES + ". Write 2-3 vivid sentences in simple, engaging language appropriate for the child's age." + diversityInstr + copyrightInstr + "\n- TONE MATCHING: Determine the tone from the premise. If the premise is realistic (sports, school, friendship, everyday life) — keep it grounded and realistic. NO magic, NO supernatural creatures, NO portals unless the premise explicitly involves fantasy or magic. A story about esports = real esports. A story about school = real school. Only add fantasy elements if the premise calls for them.\n- " + choicesInstruction + "\n- CRITICAL: If the child previously made a negative choice, show realistic consequences in the NEXT page — trust eroding, friends being hurt, opportunities closing. Don't immediately fix bad choices. Let the child feel the weight.\n- If the child made a positive choice, show warm rewards — new friendships, discovered treasures, growing trust.\n" + '- Include a "scene" field: a SHORT English description for illustration (MAX 2 sentences, under 40 words). CRITICAL: describe FACIAL EXPRESSION physically, not just emotion word. For negative emotions: use \"frowning\", \"tears in eyes\", \"mouth turned down\", \"eyebrows furrowed\", \"looking down at ground\". NEVER just say \"sad\" — the AI will draw a smile anyway. Examples: \"Boy FROWNING with tears, standing alone while other kids play soccer. Sunny park.\" or \"Girl LAUGHING with arms wide open, running through magical forest.\" Start with the face/action, keep it punchy.\n- Include a "mood" field. Choose the BEST fit — MUST be different from previous pages if possible:\n  "forest" = nature/wilderness, "ocean" = water/sea, "space" = sci-fi/cosmos, "castle" = medieval/royalty, "magic" = general fantasy\n  "city" = urban/streets, "school" = classroom/campus, "sports" = competition/games/esports, "home" = domestic/indoor\n\nRespond ONLY with JSON (no markdown):\n{"text":"...","mood":"forest|ocean|space|castle|magic|city|school|sports|home","scene":"...cinematic english scene...","sceneSummary":"2-4 word summary of the PHYSICAL LOCATION, e.g. dark forest clearing, cozy bedroom, busy market square, mountain cave","actionSummary":"2-4 word summary of what the MAIN CHARACTER IS PHYSICALLY DOING, e.g. running through crowd, climbing a tree, hiding under table, swimming across river"' + charDescJson + "," + choicesOrEnd + ',"title":"short chapter title in ' + (storyLang === "en" ? "English" : "Russian") + '","sfx":"short English description of ambient sound for this scene, 5-10 words","tts_text":"same story text but ENHANCED for text-to-speech engine. Add <break time=\\"0.5s\\"/> for short pauses, <break time=\\"1.0s\\"/> for dramatic pauses. Use ellipsis for hesitation. Use dashes for rhythm. Add emotional stage directions. Make it sound like a living audiobook performance."}';
-  
-  const msg = history.length === 0
-    ? "Create a new story for " + name + ". Premise: " + (backstory || "a surprise creative adventure") + ". IMPORTANT: Match the tone to the premise — if realistic, stay realistic. If fantasy, be magical. Start with an exciting opening that presents the character in a situation where choices will matter!"
-    : hist + "\n\nChild chose: \"" + (choice?.label || "") + "\" (" + (choice?.value || "custom") + "). Continue the story. Show natural consequences of this choice.";
-  
-  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
-  if (apiKey) {
-    headers["x-api-key"] = apiKey;
-    headers["anthropic-dangerous-direct-browser-access"] = "true";
-  }
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1200, system: sys, messages: [{ role: "user", content: msg }] })
-  });
-  const data = await res.json();
-  const txt = data.content?.map(b => b.type === "text" ? b.text : "").join("") || "";
-  return JSON.parse(txt.replace(/```json|```/g, "").trim());
+// ─── SHARED UI ───
+function SectionLabel({ children }) {
+  return <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: T.tx3, fontFamily: T.body, marginBottom: 16 }}>{children}</div>;
 }
 
-// ── STYLE CONSTANTS (dynamic based on artStyle) ──
-function getStyleForMood(mood, artStyleKey) {
-  const styles = ART_STYLES[artStyleKey] || ART_STYLES.book;
-  return ["city","school","sports","home"].includes(mood) ? styles.realistic : styles.fantasy;
-}
-
-// ── Replicate: poll until done ──
-async function pollPrediction(token, prediction) {
-  console.log("Replicate full response:", JSON.stringify(prediction));
-  if (!prediction || prediction.error) {
-    console.error("Replicate API error:", prediction?.error || prediction?.detail || "empty response");
-    return null;
-  }
-  if (prediction.status === "succeeded" && prediction.output) {
-    const out = prediction.output;
-    return typeof out === "string" ? out : Array.isArray(out) ? out[0] : out;
-  }
-  if (prediction.status === "failed") {
-    console.error("Replicate failed:", prediction.error);
-    return null;
-  }
-  if (!prediction.id) {
-    console.error("No prediction id, cannot poll. Response:", prediction);
-    return null;
-  }
-  const pollUrl = `/api/replicate/v1/predictions/${prediction.id}`;
-  for (let i = 0; i < 60; i++) {
-    await new Promise(r => setTimeout(r, 1500));
-    const res = await fetch(pollUrl, { headers: { "Authorization": `Bearer ${token}` } });
-    const p = await res.json();
-    console.log("Poll", i, "status:", p.status);
-    if (p.status === "succeeded") {
-      const out = p.output;
-      return typeof out === "string" ? out : Array.isArray(out) ? out[0] : out;
-    }
-    if (p.status === "failed") { console.error("Replicate failed:", p.error); return null; }
-  }
-  return null;
-}
-
-// ── PAGE 1: Flux 2 Pro (text-to-image, high quality character creation) ──
-async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
-  if (!token) return null;
-  const style = getStyleForMood(mood, artStyleKey);
-  const prompt = `${style}. ${scene}. The main character is ${charDesc}. Show ALL characters described in the scene with distinct appearances. Dynamic poses and clear interaction between characters. No text, words, letters, or writing anywhere in the image.`;
-  try {
-    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } })
-    });
-    const resp = await res.json();
-    console.log("Flux 2 Pro HTTP status:", res.status, "response:", resp.status || resp.error || resp.detail);
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Flux 2 Pro error:", err); return null; }
-}
-
-// ── CHARACTER PORTRAIT: lucataco/flux-watercolor LoRA ──
-async function genCharPortrait(token, charDesc, scene, artStyleKey) {
-  if (!token) return null;
-  
-  const prompt = artStyleKey === "anime"
-    ? `Anime style children's book character. ${charDesc}. Full body, plain beige background. No text.`
-    : `TOK watercolor painting of a children's book character. ${charDesc}. Full body standing on plain cream background. Soft watercolor washes, visible paper texture, warm gentle colors. No text.`;
-  
-  console.log("Portrait (flux-watercolor LoRA):", prompt.length, "chars");
-  try {
-    const res = await fetch("/api/replicate/v1/predictions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ version: "846d1eb37059ed2ed268ff8dd4aa1531487fcdc3425a7a44c2a0a10723ef8383", input: { prompt, aspect_ratio: "16:9", output_format: "png", num_outputs: 1 } })
-    });
-    const resp = await res.json();
-    console.log("Portrait response:", resp.status, resp.id || resp.error);
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Portrait error:", err); return null; }
-}
-
-// ── PAGES 2-6: Kontext Pro Fast (image-to-image, character consistency) ──
-// ── Helper: retry fetch on 429 rate limit ──
-async function fetchWithRetry(url, opts, maxRetries = 3) {
-  for (let i = 0; i <= maxRetries; i++) {
-    const res = await fetch(url, opts);
-    if (res.status === 429 && i < maxRetries) {
-      const data = await res.json();
-      const wait = (data.retry_after || 5) * 1000 + 1000;
-      console.log(`Rate limited, waiting ${wait/1000}s... (retry ${i+1}/${maxRetries})`);
-      await new Promise(r => setTimeout(r, wait));
-      continue;
-    }
-    return res;
-  }
-}
-
-async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey) {
-  if (!token || !portraitUrl) return null;
-  const shortStyle = artStyleKey === "anime" ? "Anime children's illustration." 
-    : artStyleKey === "realistic" ? "Realistic children's book illustration." 
-    : "Watercolor children's book illustration, soft washes, paper texture visible.";
-  const shortScene = scene.split(/[.!]/).slice(0, 2).join(". ").trim().slice(0, 200);
-  const negWords = /frown|tear|cry|sad|scared|afraid|angry|worried|lonely|upset|nervous|anxious|hurt|pain|lost|confused|guilt|shame/i;
-  const antiSmile = negWords.test(scene) ? " Character is NOT smiling, NOT happy." : "";
-  const prompt = `${shortStyle} ${shortScene}.${antiSmile} Same character from reference image. No text.`;
-  console.log("Kontext Fast prompt:", prompt.length, "chars,", prompt.split(" ").length, "words");
-  try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, img_cond_path: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } })
-    });
-    const resp = await res.json();
-    console.log("Kontext Fast response:", resp.status, resp.id || resp.error);
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Kontext Fast error:", err); return null; }
-}
-
-// ── TYPEWRITER COMPONENT ──
-// ── BOOK PAGE (forwardRef for react-flipbook) ──
-const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgLoading, lang }, ref) => {
-  const BOOK_FONT = "'Literata', 'Cormorant Garamond', Georgia, serif";
-  const LAYOUTS = ["img-top", "text-img-text", "img-big", "text-top", "img-top", "img-big"];
-  const layout = LAYOUTS[(pageNum - 1) % LAYOUTS.length];
-  const frame = FRAME_STYLES[(pageNum - 1) % FRAME_STYLES.length];
-  const side = pageNum % 2 === 1 ? "left" : "right";
-
-  const imgUrl = isCurrent ? (curImg || page?.imgUrl) : page?.imgUrl;
-  const isImgLoading = isCurrent && imgLoading && !imgUrl;
-
-  const splitText = (text) => {
-    if (!text) return ["", ""];
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    if (sentences.length < 2) return [text, ""];
-    const mid = Math.ceil(sentences.length / 2);
-    return [sentences.slice(0, mid).join("").trim(), sentences.slice(mid).join("").trim()];
+function PillBtn({ children, onClick, variant = "primary", disabled, style: st }) {
+  const base = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 28px", borderRadius: T.rF, fontFamily: T.body, fontWeight: 700, fontSize: 15, border: "none", cursor: disabled ? "default" : "pointer", transition: "all .3s cubic-bezier(.22,1,.36,1)", opacity: disabled ? 0.45 : 1, letterSpacing: "0.01em" };
+  const v = {
+    primary: { background: `linear-gradient(135deg,${T.accent},${T.accentSoft})`, color: "#fff", boxShadow: "0 4px 20px rgba(108,99,255,.2)" },
+    coral: { background: `linear-gradient(135deg,${T.coral},#FF8FA3)`, color: "#fff", boxShadow: "0 4px 20px rgba(255,107,138,.2)" },
+    ghost: { background: T.accentBg, color: T.accent, border: "1.5px solid rgba(108,99,255,.1)", padding: "10px 20px", fontSize: 13 },
+    subtle: { background: "transparent", color: T.tx3, border: `1.5px solid ${T.border}`, padding: "10px 18px", fontSize: 13 },
   };
-
-
-  // Auto-size font for 300px rendered page width
-  const autoFontSize = (text) => {
-    if (!text) return 13;
-    const len = text.length;
-    if (len < 80) return 16;
-    if (len < 140) return 14;
-    if (len < 200) return 13;
-    if (len < 280) return 12;
-    return 11;
-  };
-
-  const ImgBlock = ({ big }) => (
-    <div style={{ width: "88%", margin: "0 auto", height: big ? 150 : 130, overflow: "hidden", ...frame, background: "#f5f5f5", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", position: "relative", flexShrink: 0 }}>
-      {isImgLoading ? <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 12, opacity: .35 }}>🎨</span></div>
-      : imgUrl ? <img src={imgUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy"/>
-      : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 14, opacity: .1 }}>🖼</span></div>}
-    </div>
-  );
-
-  const TextBlock = ({ text }) => (
-    <div style={{ overflow: "hidden", padding: "2px 6px", flex: "1 1 auto", minHeight: 20 }}>
-      <p style={{ fontSize: autoFontSize(text), lineHeight: 1.45, color: "#2c2318", fontFamily: BOOK_FONT, fontWeight: 400, margin: 0, textIndent: "0.8em" }}>{text}</p>
-    </div>
-  );
-
-  return (
-    <div ref={ref} style={{ width: "100%", height: "100%", background: "#fff", position: "relative", overflow: "hidden", boxSizing: "border-box" }}>
-      {side === "left" && <div style={{ position: "absolute", top: 0, right: 0, width: 15, height: "100%", background: "linear-gradient(to left, rgba(0,0,0,0.03), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
-      {side === "right" && <div style={{ position: "absolute", top: 0, left: 0, width: 15, height: "100%", background: "linear-gradient(to right, rgba(0,0,0,0.04), transparent)", pointerEvents: "none", zIndex: 2 }}/>}
-      {page ? (
-        <div style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative", zIndex: 1, padding: "8px 10px 4px", gap: 3, overflow: "hidden", boxSizing: "border-box" }}>
-          <div style={{ textAlign: "center", marginBottom: 1 }}><span style={{ fontSize: 11, color: "#95A5A6", fontWeight: 500, fontFamily: BOOK_FONT, fontStyle: "italic" }}>{page.title || ''}</span></div>
-          {layout === "img-top" && <><ImgBlock/><TextBlock text={page.text}/></>}
-          {layout === "text-top" && <><TextBlock text={page.text}/><ImgBlock/></>}
-          {layout === "img-big" && <><ImgBlock big/><TextBlock text={page.text}/></>}
-          {layout === "text-img-text" && (() => { const [t1, t2] = splitText(page.text); return <><TextBlock text={t1}/><ImgBlock/><TextBlock text={t2}/></>; })()}
-          <div style={{ textAlign: side === "left" ? "left" : "right", fontSize: 9, color: "#BDC3C7", padding: "0 8px", fontFamily: BOOK_FONT }}>{pageNum}</div>
-        </div>
-      ) : isBlurred ? (
-        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-          <div style={{ textAlign: "center", opacity: .3 }}><BookOpen size={28} style={{ opacity: .4, marginBottom: 8 }}/><div style={{ fontSize: ".65rem", color: "#7F8C8D", fontFamily: BOOK_FONT, fontStyle: "italic" }}>{lang === "ru" ? "Следующая страница..." : "Next page..."}</div></div>
-        </div>
-      ) : (
-        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 1 }}>
-          <BookOpen size={22} style={{ opacity: .15 }}/>
-        </div>
-      )}
-    </div>
-  );
-});
-
-function Typewriter({ text, speed = 30, onDone, style }) {
-  const [shown, setShown] = useState(0);
-  const [done, setDone] = useState(false);
-  useEffect(() => {
-    setShown(0); setDone(false);
-    if (!text) return;
-    let i = 0;
-    const iv = setInterval(() => {
-      i++;
-      if (i >= text.length) { clearInterval(iv); setDone(true); onDone?.(); }
-      setShown(i);
-    }, speed);
-    return () => clearInterval(iv);
-  }, [text, speed]);
-  const skip = () => { setShown(text?.length || 0); setDone(true); onDone?.(); };
-  return (
-    <div style={{ position: "relative", cursor: done ? "default" : "pointer" }} onClick={!done ? skip : undefined}>
-      <span style={style}>{text?.slice(0, shown)}</span>
-      {!done && <span style={{ ...style, opacity: 0 }}>{text?.slice(shown)}</span>}
-      {!done && <span style={{ display: "inline-block", width: 2, height: "1em", background: style?.color || "#D4845A", marginLeft: 2, animation: "blink 1s step-end infinite", verticalAlign: "text-bottom" }} />}
-    </div>
-  );
+  return <button onClick={disabled ? undefined : onClick} style={{ ...base, ...v[variant], ...st }} onMouseOver={e => { if (!disabled && variant === "primary") e.currentTarget.style.transform = "translateY(-1px)"; }} onMouseOut={e => { e.currentTarget.style.transform = ""; }}>{children}</button>;
 }
 
-// ── ILLUSTRATION COMPONENT ──
-function SceneIllustration({ imgUrl, mood, loading: isLoading, isFirst, style: st }) {
-  const COLORS = { forest:"#2A3D2A", ocean:"#1E3A4A", space:"#1A1530", castle:"#3A2840", magic:"#2A2040" };
-  const EMOJI = { forest:"🌲", ocean:"🌊", space:"🌌", castle:"🏰", magic:"✨" };
-  
-  // Particle configs per mood
-  const PARTICLES = {
-    forest: { chars: ["✦","🍃","✧"], count: 12, color: "rgba(180,220,130,.6)" },
-    ocean:  { chars: ["✦","💧","○"], count: 10, color: "rgba(120,200,255,.5)" },
-    space:  { chars: ["✦","⭐","✧","·"], count: 18, color: "rgba(255,255,200,.7)" },
-    castle: { chars: ["✦","✧","❋"], count: 10, color: "rgba(255,200,150,.5)" },
-    magic:  { chars: ["✦","✧","⚝","❋"], count: 14, color: "rgba(200,170,255,.6)" },
-    city:   { chars: ["✧","·","○"], count: 6, color: "rgba(255,220,150,.3)" },
-    school: { chars: ["✧","·"], count: 5, color: "rgba(255,230,180,.25)" },
-    sports: { chars: ["✧","·","⚡"], count: 7, color: "rgba(255,200,100,.35)" },
-    home:   { chars: ["✧","·"], count: 5, color: "rgba(255,220,170,.25)" },
-  };
-  const pc = PARTICLES[mood] || PARTICLES.forest;
-  
-  // Generate stable particles with useMemo
-  const particles = useMemo(() => Array.from({ length: pc.count }, (_, i) => ({
-    char: pc.chars[i % pc.chars.length],
-    left: Math.random() * 100,
-    top: Math.random() * 100,
-    size: .4 + Math.random() * .6,
-    dur: 3 + Math.random() * 5,
-    delay: Math.random() * 4,
-    drift: -20 + Math.random() * 40,
-  })), [mood]);
-  
-  if (imgUrl) {
-    return (
-      <div style={{ width:"100%", aspectRatio:"16/9", borderRadius:16, overflow:"hidden", position:"relative", ...st }}>
-        <img src={imgUrl} alt="Иллюстрация" style={{ width:"110%", height:"110%", objectFit:"cover", display:"block", position:"absolute", top:"-5%", left:"-5%", animation:"kenburns 18s ease-in-out infinite alternate" }} />
-        {/* Vignette overlay */}
-        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.2) 100%)", pointerEvents:"none" }}/>
-        {/* Floating particles */}
-        <div style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden" }}>
-          {particles.map((p, i) => (
-            <div key={i} style={{ position:"absolute", left:`${p.left}%`, top:`${p.top}%`, fontSize:`${p.size}rem`, opacity:0, color: pc.color, filter:"blur(.3px)", animation:`particle ${p.dur}s ${p.delay}s ease-in-out infinite`, "--drift":`${p.drift}px` }}>{p.char}</div>
-          ))}
-        </div>
-        {/* Soft glow at bottom */}
-        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"30%", background:"linear-gradient(transparent, rgba(0,0,0,.15))", pointerEvents:"none" }}/>
-      </div>
-    );
-  }
-  
-  return (
-    <div style={{ width:"100%", aspectRatio:"16/9", borderRadius:16, overflow:"hidden", background:`linear-gradient(180deg, ${COLORS[mood]||COLORS.forest}, ${COLORS[mood]||COLORS.forest}cc)`, display:"flex", alignItems:"center", justifyContent:"center", ...st }}>
-      <div style={{ textAlign:"center" }}>
-        {isLoading ? <>
-          <div style={{ width:32, height:32, border:"2.5px solid rgba(255,255,255,.2)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin .8s linear infinite", margin:"0 auto 10px" }}/>
-          <div style={{ fontSize:".65rem", color:"rgba(255,255,255,.7)", fontFamily:"'Outfit',sans-serif", letterSpacing:".08em" }}>{isFirst ? "Flux 2 Pro создаёт персонажа…" : "Kontext Pro рисует сцену…"}</div>
-        </> : <>
-          <div style={{ fontSize:"2.5rem", marginBottom:4, opacity:.5 }}>{EMOJI[mood]||"🌲"}</div>
-          <div style={{ fontSize:".6rem", color:"rgba(255,255,255,.5)", fontFamily:"'Outfit',sans-serif", letterSpacing:".1em" }}>Нет API ключа Replicate</div>
-        </>}
-      </div>
-    </div>
-  );
+function Avatar({ name, size = 36, gradient }) {
+  const letter = (name || "?")[0].toUpperCase();
+  return <div style={{ width: size, height: size, borderRadius: size * 0.35, background: gradient || `linear-gradient(135deg,${T.accent},${T.accentSoft})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: T.body, fontWeight: 800, fontSize: size * 0.4, flexShrink: 0 }}>{letter}</div>;
 }
 
-// ── PROGRESS DOTS ──
-function PageProgress({ current, total, t }) {
+function IconCircle({ icon: Icon, size = 44, bg, color }) {
+  return <div style={{ width: size, height: size, borderRadius: size * 0.32, background: bg || T.accentBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={size * 0.45} color={color || T.accent} strokeWidth={2} /></div>;
+}
+
+function AnimIn({ children, delay = 0, y = 16, style: st }) {
+  return <motion.div initial={{ opacity: 0, y }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }} style={st}>{children}</motion.div>;
+}
+
+function ValueIcon({ valKey, size = 16 }) {
+  const isPos = VALS[valKey]?.pos !== false;
+  return isPos ? <TrendingUp size={size} color={T.teal} /> : <TrendingDown size={size} color={T.coral} />;
+}
+
+// ─── PROGRESS DOTS ───
+function ProgressBar({ current, total }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
       {Array.from({ length: total }, (_, i) => (
         <div key={i} style={{
-          width: i + 1 === current ? 24 : 8, height: 8, borderRadius: 8,
-          background: i + 1 < current ? t.sage : i + 1 === current ? t.accent : t.gb,
+          width: i + 1 === current ? 24 : 8, height: 6, borderRadius: 6,
+          background: i + 1 < current ? T.teal : i + 1 === current ? `linear-gradient(90deg,${T.accent},${T.accentSoft})` : T.border,
           transition: "all .5s cubic-bezier(.22,1,.36,1)",
-          position: "relative", overflow: "hidden"
-        }}>
-          {i + 1 === current && <div style={{ position: "absolute", inset: 0, borderRadius: 8, background: `linear-gradient(90deg, ${t.accent}, ${t.accentSoft})` }} />}
-        </div>
+        }} />
       ))}
-      <span style={{ fontSize: ".6rem", color: t.tx3, marginLeft: 4, fontFamily: FN.b, fontWeight: 400 }}>{current}/{total}</span>
+      <span style={{ fontSize: 11, color: T.tx3, marginLeft: 4, fontFamily: T.body, fontWeight: 700 }}>{current}/{total}</span>
     </div>
   );
 }
 
-// ── SHARED COMPONENTS ──
-function AB({ c, p, d = 0 }) {
+// ─── ANIMATED BAR ───
+function AnimBar({ color, pct, delay = 0 }) {
   const [w, setW] = useState(0);
-  useEffect(() => { const tm = setTimeout(() => setW(p), 200 + d); return () => clearTimeout(tm) }, [p, d]);
-  return <div style={{ height: "100%", borderRadius: 99, width: `${w}%`, background: c, transition: "width 1.4s cubic-bezier(.22,1,.36,1)" }} />;
+  useEffect(() => { const tm = setTimeout(() => setW(pct), 200 + delay); return () => clearTimeout(tm); }, [pct, delay]);
+  return <div style={{ height: 8, borderRadius: 8, background: T.border, overflow: "hidden" }}><div style={{ height: "100%", borderRadius: 8, width: `${w}%`, background: color, transition: "width 1.2s cubic-bezier(.22,1,.36,1)" }} /></div>;
 }
 
-function ThemeSwitch({ dark, onToggle }) {
-  return <button onClick={onToggle} style={{ width: 48, height: 26, borderRadius: 26, padding: 2, border: "none", cursor: "pointer", background: dark ? "rgba(245,237,224,.1)" : "rgba(45,52,54,.06)", position: "relative", transition: "background .4s", flexShrink: 0 }}>
-    <div style={{ width: 22, height: 22, borderRadius: "50%", transition: "transform .4s cubic-bezier(.22,1,.36,1),background .4s", transform: dark ? "translateX(0)" : "translateX(22px)", background: dark ? "#2A231A" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, boxShadow: dark ? "none" : "0 1px 4px rgba(45,52,54,.12)" }}>{dark ? "🌙" : "☀️"}</div>
-  </button>;
-}
-
-function LangSwitch({ lang, onToggle, t }) {
-  return <button onClick={onToggle} style={{ padding: "4px 10px", borderRadius: 14, border: `1px solid ${t.gb}`, background: t.gl2, cursor: "pointer", fontSize: ".7rem", fontWeight: 600, color: t.tx3, fontFamily: "'Outfit', sans-serif", transition: "all .3s", flexShrink: 0 }}>{lang === "ru" ? "EN" : "RU"}</button>;
-}
-
-// ══════════════════════════════════
+// ═══════════════════════════════════════════
 // MAIN APP
-// ══════════════════════════════════
-// ── BOOK IMAGE FRAMES — different shapes per page ──
-const FRAME_STYLES = [
-  { borderRadius: "12px", transform: "none" },                                    // rounded rect
-  { borderRadius: "50% 50% 50% 50% / 60% 60% 40% 40%", transform: "none" },     // soft oval top
-  { borderRadius: "20px 20px 50% 50%", transform: "none" },                       // arch bottom
-  { borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%", transform: "none" },     // blob
-  { borderRadius: "50%", transform: "none" },                                      // circle
-  { borderRadius: "16px", transform: "rotate(-2deg)" },                           // tilted
-];
-
-function getFrameStyle(pageIdx) {
-  return FRAME_STYLES[pageIdx % FRAME_STYLES.length];
-}
-
-const PAPER_BG = "#ffffff";
-const PAPER_TEXTURE = "none";
-
+// ═══════════════════════════════════════════
 export default function App() {
-  const [dark, setDark] = useState(false);
   const [view, setView] = useState("loading");
-  const [viewSpread, setViewSpread] = useState(-1); // -1 = auto (latest), 0+ = manual
-  const [flipAnim, setFlipAnim] = useState(null); // "forward" | "back" | null
   const [user, setUser] = useState(null);
+  const [lang, setLang] = useState("ru");
+  const [artStyle, setArtStyle] = useState("book");
+  const [children, setChildren] = useState([]);
+  const [activeChild, setActiveChild] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [authName, setAuthName] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [newChild, setNewChild] = useState("");
+  const [newAge, setNewAge] = useState("5");
   const [repToken, setRepToken] = useState("");
   const [antKey, setAntKey] = useState("");
   const [elKey, setElKey] = useState("");
-  const [showSettings, setShowSettings] = useState(false);
-  const [lang, setLang] = useState("ru");
-  const [artStyle, setArtStyle] = useState("book");
-  const [sessions, setSessions] = useState([]);
-  const [children, setChildren] = useState([]);
-  const [activeChild, setActiveChild] = useState(null);
+  
+  // Story state
   const [theme, setTheme] = useState(null);
   const [pages, setPages] = useState([]);
   const [curPage, setCurPage] = useState(null);
@@ -582,1066 +147,794 @@ export default function App() {
   const [error, setError] = useState(null);
   const [timer, setTimer] = useState(0);
   const timerRef = useRef(null);
-  const [authName, setAuthName] = useState("");
-  const [authEmail, setAuthEmail] = useState("");
-  const [newChild, setNewChild] = useState("");
-  const [newAge, setNewAge] = useState("5");
-  const [showAdd, setShowAdd] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [textDone, setTextDone] = useState(false);
-  const storyScrollRef = useRef(null);
-  const audioRef = useRef(null);
-  const bookRef = useRef(null);
-  const prevPageCountRef = useRef(0);
-  
-  // Character consistency state
   const [charDesc, setCharDesc] = useState(null);
   const [refImgUrl, setRefImgUrl] = useState(null);
-  
-  // Backstory / custom premise
   const [backstory, setBackstory] = useState("");
   const [presets, setPresets] = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
   
-  // TTS
+  // TTS state
   const [speaking, setSpeaking] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [ttsVoice, setTtsVoice] = useState(null);
+  const audioRef = useRef(null);
+  const [elVoiceId, setElVoiceId] = useState("EXAVITQu4vr4xnSDxMaL");
+  const [elVoiceName, setElVoiceName] = useState("Sarah");
+  const ttsCacheRef = useRef(new Map());
   
   // SFX
   const [sfxEnabled, setSfxEnabled] = useState(true);
   const sfxRef = useRef(null);
-  const [sfxLoading, setSfxLoading] = useState(false);
   const sfxCacheRef = useRef(new Map());
-  
-  // Voice picker
-  const [elVoiceId, setElVoiceId] = useState("EXAVITQu4vr4xnSDxMaL"); // Sarah default
-  const [elVoiceName, setElVoiceName] = useState("Sarah");
-  const [elVoices, setElVoices] = useState([]);
-  const [voicesLoading, setVoicesLoading] = useState(false);
-  const [voicePreview, setVoicePreview] = useState(null);
-  const ttsCacheRef = useRef(new Map()); // text -> blobUrl
 
-  const t = dark ? DARK : LIGHT;
   const L = I18N[lang] || I18N.ru;
-  const toggleTheme = async () => { const next = !dark; setDark(next); await ST.set("dark", next) };
-  const toggleLang = async () => { const next = lang === "ru" ? "en" : "ru"; setLang(next); await ST.set("lang", next) };
-  const fmtT = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
 
-  // Init
+  // ── Init ──
   useEffect(() => { (async () => {
     const u = await ST.get("user");
-    const dk = await ST.get("dark");
     const rt = await ST.get("repToken");
     const ak = await ST.get("antKey");
     const ek = await ST.get("elKey");
-    if (dk !== null) setDark(dk);
+    const sl = await ST.get("lang");
+    const ss = await ST.get("artStyle");
     if (rt) setRepToken(rt);
     if (ak) setAntKey(ak);
     if (ek) setElKey(ek);
-    const savedLang = await ST.get("lang"); if (savedLang) setLang(savedLang);
-    const savedStyle = await ST.get("artStyle"); if (savedStyle) setArtStyle(savedStyle);
-    const vid = await ST.get("elVoiceId"); if (vid) setElVoiceId(vid);
-    const vname = await ST.get("elVoiceName"); if (vname) setElVoiceName(vname);
-    if (u) { setUser(u); setSessions(await ST.get("sessions")||[]); setChildren(await ST.get("children")||[]); setView("dashboard") }
+    if (sl) setLang(sl);
+    if (ss) setArtStyle(ss);
+    if (u) { setUser(u); setSessions(await ST.get("sessions") || []); setChildren(await ST.get("children") || []); setView("dashboard"); }
     else setView("auth");
-  })() }, []);
+  })(); }, []);
 
-  // Timer
-  useEffect(() => { if (view === "session" && t0) { timerRef.current = setInterval(() => setTimer(Math.floor((Date.now()-t0)/1000)), 1000); return () => clearInterval(timerRef.current) } return () => {} }, [view, t0]);
+  // ── Timer ──
+  useEffect(() => { if (view === "session" && t0) { timerRef.current = setInterval(() => setTimer(Math.floor((Date.now()-t0)/1000)), 1000); return () => clearInterval(timerRef.current); } }, [view, t0]);
 
-  // TTS — find best Russian voice on load
+  // ── TTS voice ──
   useEffect(() => {
-    const pickVoice = () => {
-      const voices = window.speechSynthesis?.getVoices() || [];
-      const ru = voices.filter(v => v.lang.startsWith("ru"));
-      // Prefer female voice with "милена", "алёна", "Yandex", or just first Russian
-      const best = ru.find(v => /milena|alena|алёна|милена|yandex/i.test(v.name)) || ru.find(v => /female|Google/i.test(v.name)) || ru[0];
-      if (best) setTtsVoice(best);
-    };
-    pickVoice();
-    window.speechSynthesis?.addEventListener("voiceschanged", pickVoice);
-    return () => window.speechSynthesis?.removeEventListener("voiceschanged", pickVoice);
+    const pick = () => { const voices = window.speechSynthesis?.getVoices() || []; const ru = voices.filter(v => v.lang.startsWith("ru")); const best = ru.find(v => /milena|alena|yandex/i.test(v.name)) || ru[0]; if (best) setTtsVoice(best); };
+    pick(); window.speechSynthesis?.addEventListener("voiceschanged", pick);
+    return () => window.speechSynthesis?.removeEventListener("voiceschanged", pick);
   }, []);
 
-  // TTS — load preference
-  useEffect(() => { (async () => {
-    const v = await ST.get("ttsEnabled"); if (v) setTtsEnabled(v);
-    const s = await ST.get("sfxEnabled"); if (s !== null) setSfxEnabled(s);
-  })() }, []);
+  // ── Text done trigger ──
+  useEffect(() => { if (!curPage?.text) return; const d = setTimeout(() => setTextDone(true), 1500); return () => clearTimeout(d); }, [curPage?.text]);
 
+  // ── Auto-speak ──
   const speakText = useCallback(async (text) => {
     if (!text) return;
-    // Stop any current playback
     window.speechSynthesis?.cancel();
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    
-    // ElevenLabs if key available
     if (elKey) {
       setSpeaking(true);
       try {
         const cacheKey = elVoiceId + ":" + text;
         let url = ttsCacheRef.current.get(cacheKey);
-        
         if (!url) {
-          const voiceId = elVoiceId || "EXAVITQu4vr4xnSDxMaL";
-          const res = await fetch(`/api/elevenlabs/v1/text-to-speech/${voiceId}`, {
-            method: "POST",
-            headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              text,
-              model_id: "eleven_flash_v2_5",
-              voice_settings: { stability: 0.55, similarity_boost: 0.7, style: 0.3 }
-            })
+          const res = await fetch(`/api/elevenlabs/v1/text-to-speech/${elVoiceId}`, {
+            method: "POST", headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", voice_settings: { stability: 0.55, similarity_boost: 0.7, style: 0.3 } })
           });
-          if (!res.ok) throw new Error("ElevenLabs " + res.status);
-          const blob = await res.blob();
-          url = URL.createObjectURL(blob);
+          if (!res.ok) throw new Error(res.status);
+          const blob = await res.blob(); url = URL.createObjectURL(blob);
           ttsCacheRef.current.set(cacheKey, url);
         }
-        
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onended = () => { setSpeaking(false); audioRef.current = null; };
-        audio.onerror = () => { setSpeaking(false); audioRef.current = null; };
+        const audio = new Audio(url); audioRef.current = audio;
+        audio.onended = () => setSpeaking(false);
+        audio.onerror = () => setSpeaking(false);
         audio.play();
-        return;
-      } catch (e) {
-        console.error("ElevenLabs TTS error:", e);
-        setSpeaking(false);
-      }
+      } catch { setSpeaking(false); }
+      return;
     }
-    
-    // Fallback: Web Speech API
     if (!window.speechSynthesis) return;
     const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = "ru-RU";
-    utt.rate = 0.88;
-    utt.pitch = 1.05;
+    utt.lang = "ru-RU"; utt.rate = 0.88; utt.pitch = 1.05;
     if (ttsVoice) utt.voice = ttsVoice;
     utt.onstart = () => setSpeaking(true);
     utt.onend = () => setSpeaking(false);
-    utt.onerror = () => setSpeaking(false);
     window.speechSynthesis.speak(utt);
   }, [ttsVoice, elKey, elVoiceId]);
 
-  const stopSpeak = useCallback(() => {
-    window.speechSynthesis?.cancel();
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    setSpeaking(false);
-  }, []);
+  const stopSpeak = useCallback(() => { window.speechSynthesis?.cancel(); if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; } setSpeaking(false); }, []);
+  useEffect(() => { if (textDone && ttsEnabled && curPage?.text) speakText(curPage.tts_text || curPage.text); }, [textDone, ttsEnabled]);
+  useEffect(() => { stopSpeak(); }, [curPage]);
 
-  // SFX — generate and play ambient sound
-  const playSfx = useCallback(async (sfxPrompt) => {
-    if (!elKey || !sfxPrompt || !sfxEnabled) return;
-    if (sfxRef.current) { sfxRef.current.pause(); sfxRef.current = null; }
-    setSfxLoading(true);
-    try {
-      let url = sfxCacheRef.current.get(sfxPrompt);
-      
-      if (!url) {
-        const res = await fetch("/api/elevenlabs/v1/sound-generation", {
-          method: "POST",
-          headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: sfxPrompt + ", ambient background, loopable",
-            duration_seconds: 10,
-            prompt_influence: 0.5
-          })
-        });
-        if (!res.ok) throw new Error("SFX " + res.status);
-        const blob = await res.blob();
-        url = URL.createObjectURL(blob);
-        sfxCacheRef.current.set(sfxPrompt, url);
-      }
-      
-      const audio = new Audio(url);
-      audio.loop = true;
-      audio.volume = 0;
-      sfxRef.current = audio;
-      audio.play();
-      let vol = 0;
-      const fadeIn = setInterval(() => { vol = Math.min(vol + 0.02, 0.2); audio.volume = vol; if (vol >= 0.2) clearInterval(fadeIn); }, 50);
-      setSfxLoading(false);
-    } catch (e) {
-      console.error("SFX error:", e);
-      setSfxLoading(false);
-    }
-  }, [elKey, sfxEnabled]);
-
-  const stopSfx = useCallback(() => {
-    if (!sfxRef.current) return;
-    // Fade out
-    const audio = sfxRef.current;
-    let vol = audio.volume;
-    const fadeOut = setInterval(() => {
-      vol = Math.max(vol - 0.02, 0);
-      audio.volume = vol;
-      if (vol <= 0) { clearInterval(fadeOut); audio.pause(); URL.revokeObjectURL(audio.src); sfxRef.current = null; }
-    }, 50);
-  }, []);
-
-  // Auto-play SFX when page arrives
-  useEffect(() => {
-    if (curPage?.sfx && elKey && sfxEnabled) playSfx(curPage.sfx);
-    return () => {}; // cleanup handled by stopSfx
-  }, [curPage?.sfx]);
-
-  // Auto-speak when typewriter finishes & TTS enabled
-  useEffect(() => {
-    if (textDone && ttsEnabled && curPage?.text) speakText(curPage.tts_text || curPage.text);
-  }, [textDone, ttsEnabled]);
-
-  // Stop speech on page change (SFX handled separately to allow crossfade)
-  useEffect(() => { stopSpeak(); stopSfx(); }, [curPage]);
-
-  // Auto-scroll
-  useEffect(() => { if (curPage && storyScrollRef.current) { storyScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }) } }, [curPage]);
-
-  // Auto-flip book to latest spread when new page arrives
-  const allPagesLen = curPage ? pages.length + 1 : pages.length;
-  useEffect(() => {
-    if (view !== "session") return;
-    if (allPagesLen > prevPageCountRef.current && allPagesLen > 1 && bookRef.current) {
-      const target = allPagesLen - 1;
-      const spreadPage = target % 2 === 0 ? target : target - 1;
-      setTimeout(() => { try { bookRef.current?.flip(spreadPage); } catch {} }, 300);
-    }
-    prevPageCountRef.current = allPagesLen;
-  }, [allPagesLen, view]);
-
-  // Retroactive image fix: if a page was committed without imgUrl and curImg loads after, update it
-  useEffect(() => {
-    if (curImg && !curPage && pages.length > 0) {
-      const lastPage = pages[pages.length - 1];
-      if (lastPage && !lastPage.imgUrl) {
-        setPages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { ...updated[updated.length - 1], imgUrl: curImg };
-          return updated;
-        });
-      }
-    }
-  }, [curImg, curPage, pages.length]);
-
-  // In book mode, set textDone after a short reading delay (no Typewriter)
-  useEffect(() => {
-    if (!curPage?.text) return;
-    const delay = setTimeout(() => setTextDone(true), 1500);
-    return () => clearTimeout(delay);
-  }, [curPage?.text]);
-
-
-  // Generate illustration when page arrives
-  // Flow: Page 1 → Flux generates portrait → Kontext generates scene from portrait
-  //       Page 2+ → Kontext generates scene from same portrait
+  // ── Illustration generation ──
   useEffect(() => {
     if (!curPage?.scene) return;
     setCurImg(null);
     if (!repToken) return;
     setImgLoading(true);
-    
-    const pageMood = curPage.mood || "forest";
-    const isFirstPage = !refImgUrl; // no portrait yet = first page
-    
-    if (isFirstPage) {
-      // Page 1: generate portrait first, then use it for scene via Kontext
-      const doFirstPage = async () => {
+    const mood = curPage.mood || "forest";
+    const isFirst = !refImgUrl;
+    if (isFirst) {
+      (async () => {
         try {
-          // Step 1: Generate clean character portrait (Flux)
           let portraitUrl = null;
-          if (charDesc) {
-            portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
-          }
+          if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
           if (portraitUrl) {
             setRefImgUrl(portraitUrl);
-            // Step 2: Generate scene using portrait as reference (Kontext)
-            const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, pageMood, artStyle);
-            setCurImg(sceneUrl);
+            const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle);
+            setCurImg(sceneUrl); 
           } else {
-            // Fallback: generate scene directly with Flux if portrait failed
-            const sceneUrl = await genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", pageMood, artStyle);
-            setCurImg(sceneUrl);
-            if (sceneUrl) setRefImgUrl(sceneUrl);
+            const sceneUrl = await genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", mood, artStyle);
+            setCurImg(sceneUrl); if (sceneUrl) setRefImgUrl(sceneUrl);
           }
           setImgLoading(false);
         } catch { setImgLoading(false); }
-      };
-      doFirstPage();
+      })();
     } else {
-      // Pages 2+: Kontext with same portrait reference
-      genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, pageMood, artStyle)
+      genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, mood, artStyle)
         .then(url => { setCurImg(url); setImgLoading(false); })
         .catch(() => setImgLoading(false));
     }
   }, [curPage?.scene]);
 
-  // Save Replicate token
-  const saveRepToken = async (val) => { setRepToken(val); await ST.set("repToken", val); };
-  const saveAntKey = async (val) => { setAntKey(val); await ST.set("antKey", val); };
-  const saveElKey = async (val) => { setElKey(val); await ST.set("elKey", val); };
-  
-  // Voice management
-  const fetchVoices = async () => {
-    if (!elKey) return;
-    setVoicesLoading(true);
-    try {
-      const res = await fetch("/api/elevenlabs/v1/voices?page_size=100", {
-        headers: { "xi-api-key": elKey }
-      });
-      const data = await res.json();
-      const voices = (data.voices || []).map(v => ({
-        id: v.voice_id,
-        name: v.name,
-        category: v.category || "",
-        labels: v.labels || {},
-        preview: v.preview_url
-      }));
-      setElVoices(voices);
-    } catch (e) { console.error("Fetch voices error:", e); }
-    setVoicesLoading(false);
-  };
+  // ── Retroactive image fix ──
+  useEffect(() => {
+    if (curImg && !curPage && pages.length > 0) {
+      const last = pages[pages.length - 1];
+      if (last && !last.imgUrl) setPages(p => { const u = [...p]; u[u.length-1] = { ...u[u.length-1], imgUrl: curImg }; return u; });
+    }
+  }, [curImg, curPage, pages.length]);
 
-  const selectVoice = async (id, name) => {
-    setElVoiceId(id); setElVoiceName(name);
-    await ST.set("elVoiceId", id); await ST.set("elVoiceName", name);
-    // Clear TTS cache when voice changes
-    ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url));
-    ttsCacheRef.current.clear();
-  };
+  // ── Save helpers ──
+  const saveRepToken = async v => { setRepToken(v); await ST.set("repToken", v); };
+  const saveAntKey = async v => { setAntKey(v); await ST.set("antKey", v); };
+  const saveElKey = async v => { setElKey(v); await ST.set("elKey", v); };
+  const toggleLang = async () => { const n = lang === "ru" ? "en" : "ru"; setLang(n); await ST.set("lang", n); };
+  const register = async () => { if (!authName.trim() || !authEmail.trim()) return; const u = { name: authName.trim(), email: authEmail.trim() }; await ST.set("user", u); setUser(u); setView("dashboard"); };
+  const addChildFn = async () => { if (!newChild.trim()) return; const ch = { id: Date.now().toString(), name: newChild.trim(), age: newAge }; const upd = [...children, ch]; setChildren(upd); await ST.set("children", upd); setNewChild(""); setShowAdd(false); };
 
-  const previewVoice = async (voiceId) => {
-    if (voicePreview) { voicePreview.pause(); setVoicePreview(null); }
-    try {
-      const res = await fetch(`/api/elevenlabs/v1/text-to-speech/${voiceId}`, {
-        method: "POST",
-        headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: "Жил-был маленький герой, который мечтал о большом приключении. И однажды его мечта сбылась!",
-          model_id: "eleven_flash_v2_5",
-          voice_settings: { stability: 0.55, similarity_boost: 0.7, style: 0.3 }
-        })
-      });
-      if (!res.ok) throw new Error(res.status);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.onended = () => { URL.revokeObjectURL(url); setVoicePreview(null); };
-      setVoicePreview(audio);
-      audio.play();
-    } catch (e) { console.error("Preview error:", e); }
-  };
-
-  // Actions
-  const register = async () => { if (!authName.trim() || !authEmail.trim()) return; const u = { name: authName.trim(), email: authEmail.trim() }; await ST.set("user", u); setUser(u); setView("dashboard") };
-  const addChild = async () => { if (!newChild.trim()) return; const ch = { id: Date.now().toString(), name: newChild.trim(), age: newAge }; const upd = [...children, ch]; setChildren(upd); await ST.set("children", upd); setNewChild(""); setShowAdd(false) };
-
-  // Generate fresh story ideas
+  // ── Generate presets ──
   const generatePresets = async (childName, childAge) => {
     if (!antKey) return;
     setPresetsLoading(true);
-    const promptRu = `Придумай 6 коротких завязок для интерактивных историй для ребёнка ${childName} (${childAge} лет). Микс: 2 реалистичных (спорт, школа, дружба, хобби), 2 фэнтези (магия, говорящие животные), 2 необычных (фантастика, приключения). Каждая — 1 предложение, 10-18 слов. Начинай с "Герой" или с действия. Разнообразь! Ответь ТОЛЬКО JSON массивом: [{"emoji":"...","text":"..."}]`;
-    const promptEn = `Create 6 short story premises for interactive stories for a child named ${childName} (${childAge} years old). Mix: 2 realistic (sports, school, friendship), 2 fantasy (magic, talking animals), 2 unusual (sci-fi, adventure). Each — 1 sentence, 10-18 words. Start with "The hero" or an action. Be diverse! Respond ONLY with JSON array: [{"emoji":"...","text":"..."}]`;
+    const prompt = lang === "en"
+      ? `Create 6 short story premises for interactive stories for ${childName} (${childAge} years old). Mix: 2 realistic, 2 fantasy, 2 unusual. Each 1 sentence, 10-18 words. Respond ONLY JSON: [{"text":"..."}]`
+      : `Придумай 6 коротких завязок для интерактивных историй для ребёнка ${childName} (${childAge} лет). Микс: 2 реалистичных, 2 фэнтези, 2 необычных. Каждая — 1 предложение, 10-18 слов. Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": antKey, "content-type": "application/json", "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 600,
-          messages: [{ role: "user", content: lang === "en" ? promptEn : promptRu }]
-        })
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, messages: [{ role: "user", content: prompt }] })
       });
       const data = await r.json();
       const txt = data?.content?.[0]?.text || "";
-      const clean = txt.replace(/```json|```/g, "").trim();
-      const arr = JSON.parse(clean);
+      const arr = JSON.parse(txt.replace(/```json|```/g, "").trim());
       if (Array.isArray(arr) && arr.length > 0) setPresets(arr);
-    } catch (e) { console.error("Presets gen error:", e); }
+    } catch (e) { console.error("Presets error:", e); }
     setPresetsLoading(false);
   };
 
+  // ── Start session ──
   const startSession = async (child, premise) => {
-    const storyTheme = { id: "custom", emoji: "📖", name: (premise || "").slice(0, 30) + (premise?.length > 30 ? "…" : ""), prompt: premise || "surprise creative story" };
+    const storyTheme = { id: "custom", name: (premise || "").slice(0, 30) + (premise?.length > 30 ? "…" : ""), prompt: premise || "surprise creative story" };
     setActiveChild(child); setTheme(storyTheme); setPages([]); setCurPage(null); setCurImg(null);
     setPicks([]); setSel(null); setT0(Date.now()); setTimer(0); setError(null); setTextDone(false);
     setCustomInput(""); setCharDesc(null); setRefImgUrl(null);
-    ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url));
-    ttsCacheRef.current.clear();
-    sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url));
-    sfxCacheRef.current.clear();
+    ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url)); ttsCacheRef.current.clear();
+    sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
     setView("session"); setLoading(true);
-    if (!antKey) { setError("Нужен Anthropic API ключ! Откройте ⚙️ Настройки."); setLoading(false); return; }
+    if (!antKey) { setError(lang === "ru" ? "Нужен Anthropic API ключ! Откройте настройки." : "Need Anthropic API key! Open settings."); setLoading(false); return; }
     try {
       const r = await genPage({ name: child.name, age: child.age, theme: premise || "surprise creative story", history: [], choice: null, charDesc: null, backstory: premise || "", lang }, antKey);
       if (r.characterDesc) setCharDesc(r.characterDesc);
       setCurPage(r); setLoading(false);
-    } catch { setError("Ошибка. Попробуйте ещё."); setLoading(false); }
+    } catch { setError(lang === "ru" ? "Ошибка. Попробуйте ещё." : "Error. Try again."); setLoading(false); }
   };
 
+  // ── Pick choice ──
   const pickChoice = async (ch) => {
     if (loading || sel) return;
     setSel(ch.label); setTextDone(false); setCustomInput("");
-    setPicks(p => [...p, { label: ch.label, emoji: ch.emoji || "✏️", value: ch.value || "custom", page: pages.length + 1 }]);
+    setPicks(p => [...p, { label: ch.label, value: ch.value || "custom", page: pages.length + 1 }]);
     setTimeout(async () => {
       const up = [...pages, { ...curPage, imgUrl: curImg, choice: ch }];
       setPages(up); setCurPage(null); setCurImg(null); setSel(null); setLoading(true);
       try {
         const r = await genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: up.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: ch, charDesc, lang }, antKey);
-        // If a new main character joined, update charDesc and regenerate portrait
         if (r.newMainCharacter) {
-          const updatedDesc = charDesc + ". New companion: " + r.newMainCharacter;
-          setCharDesc(updatedDesc);
-          // Regenerate group portrait in background with updated characters
-          if (repToken) {
-            genCharPortrait(repToken, updatedDesc, r.scene, artStyle).then(url => {
-              if (url) setRefImgUrl(url);
-            });
-          }
+          const updDesc = charDesc + ". New companion: " + r.newMainCharacter;
+          setCharDesc(updDesc);
+          if (repToken) genCharPortrait(repToken, updDesc, r.scene, artStyle).then(url => { if (url) setRefImgUrl(url); });
         }
         setCurPage(r); setLoading(false);
-      } catch { setError("Ошибка."); setLoading(false); }
-    }, 800);
+      } catch { setError(lang === "ru" ? "Ошибка." : "Error."); setLoading(false); }
+    }, 600);
   };
 
-  const submitCustom = () => {
-    if (!customInput.trim() || loading || sel) return;
-    pickChoice({ label: customInput.trim(), emoji: "✏️", value: "custom" });
-  };
+  const submitCustom = () => { if (!customInput.trim() || loading || sel) return; pickChoice({ label: customInput.trim(), value: "custom" }); };
 
+  // ── Finish session ──
   const finishSession = async () => {
     stopSpeak();
-    stopSfx();
     clearInterval(timerRef.current);
     const allPages = [...pages, { ...curPage, imgUrl: curImg }];
-    const s = { id: Date.now().toString(), child: activeChild, theme, pages: allPages, picks, duration: Math.floor((Date.now()-t0)/1000), date: Date.now(), charDesc, backstory };
+    const s = { id: Date.now().toString(), child: activeChild, theme, pages: allPages, picks, duration: Math.floor((Date.now() - t0) / 1000), date: Date.now(), charDesc, backstory };
     const upd = [s, ...sessions]; setSessions(upd); await ST.set("sessions", upd); setView("report");
   };
 
-  const getVals = () => { const vs = {}; picks.forEach(p => { if (p.value && p.value !== "custom") vs[p.value] = (vs[p.value]||0)+1 }); const tot = picks.length || 1; return Object.entries(VALS).map(([k,v]) => ({ k, ...v, count: vs[k]||0, pct: Math.round(((vs[k]||0)/tot)*100) })).filter(v => v.count > 0).sort((a,b) => b.count - a.count) };
+  const getVals = () => {
+    const vs = {}; picks.forEach(p => { if (p.value && p.value !== "custom") vs[p.value] = (vs[p.value] || 0) + 1; });
+    const tot = picks.length || 1;
+    return Object.entries(VALS).map(([k, v]) => ({ k, ...v, count: vs[k] || 0, pct: Math.round(((vs[k] || 0) / tot) * 100) })).filter(v => v.count > 0).sort((a, b) => b.count - a.count);
+  };
 
-  // Shared styles
-  const inp = { width: "100%", padding: "14px 18px", borderRadius: 14, border: `1.5px solid ${t.gb}`, background: dark ? t.bg2 : "#fff", color: t.tx, fontSize: ".95rem", fontFamily: FN.b, outline: "none", transition: "border-color .3s" };
-  const onF = e => { e.target.style.borderColor = `${t.accent}60` };
-  const onB = e => { e.target.style.borderColor = t.gb };
-  const PBtn = ({ children: ch, onClick, disabled, style: s }) =>
-    <button onClick={onClick} disabled={disabled} style={{ padding: "14px 32px", borderRadius: 50, fontFamily: FN.b, fontSize: ".9rem", fontWeight: 600, border: "none", cursor: disabled ? "default" : "pointer", background: t.accent, color: "#fff", boxShadow: "0 6px 24px rgba(232,93,117,.22)", opacity: disabled ? .4 : 1, transition: "all .3s", letterSpacing: ".02em", ...s }}
-      onMouseOver={e => { if (!disabled) e.currentTarget.style.transform = "translateY(-2px)" }}
-      onMouseOut={e => { e.currentTarget.style.transform = "" }}>{ch}</button>;
-  const Label = ({ children: ch, center }) =>
-    <div style={{ fontFamily: FN.b, fontSize: ".58rem", fontWeight: 500, letterSpacing: ".28em", textTransform: "uppercase", color: t.accent, marginBottom: 10, display: "flex", alignItems: "center", gap: 8, justifyContent: center ? "center" : "flex-start" }}>
-      <span style={{ width: 20, height: 1.5, background: t.accent, borderRadius: 2, display: "inline-block" }}/>{ch}
-    </div>;
-
-  const CSS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,700&family=Outfit:wght@200;300;400;500;600;700&display=swap');*{margin:0;padding:0;box-sizing:border-box}body{overflow-x:hidden;-webkit-font-smoothing:antialiased}::selection{background:rgba(232,93,117,.15)}@keyframes spin{to{transform:rotate(360deg)}}@keyframes fu{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}@keyframes si{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,93,117,.3)}70%{box-shadow:0 0 0 14px rgba(232,93,117,0)}}@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}@keyframes kenburns{0%{transform:scale(1) translate(0,0)}33%{transform:scale(1.08) translate(-1.5%,-1%)}66%{transform:scale(1.05) translate(1%,-2%)}100%{transform:scale(1.1) translate(-0.5%,1%)}}@keyframes particle{0%{opacity:0;transform:translate(0,0) scale(.5)}15%{opacity:.8}50%{opacity:.6;transform:translate(var(--drift),-30px) scale(1)}85%{opacity:.3}100%{opacity:0;transform:translate(calc(var(--drift) * 1.5),-60px) scale(.4)}}@keyframes flipForward{0%{transform:rotateY(0deg)}100%{transform:rotateY(-180deg)}}@keyframes flipBack{0%{transform:rotateY(-180deg)}100%{transform:rotateY(0deg)}}`;
-
-  // ═══ SETTINGS PANEL ═══
+  // ═══════════════════════════════════
+  // SETTINGS PANEL
+  // ═══════════════════════════════════
   const SettingsPanel = () => (
-    <div style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(45,52,54,.4)", backdropFilter:"blur(8px)" }} onClick={() => setShowSettings(false)}>
-      <div onClick={e => e.stopPropagation()} style={{ background: dark ? t.bg2 : "#fff", borderRadius: 24, padding: "32px 28px", maxWidth: 420, width: "90%", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 24px 80px rgba(45,52,54,.2)", animation: "fu .3s ease-out" }}>
-        <h3 style={{ fontFamily: FN.d, fontSize: "1.3rem", fontWeight: 600, marginBottom: 6, color: t.tx }}>⚙️ Настройки</h3>
-        <p style={{ fontSize: ".75rem", color: t.tx3, marginBottom: 20, fontWeight: 300, lineHeight: 1.6 }}>Сказки — Anthropic, иллюстрации — Replicate, озвучка — ElevenLabs</p>
-        
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: ".68rem", fontWeight: 500, color: t.tx2, marginBottom: 6, display: "block", letterSpacing: ".04em" }}>Anthropic API Key (для генерации сказок)</label>
-          <input
-            value={antKey}
-            onChange={e => saveAntKey(e.target.value.trim())}
-            placeholder="sk-ant-..."
-            type="password"
-            style={{ ...inp, fontFamily: "monospace", fontSize: ".82rem" }}
-            onFocus={onF} onBlur={onB}
-          />
-          <p style={{ fontSize: ".62rem", color: t.tx3, marginTop: 6, lineHeight: 1.5, fontWeight: 300 }}>
-            Получить на <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style={{ color: t.accent, textDecoration: "underline" }}>console.anthropic.com</a>
-          </p>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(30,27,46,0.3)", backdropFilter: "blur(6px)" }} onClick={() => setShowSettings(false)}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+        onClick={e => e.stopPropagation()}
+        style={{ background: T.bgCard, borderRadius: T.r3, padding: "32px 28px", maxWidth: 420, width: "90%", maxHeight: "85vh", overflowY: "auto", boxShadow: T.shadowLg }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <h3 style={{ fontFamily: T.display, fontSize: 22, fontWeight: 600, color: T.tx }}>{L.settings}</h3>
+          <button onClick={() => setShowSettings(false)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}><X size={20} color={T.tx3} /></button>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: ".68rem", fontWeight: 500, color: t.tx2, marginBottom: 6, display: "block", letterSpacing: ".04em" }}>Replicate API Token</label>
-          <input
-            value={repToken}
-            onChange={e => saveRepToken(e.target.value.trim())}
-            placeholder="r8_..."
-            type="password"
-            style={{ ...inp, fontFamily: "monospace", fontSize: ".82rem" }}
-            onFocus={onF} onBlur={onB}
-          />
-          <p style={{ fontSize: ".62rem", color: t.tx3, marginTop: 6, lineHeight: 1.5, fontWeight: 300 }}>
-            Получить на <a href="https://replicate.com/account/api-tokens" target="_blank" rel="noopener" style={{ color: t.accent, textDecoration: "underline" }}>replicate.com/account/api-tokens</a>
-          </p>
-        </div>
+        {[
+          { label: "Anthropic API Key", value: antKey, set: saveAntKey, placeholder: "sk-ant-...", hint: "console.anthropic.com", url: "https://console.anthropic.com/settings/keys" },
+          { label: "Replicate API Token", value: repToken, set: saveRepToken, placeholder: "r8_...", hint: "replicate.com", url: "https://replicate.com/account/api-tokens" },
+          { label: "ElevenLabs API Key", value: elKey, set: saveElKey, placeholder: "sk_...", hint: "elevenlabs.io", url: "https://elevenlabs.io/app/settings/api-keys" },
+        ].map(({ label, value, set, placeholder, hint, url }) => (
+          <div key={label} style={{ marginBottom: 18 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: T.tx2, marginBottom: 6, display: "block" }}>{label}</label>
+            <input
+              className="skazka-input"
+              value={value}
+              onChange={e => set(e.target.value.trim())}
+              placeholder={placeholder}
+              type="password"
+              style={{ fontFamily: "monospace", fontSize: 13 }}
+            />
+            <p style={{ fontSize: 11, color: T.tx3, marginTop: 4 }}>
+              <a href={url} target="_blank" rel="noopener" style={{ color: T.accent }}>{hint}</a>
+            </p>
+          </div>
+        ))}
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: ".68rem", fontWeight: 500, color: t.tx2, marginBottom: 6, display: "block", letterSpacing: ".04em" }}>ElevenLabs API Key (озвучка)</label>
-          <input
-            value={elKey}
-            onChange={e => saveElKey(e.target.value.trim())}
-            placeholder="sk_..."
-            type="password"
-            style={{ ...inp, fontFamily: "monospace", fontSize: ".82rem" }}
-            onFocus={onF} onBlur={onB}
-          />
-          <p style={{ fontSize: ".62rem", color: t.tx3, marginTop: 6, lineHeight: 1.5, fontWeight: 300 }}>
-            Получить на <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener" style={{ color: t.accent, textDecoration: "underline" }}>elevenlabs.io</a> · Без ключа — голос браузера
-          </p>
-        </div>
-
-        {/* Voice Picker */}
-        {elKey && <div style={{ marginBottom: 16, animation: "fu .3s ease-out" }}>
-          <label style={{ fontSize: ".68rem", fontWeight: 500, color: t.tx2, marginBottom: 6, display: "block", letterSpacing: ".04em" }}>Голос для озвучки</label>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-            <div style={{ flex: 1, padding: "10px 14px", borderRadius: 14, border: `1.5px solid ${t.gb}`, background: dark ? t.bg2 : "#fff", fontSize: ".82rem", fontFamily: FN.b, color: t.tx }}>
-              🎙️ {elVoiceName}
+        {/* Status indicators */}
+        <div style={{ padding: 16, borderRadius: T.r2, background: T.bgMuted, marginBottom: 20 }}>
+          {[
+            { ok: !!antKey, on: "Sonnet connected", off: "Need Anthropic key" },
+            { ok: !!repToken, on: "Flux + Kontext connected", off: "No illustrations without Replicate key" },
+            { ok: !!elKey, on: `ElevenLabs — ${elVoiceName}`, off: "Using browser voice (free)" },
+          ].map(({ ok, on, off }, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < 2 ? 8 : 0 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: ok ? T.teal : T.coral, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: ok ? T.teal : T.tx3 }}>{ok ? on : off}</span>
             </div>
-            <button onClick={fetchVoices} disabled={voicesLoading} style={{ padding: "10px 14px", borderRadius: 14, border: `1.5px solid ${t.gb}`, background: t.accentBg, fontFamily: FN.b, fontSize: ".72rem", fontWeight: 500, color: t.accent, cursor: voicesLoading ? "default" : "pointer", whiteSpace: "nowrap" }}>
-              {voicesLoading ? "⏳" : "Выбрать голос"}
-            </button>
-          </div>
-          {elVoices.length > 0 && <div style={{ maxHeight: 200, overflowY: "auto", border: `1px solid ${t.gb}`, borderRadius: 14, background: dark ? t.bg2 : "#fff" }}>
-            {elVoices.map(v => (
-              <div key={v.id} style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "9px 12px",
-                borderBottom: `1px solid ${t.gb}08`,
-                background: v.id === elVoiceId ? t.accentBg : "transparent",
-                cursor: "pointer", transition: "background .2s"
-              }}
-                onClick={() => selectVoice(v.id, v.name)}
-                onMouseOver={e => { if (v.id !== elVoiceId) e.currentTarget.style.background = t.blushBg }}
-                onMouseOut={e => { if (v.id !== elVoiceId) e.currentTarget.style.background = "transparent" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: ".78rem", fontWeight: v.id === elVoiceId ? 600 : 400, color: t.tx }}>{v.name} {v.id === elVoiceId && "✓"}</div>
-                  <div style={{ fontSize: ".6rem", color: t.tx3 }}>{v.category}{v.labels?.accent ? " · " + v.labels.accent : ""}{v.labels?.gender ? " · " + v.labels.gender : ""}</div>
-                </div>
-                <button onClick={e => { e.stopPropagation(); if (voicePreview) { voicePreview.pause(); setVoicePreview(null); } else { previewVoice(v.id); } }} style={{
-                  padding: "4px 10px", borderRadius: 12, border: `1px solid ${t.gb}`, background: "transparent",
-                  fontSize: ".64rem", fontFamily: FN.b, color: t.accent, cursor: "pointer", flexShrink: 0
-                }}>
-                  {voicePreview ? "⏹" : "▶"}
-                </button>
-              </div>
-            ))}
-          </div>}
-          <p style={{ fontSize: ".58rem", color: t.tx3, marginTop: 6, fontWeight: 300 }}>
-            Совет: добавьте русские голоса в <a href="https://elevenlabs.io/app/voice-library" target="_blank" rel="noopener" style={{ color: t.accent, textDecoration: "underline" }}>Voice Library</a> → они появятся здесь
-          </p>
-        </div>}
-
-        <div style={{ padding: "12px 14px", borderRadius: 14, background: (antKey && repToken) ? t.sageBg : t.blushBg, border: `1px solid ${(antKey && repToken) ? t.sage + "30" : t.blush + "30"}`, marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: antKey ? t.sage : t.blush }}/>
-            <span style={{ fontSize: ".72rem", fontWeight: 500, color: antKey ? t.sage : t.tx3 }}>
-              {antKey ? "Sonnet подключён — сказки работают" : "Нужен Anthropic ключ для сказок"}
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: repToken ? t.sage : t.blush }}/>
-            <span style={{ fontSize: ".72rem", fontWeight: 500, color: repToken ? t.sage : t.tx3 }}>
-              {repToken ? "Flux 2 Pro + Kontext Pro подключены" : "Без Replicate ключа — иллюстрации отключены"}
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: elKey ? t.sage : t.accent }}/>
-            <span style={{ fontSize: ".72rem", fontWeight: 500, color: elKey ? t.sage : t.tx3 }}>
-              {elKey ? `ElevenLabs — ${elVoiceName}` : "Озвучка — голос браузера (бесплатно)"}
-            </span>
-          </div>
-          {repToken && <p style={{ fontSize: ".6rem", color: t.tx3, marginTop: 6, fontWeight: 300 }}>Стр.1: Flux 2 Pro (~$0.05) · Стр.2-6: Kontext Pro (~$0.04){elKey ? " · Голос: ~$0.01/стр · Звуки: ~$0.01/стр" : ""}</p>}
+          ))}
         </div>
 
-        <button onClick={() => setShowSettings(false)} style={{ width: "100%", padding: "12px", borderRadius: 50, background: t.accent, color: "#fff", border: "none", fontFamily: FN.b, fontWeight: 600, fontSize: ".85rem", cursor: "pointer" }}>Готово</button>
-      </div>
+        <PillBtn onClick={() => setShowSettings(false)} style={{ width: "100%" }}>{L.done}</PillBtn>
+      </motion.div>
     </div>
   );
 
-  // ═══ LOADING ═══
+  // ═══════════════════════════════════
+  // LOADING
+  // ═══════════════════════════════════
   if (view === "loading") return (
-    <div style={{ minHeight: "100vh", background: t.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <style>{CSS}</style>
-      <div style={{ fontSize: "2rem" }}>📖</div>
-      <div style={{ width: 36, height: 36, border: `2.5px solid ${t.accent}25`, borderTopColor: t.accent, borderRadius: "50%", animation: "spin .8s linear infinite" }}/>
+      <Loader2 size={24} color={T.accent} style={{ animation: "spin 1s linear infinite" }} />
     </div>
   );
 
-  // ═══ AUTH ═══
+  // ═══════════════════════════════════
+  // AUTH
+  // ═══════════════════════════════════
   if (view === "auth") return (
-    <div style={{ minHeight: "100vh", background: t.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FN.b, position: "relative", overflow: "hidden", transition: "background .5s" }}>
+    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body, position: "relative", overflow: "hidden" }}>
       <style>{CSS}</style>
-      <div style={{ position: "absolute", top: "10%", right: "15%", width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle, ${t.accentBg}, transparent 60%)`, filter: "blur(80px)", pointerEvents: "none" }}/>
-      <div style={{ position: "absolute", bottom: "10%", left: "10%", width: 300, height: 300, borderRadius: "50%", background: `radial-gradient(circle, ${t.sageBg}, transparent 60%)`, filter: "blur(60px)", pointerEvents: "none" }}/>
-      <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "40px 28px", maxWidth: 420, width: "100%" }}>
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <a href="/" style={{ background: t.gl2, border: `1px solid ${t.gb}`, padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b, textDecoration: "none" }}>{L.back}</a>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <LangSwitch lang={lang} onToggle={toggleLang} t={t}/>
-            <ThemeSwitch dark={dark} onToggle={toggleTheme}/>
-          </div>
-        </div>
-        <div style={{ animation: "fu .7s ease-out", marginBottom: 44, paddingTop: 20 }}>
-          <Label center>{L.interactiveStories}</Label>
-          <h1 style={{ fontFamily: FN.d, fontSize: "clamp(2.8rem,9vw,4rem)", fontWeight: 300, lineHeight: 1, letterSpacing: "-.02em", marginBottom: 14 }}>
-            <span style={{ color: t.tx }}>{L.skazka}</span><br/>
-            <em style={{ color: t.accent, fontWeight: 400 }}>{L.vmeste}</em>
+      <div style={{ position: "absolute", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle,rgba(108,99,255,0.06),transparent 70%)", top: -100, right: -80, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle,rgba(255,107,138,0.05),transparent 70%)", bottom: -60, left: -60, pointerEvents: "none" }} />
+
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 400, margin: "0 auto", padding: "72px 24px 48px", textAlign: "center" }}>
+        <AnimIn delay={0.1}><IconCircle icon={BookOpen} size={64} bg={`linear-gradient(135deg,${T.accent},${T.accentSoft})`} color="#fff" /></AnimIn>
+        <AnimIn delay={0.2} style={{ marginTop: 24, marginBottom: 6 }}>
+          <h1 style={{ fontFamily: T.display, fontWeight: 600, fontSize: 38, lineHeight: 1.1 }}>
+            <GradientText colors={["#6C63FF", "#FF6B8A", "#6C63FF"]}>{L.skazka}</GradientText>
           </h1>
-          <p style={{ color: t.tx3, fontFamily: FN.b, fontSize: ".9rem", maxWidth: 300, margin: "0 auto", lineHeight: 1.65, fontWeight: 300 }}>{L.aiCreates}<br/>{L.readTogether}</p>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, animation: "fu .7s .1s ease-out both" }}>
-          <input value={authName} onChange={e => setAuthName(e.target.value)} placeholder={L.yourName} style={inp} onFocus={onF} onBlur={onB}/>
-          <input value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder={L.email} type="email" style={inp} onFocus={onF} onBlur={onB} onKeyDown={e => e.key === "Enter" && register()}/>
-        </div>
-        <div style={{ marginTop: 18, animation: "fu .7s .2s ease-out both" }}>
-          <PBtn onClick={register} disabled={!authName.trim() || !authEmail.trim()} style={{ width: "100%" }}>{L.login}</PBtn>
-        </div>
-        <div style={{ marginTop: 20, padding: "10px 14px", borderRadius: 14, background: t.sageBg, border: `1px solid ${t.sage}20`, fontSize: ".65rem", color: t.sage, lineHeight: 1.5, fontWeight: 300 }}>{L.disclaimer}</div>
+        </AnimIn>
+        <AnimIn delay={0.3}>
+          <h1 style={{ fontFamily: T.display, fontStyle: "italic", fontWeight: 400, fontSize: 38, color: T.tx, lineHeight: 1.1 }}>{L.vmeste}</h1>
+        </AnimIn>
+        <AnimIn delay={0.4} style={{ marginTop: 16, marginBottom: 40 }}>
+          <BlurText text={`${L.aiCreates} ${L.readTogether}`} delay={60} animateBy="words" direction="top" stepDuration={0.3}
+            className="" />
+        </AnimIn>
+        <AnimIn delay={0.5}>
+          <div className="skazka-card" style={{ padding: 28, textAlign: "left" }}>
+            <input className="skazka-input" value={authName} onChange={e => setAuthName(e.target.value)} placeholder={L.yourName} style={{ marginBottom: 12 }} />
+            <input className="skazka-input" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder={L.email} style={{ marginBottom: 20 }} onKeyDown={e => e.key === "Enter" && register()} />
+            <PillBtn onClick={register} style={{ width: "100%" }}><Sparkles size={16} />{L.login}</PillBtn>
+          </div>
+        </AnimIn>
+        <AnimIn delay={0.7} style={{ marginTop: 28, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <div style={{ display: "flex" }}>
+            {["#FFD1DC","#C4B8FF","#A0D8EF"].map((c, i) => <Avatar key={i} name={["А","М","К"][i]} size={26} gradient={`linear-gradient(135deg,${c},${c}dd)`} />)}
+          </div>
+          <ShinyText text={lang === "ru" ? "230+ семей уже создают сказки" : "230+ families creating stories"} speed={4} color={T.tx3} shineColor={T.accent} />
+        </AnimIn>
+        <AnimIn delay={0.8} style={{ marginTop: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Shield size={12} color={T.tx3} />
+            <p style={{ fontSize: 11, color: T.tx3, lineHeight: 1.6 }}>{L.disclaimer}</p>
+          </div>
+        </AnimIn>
       </div>
     </div>
   );
 
-  // ═══ DASHBOARD ═══
+  // ═══════════════════════════════════
+  // DASHBOARD
+  // ═══════════════════════════════════
   if (view === "dashboard") return (
-    <div style={{ minHeight: "100vh", background: t.bg, fontFamily: FN.b, position: "relative", overflow: "hidden", transition: "background .5s" }}>
+    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body, position: "relative", overflow: "hidden" }}>
       <style>{CSS}</style>
       {showSettings && <SettingsPanel />}
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 620, margin: "0 auto", padding: "36px 18px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 44, animation: "fu .5s ease-out" }}>
-          <div>
-            <Label>Dashboard</Label>
-            <h1 style={{ fontFamily: FN.d, fontSize: "clamp(1.6rem,5vw,2.4rem)", fontWeight: 300, letterSpacing: "-.02em", lineHeight: 1.1, color: t.tx }}>
-              Привет, <em style={{ color: t.accent, fontWeight: 400, fontStyle: "italic" }}>{user?.name}</em>
-            </h1>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={() => setShowSettings(true)} style={{ background: t.gl2, border: `1px solid ${t.gb}`, cursor: "pointer", padding: "7px 12px", borderRadius: 20, fontSize: ".8rem", color: t.tx3, position: "relative" }}>
-              ⚙️
-              {(!repToken || !antKey) && <div style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", background: "#E85D75", border: `2px solid ${t.bg}` }}/>}
-            </button>
-            <button onClick={async () => { await ST.del("user"); window.location.href = "/" }} style={{ background: t.gl2, border: `1px solid ${t.gb}`, cursor: "pointer", padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b }}>{L.logout}</button>
-            <LangSwitch lang={lang} onToggle={toggleLang} t={t}/>
-            <ThemeSwitch dark={dark} onToggle={toggleTheme}/>
-          </div>
-        </div>
+      <div style={{ position: "absolute", width: 350, height: 350, borderRadius: "50%", background: "radial-gradient(circle,rgba(108,99,255,0.05),transparent 65%)", top: -80, right: -60, pointerEvents: "none" }} />
 
-        {/* API key prompt */}
-        {(!antKey || !repToken) && <div onClick={() => setShowSettings(true)} style={{ background: t.accentBg, border: `1px solid ${t.accent}25`, borderRadius: 16, padding: "14px 18px", marginBottom: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 12, animation: "fu .5s ease-out", transition: "transform .3s" }}
-          onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={e => e.currentTarget.style.transform = ""}>
-          <Palette size={20} style={{ color: t.accent }}/>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: ".82rem", fontWeight: 600, color: t.tx, marginBottom: 2 }}>Подключите Flux 2 Pro</div>
-            <div style={{ fontSize: ".68rem", color: t.tx3, fontWeight: 300 }}>Добавьте API-ключ Replicate для генерации иллюстраций</div>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 540, margin: "0 auto", padding: "32px 20px" }}>
+        <AnimIn>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+            <div>
+              <p style={{ fontSize: 13, color: T.tx3, marginBottom: 4, fontWeight: 500 }}>{lang === "ru" ? "Добрый вечер" : "Good evening"}</p>
+              <h1 style={{ fontFamily: T.display, fontSize: 28, fontWeight: 600, lineHeight: 1.2 }}>
+                <span style={{ color: T.tx2 }}>{L.hello}, </span>
+                <GradientText colors={["#6C63FF","#9B8AFF","#6C63FF"]} animationSpeed={8}>{user?.name}</GradientText>
+              </h1>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <PillBtn variant="subtle" onClick={toggleLang} style={{ padding: "8px 12px", borderRadius: T.r }}><Globe size={14} /><span style={{ fontSize: 12 }}>{lang === "ru" ? "EN" : "RU"}</span></PillBtn>
+              <PillBtn variant="subtle" onClick={() => setShowSettings(true)} style={{ padding: "8px 12px", borderRadius: T.r, position: "relative" }}>
+                <Settings size={14} />
+                {(!repToken || !antKey) && <div style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", background: T.coral, border: `2px solid ${T.bg}` }} />}
+              </PillBtn>
+            </div>
           </div>
-          <ChevronRight size={16} style={{ color: t.accent }}/>
-        </div>}
+        </AnimIn>
+
+        {/* API prompt */}
+        {(!antKey || !repToken) && <AnimIn delay={0.05}>
+          <div onClick={() => setShowSettings(true)} className="skazka-card" style={{ padding: "16px 20px", marginBottom: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, background: T.amberBg, border: "1px solid rgba(245,166,35,0.12)" }}>
+            <IconCircle icon={Palette} size={38} bg="rgba(245,166,35,0.1)" color={T.amber} />
+            <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700, color: T.tx, marginBottom: 2 }}>{lang === "ru" ? "Подключите иллюстрации" : "Connect illustrations"}</div><div style={{ fontSize: 11, color: T.tx3 }}>{lang === "ru" ? "Добавьте API-ключи в настройках" : "Add API keys in settings"}</div></div>
+            <ChevronRight size={16} color={T.amber} />
+          </div>
+        </AnimIn>}
 
         {/* Children */}
-        <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .05s ease-out both" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, color: t.tx }}>{L.children}</h3>
-            <button onClick={() => setShowAdd(!showAdd)} style={{ background: t.accentBg, border: "none", cursor: "pointer", padding: "6px 14px", borderRadius: 20, fontSize: ".73rem", fontWeight: 500, color: t.accent, fontFamily: FN.b }}>+ Добавить</button>
+        <AnimIn delay={0.08}>
+          <div className="skazka-card" style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <SectionLabel>{L.children}</SectionLabel>
+              <PillBtn variant="ghost" onClick={() => setShowAdd(!showAdd)} style={{ padding: "6px 14px", borderRadius: T.r, fontSize: 12 }}><Plus size={12} />{L.addChild}</PillBtn>
+            </div>
+            {showAdd && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <input className="skazka-input" value={newChild} onChange={e => setNewChild(e.target.value)} placeholder={L.childName} style={{ flex: 1, padding: "11px 14px" }} />
+              <select value={newAge} onChange={e => setNewAge(e.target.value)} style={{ padding: 11, borderRadius: T.r2, border: `1.5px solid ${T.border}`, background: T.bgCard, color: T.tx, fontFamily: T.body, fontSize: 14 }}>
+                {[3,4,5,6,7,8,9,10].map(a => <option key={a} value={a}>{a} {L.years}</option>)}
+              </select>
+              <PillBtn onClick={addChildFn} style={{ padding: "11px 16px", borderRadius: T.r2 }}><Check size={16} /></PillBtn>
+            </motion.div>}
+            {children.length === 0 ? <p style={{ fontSize: 13, color: T.tx3, textAlign: "center", padding: 20 }}>{L.addChildPlaceholder}</p> : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {children.map(ch => (
+                  <div key={ch.id} onClick={() => setActiveChild(activeChild?.id === ch.id ? null : ch)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 18px", borderRadius: 16, cursor: "pointer", transition: "all .25s", background: activeChild?.id === ch.id ? T.accentBg : T.bgMuted, border: `2px solid ${activeChild?.id === ch.id ? T.accent : "transparent"}` }}>
+                    <Avatar name={ch.name} size={34} gradient={activeChild?.id === ch.id ? `linear-gradient(135deg,${T.accent},${T.accentSoft})` : `linear-gradient(135deg,${T.accentBg},${T.accentSoft}40)`} />
+                    <div><div style={{ fontWeight: 700, fontSize: 14, color: T.tx }}>{ch.name}</div><div style={{ fontSize: 11, color: T.tx3 }}>{ch.age} {L.years}</div></div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {showAdd && <div style={{ display: "flex", gap: 8, marginBottom: 12, animation: "fu .25s ease-out" }}>
-            <input value={newChild} onChange={e => setNewChild(e.target.value)} placeholder={L.childName} style={{ ...inp, flex: 1, padding: "11px 14px" }} onFocus={onF} onBlur={onB}/>
-            <select value={newAge} onChange={e => setNewAge(e.target.value)} style={{ padding: "11px", borderRadius: 14, border: `1.5px solid ${t.gb}`, background: dark ? t.bg2 : "#fff", color: t.tx, fontFamily: FN.b, fontSize: ".85rem" }}>
-              {[3,4,5,6,7,8,9,10].map(a => <option key={a} value={a}>{a} лет</option>)}
-            </select>
-            <button onClick={addChild} style={{ padding: "11px 18px", borderRadius: 14, background: t.accent, color: "#fff", border: "none", fontWeight: 600, fontFamily: FN.b, fontSize: ".88rem", cursor: "pointer" }}><Check size={16}/></button>
-          </div>}
-          {children.length === 0
-            ? <p style={{ fontSize: ".83rem", color: t.tx3, textAlign: "center", padding: 14, fontWeight: 300 }}>{L.addChildPlaceholder}</p>
-            : <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {children.map(ch => <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", background: t.blushBg, borderRadius: 14, border: `1px solid ${t.gb}` }}>
-                  <User size={16} style={{ color: t.accent, opacity: .7 }}/>
-                  <div><div style={{ fontSize: ".83rem", fontWeight: 600, color: t.tx }}>{ch.name}</div><div style={{ fontSize: ".64rem", color: t.tx3, fontWeight: 300 }}>{ch.age} лет</div></div>
-                </div>)}
-              </div>}
-        </div>
+        </AnimIn>
 
-        {/* New Session */}
-        {children.length > 0 && <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .1s ease-out both" }}>
-          <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, marginBottom: 16, color: t.tx }}>{L.newSession}</h3>
-          <p style={{ fontSize: ".8rem", color: t.tx3, marginBottom: 8, fontWeight: 300 }}>{L.forWhom}</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-            {children.map(ch => <button key={ch.id} onClick={() => setActiveChild(activeChild?.id === ch.id ? null : ch)} style={{ padding: "9px 18px", borderRadius: 50, fontFamily: FN.b, fontSize: ".83rem", fontWeight: 500, cursor: "pointer", background: activeChild?.id === ch.id ? t.accentBg : (dark ? t.gl2 : "#fff"), border: `1.5px solid ${activeChild?.id === ch.id ? t.accent : t.gb}`, color: t.tx, transition: "all .3s" }}>{ch.name}</button>)}
+        {/* New Session CTA */}
+        {children.length > 0 && <AnimIn delay={0.12}>
+          <div onClick={activeChild ? () => { setBackstory(""); setPresets([]); setView("setup"); generatePresets(activeChild.name, activeChild.age); } : undefined}
+            className="skazka-card" style={{ marginBottom: 16, cursor: activeChild ? "pointer" : "default", background: activeChild ? `linear-gradient(135deg,${T.accent},#7B68EE,${T.accentSoft})` : T.bgCard, border: "none", padding: "26px 24px", opacity: activeChild ? 1 : 0.6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: activeChild ? "rgba(255,255,255,0.18)" : T.accentBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Wand2 size={20} color={activeChild ? "#fff" : T.accent} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: activeChild ? "#fff" : T.tx }}>{L.newSession}</h3>
+                <p style={{ fontSize: 12, color: activeChild ? "rgba(255,255,255,0.7)" : T.tx3 }}>{activeChild ? (lang === "ru" ? `Создать историю для ${activeChild.name}` : `Create story for ${activeChild.name}`) : L.forWhom}</p>
+              </div>
+            </div>
           </div>
-          {activeChild && <div style={{ animation: "fu .3s ease-out" }}>
-            <PBtn onClick={() => { setBackstory(""); setPresets([]); setView("setup"); generatePresets(activeChild.name, activeChild.age); }} style={{ width: "100%" }}>{L.createStory}</PBtn>
-          </div>}
-        </div>}
+        </AnimIn>}
 
         {/* History */}
-        {sessions.length > 0 && <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", boxShadow: t.shadow, animation: "fu .5s .15s ease-out both" }}>
-          <h3 style={{ fontFamily: FN.d, fontSize: "1.15rem", fontWeight: 600, marginBottom: 16, color: t.tx }}>{L.history}</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {sessions.slice(0, 8).map((s, i) => <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: t.blushBg, borderRadius: 14, border: `1px solid ${t.gb}`, animation: `si .35s ${i*.05}s ease-out both` }}>
-              <BookOpen size={18} style={{ color: t.blush, opacity: .7 }}/>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: ".83rem", fontWeight: 600, color: t.tx }}>{s.theme?.name} — {s.child?.name}</div>
-                <div style={{ fontSize: ".66rem", color: t.tx3, fontWeight: 300 }}>{new Date(s.date).toLocaleDateString("ru")} · {Math.ceil(s.duration/60)} мин · {s.pages?.length || 0} стр.</div>
+        {sessions.length > 0 && <AnimIn delay={0.18}><div className="skazka-card">
+          <SectionLabel>{L.history}</SectionLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {sessions.slice(0, 8).map((s, i) => (
+              <div key={s.id || i} style={{ display: "flex", alignItems: "center", gap: 14, padding: 16, borderRadius: T.r2, background: T.bgMuted, border: `1px solid ${T.border}`, cursor: "pointer" }}>
+                <IconCircle icon={BookMarked} size={44} bg={T.tealBg} color={T.teal} />
+                <div style={{ flex: 1 }}><div style={{ fontWeight: 700, fontSize: 14, color: T.tx, marginBottom: 2 }}>{s.theme?.name || "Story"}</div><div style={{ fontSize: 11, color: T.tx3 }}>{s.child?.name} · {Math.ceil((s.duration || 0) / 60)} {L.min} · {s.pages?.length || 0} {L.pages}</div></div>
+                <ChevronRight size={16} color={T.tx3} />
               </div>
-            </div>)}
+            ))}
           </div>
-        </div>}
+        </div></AnimIn>}
+
+        <AnimIn delay={0.22}>
+          <div style={{ textAlign: "center", marginTop: 24 }}>
+            <PillBtn variant="subtle" onClick={async () => { await ST.del("user"); window.location.href = "/"; }} style={{ fontSize: 12, gap: 6, color: T.tx3 }}><LogOut size={12} />{L.logout}</PillBtn>
+          </div>
+        </AnimIn>
       </div>
     </div>
   );
 
-  // ═══ SETUP (backstory/premise) ═══
-  if (view === "setup") {
-    return (
-      <div style={{ minHeight: "100vh", background: t.bg, fontFamily: FN.b, position: "relative", overflow: "hidden", transition: "background .5s" }}>
-        <style>{CSS}</style>
-        <div style={{ position: "relative", zIndex: 1, maxWidth: 520, margin: "0 auto", padding: "36px 18px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <button onClick={() => setView("dashboard")} style={{ background: t.gl2, border: "1px solid " + t.gb, padding: "7px 14px", borderRadius: 20, fontSize: ".7rem", fontWeight: 400, color: t.tx3, fontFamily: FN.b, cursor: "pointer" }}>{L.back}</button>
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}><LangSwitch lang={lang} onToggle={toggleLang} t={t}/><ThemeSwitch dark={dark} onToggle={toggleTheme}/></div>
+  // ═══════════════════════════════════
+  // SETUP
+  // ═══════════════════════════════════
+  if (view === "setup") return (
+    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body, position: "relative", overflow: "hidden" }}>
+      <style>{CSS}</style>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 480, margin: "0 auto", padding: "28px 20px" }}>
+        <AnimIn>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <PillBtn variant="subtle" onClick={() => setView("dashboard")} style={{ padding: "8px 16px", fontSize: 12 }}><ArrowLeft size={14} />{L.back}</PillBtn>
+            <span style={{ fontSize: 13, color: T.tx3 }}>{L.storyFor} <strong style={{ color: T.accent }}>{activeChild?.name}</strong></span>
           </div>
+        </AnimIn>
 
-          <div style={{ textAlign: "center", marginBottom: 28, animation: "fu .5s ease-out" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: 8 }}>📖</div>
-            <h2 style={{ fontFamily: FN.d, fontSize: "clamp(1.4rem,4vw,1.9rem)", fontWeight: 300, letterSpacing: "-.02em", color: t.tx, marginBottom: 6 }}>
-              {L.storyFor} <em style={{ color: t.accent, fontWeight: 400, fontStyle: "italic" }}>{activeChild?.name}</em>
-            </h2>
-            <p style={{ color: t.tx3, fontSize: ".82rem", fontWeight: 300 }}>{L.whatAbout}</p>
-          </div>
+        <AnimIn delay={0.05} style={{ textAlign: "center", marginBottom: 28 }}>
+          <IconCircle icon={BookOpen} size={56} />
+          <h2 style={{ fontFamily: T.display, fontSize: 22, fontWeight: 600, marginTop: 12, marginBottom: 6 }}>{L.whatAbout}</h2>
+        </AnimIn>
 
-          {/* AI-generated presets */}
-          <div style={{ background: dark ? t.gl : "#fff", border: "1px solid " + t.gb, borderRadius: 20, padding: "20px 18px", marginBottom: 14, boxShadow: t.shadow, animation: "fu .5s .05s ease-out both" }}>
+        {/* Presets */}
+        <AnimIn delay={0.1}>
+          <div className="skazka-card" style={{ marginBottom: 14, padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <h3 style={{ fontFamily: FN.d, fontSize: ".95rem", fontWeight: 600, color: t.tx, fontStyle: "italic" }}>✨ Идеи для истории</h3>
-              <button onClick={() => { setPresets([]); generatePresets(activeChild.name, activeChild.age); }} disabled={presetsLoading} style={{ background: t.accentBg, border: "none", padding: "5px 12px", borderRadius: 16, fontSize: ".68rem", fontWeight: 500, color: t.accent, fontFamily: FN.b, cursor: presetsLoading ? "default" : "pointer", opacity: presetsLoading ? .5 : 1 }}>🔄 Ещё</button>
+              <SectionLabel style={{ margin: 0 }}>{L.storyIdeas}</SectionLabel>
+              <PillBtn variant="ghost" onClick={() => { setPresets([]); generatePresets(activeChild.name, activeChild.age); }} disabled={presetsLoading} style={{ padding: "6px 14px", borderRadius: T.r, fontSize: 11 }}><RefreshCw size={12} />{L.more}</PillBtn>
             </div>
             {presetsLoading && presets.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <div style={{ width: 24, height: 24, border: "2px solid " + t.gb, borderTopColor: t.accent, borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 10px" }}/>
-                <p style={{ fontSize: ".78rem", color: t.tx3, fontWeight: 300 }}>Генерируем идеи…</p>
-              </div>
+              <div style={{ textAlign: "center", padding: 24 }}><Loader2 size={20} color={T.accent} style={{ animation: "spin .8s linear infinite" }} /><p style={{ fontSize: 12, color: T.tx3, marginTop: 8 }}>{L.generating}</p></div>
             ) : presets.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {presets.map((p, i) => (
-                  <button key={i} onClick={() => setBackstory(p.text)} style={{
-                    padding: "11px 14px", borderRadius: 14, border: "1.5px solid " + (backstory === p.text ? t.accent : t.gb),
-                    background: backstory === p.text ? t.accentBg : (dark ? t.gl2 : "#fff"),
-                    fontFamily: FN.b, fontSize: ".82rem", fontWeight: 500, color: t.tx, textAlign: "left",
-                    cursor: "pointer", transition: "all .3s", display: "flex", alignItems: "center", gap: 10,
-                    animation: "si .3s " + (i * .04) + "s ease-out both"
-                  }}
-                    onMouseOver={e => { if (backstory !== p.text) { e.currentTarget.style.borderColor = t.accent + "50" } }}
-                    onMouseOut={e => { if (backstory !== p.text) { e.currentTarget.style.borderColor = t.gb } }}>
-                    <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>{p.emoji}</span>
-                    <span>{p.text}</span>
-                    {backstory === p.text && <span style={{ color: t.accent, fontWeight: 700, marginLeft: "auto", flexShrink: 0 }}>✓</span>}
-                  </button>
+                  <div key={i} onClick={() => setBackstory(p.text)} style={{ padding: "14px 16px", borderRadius: 16, border: `2px solid ${backstory === p.text ? T.accent : T.border}`, background: backstory === p.text ? T.accentBg : T.bgCard, cursor: "pointer", display: "flex", alignItems: "center", gap: 12, transition: "all .25s", fontSize: 14, fontWeight: 600, color: T.tx }}>
+                    <Sparkles size={16} color={backstory === p.text ? T.accent : T.tx3} style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{p.text}</span>
+                    {backstory === p.text && <Check size={16} color={T.accent} />}
+                  </div>
                 ))}
               </div>
             ) : (
-              <p style={{ fontSize: ".78rem", color: t.tx3, textAlign: "center", padding: "12px 0", fontWeight: 300 }}>
-                {antKey ? "Не удалось загрузить. Нажмите 🔄" : "Нужен API ключ для генерации идей"}
-              </p>
+              <p style={{ fontSize: 12, color: T.tx3, textAlign: "center", padding: 12 }}>{antKey ? L.noIdeas : L.needKey}</p>
             )}
           </div>
+        </AnimIn>
 
-          {/* Custom backstory textarea */}
-          <div style={{ background: dark ? t.gl : "#fff", border: "1px solid " + t.gb, borderRadius: 20, padding: "20px 18px", marginBottom: 20, boxShadow: t.shadow, animation: "fu .5s .1s ease-out both" }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: ".95rem", fontWeight: 600, marginBottom: 10, color: t.tx, fontStyle: "italic" }}>✏️ Или напишите свою</h3>
-            <textarea
-              value={backstory}
-              onChange={e => setBackstory(e.target.value)}
-              placeholder={"Например: Мальчик хочет выиграть школьный чемпионат по шахматам, но его главный соперник — лучший друг..."}
-              rows={3}
-              style={{ ...inp, resize: "vertical", minHeight: 72, lineHeight: 1.6 }}
-              onFocus={onF} onBlur={onB}
-            />
-            <p style={{ fontSize: ".62rem", color: t.tx3, marginTop: 6, fontWeight: 300 }}>Реалистичная, фэнтези, фантастика — что угодно.</p>
+        {/* Custom premise */}
+        <AnimIn delay={0.15}>
+          <div className="skazka-card" style={{ marginBottom: 14, padding: 20 }}>
+            <SectionLabel>{L.writeYourOwn}</SectionLabel>
+            <textarea className="skazka-input" value={backstory} onChange={e => setBackstory(e.target.value)} placeholder={L.premisePlaceholder} rows={3} style={{ resize: "vertical", minHeight: 72, lineHeight: 1.6 }} />
+            <p style={{ fontSize: 11, color: T.tx3, marginTop: 6 }}>{L.anyGenre}</p>
           </div>
+        </AnimIn>
 
-          {/* Art Style Picker */}
-          <div style={{ background: dark ? t.gl : "#fff", border: "1px solid " + t.gb, borderRadius: 20, padding: "20px 18px", marginBottom: 20, boxShadow: t.shadow, animation: "fu .5s .12s ease-out both" }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: ".95rem", fontWeight: 600, marginBottom: 10, color: t.tx, fontStyle: "italic" }}>{L.artStyle}</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-              {[["book", L.styleBook, L.styleBookDesc, "📖"], ["anime", L.styleAnime, L.styleAnimeDesc, "🎨"], ["realistic", L.styleRealistic, L.styleRealisticDesc, "📷"]].map(([key, name, desc, emoji]) => (
-                <button key={key} onClick={async () => { setArtStyle(key); await ST.set("artStyle", key); }} style={{
-                  padding: "12px 8px", borderRadius: 14, border: `1.5px solid ${artStyle === key ? t.accent : t.gb}`,
-                  background: artStyle === key ? t.accentBg : (dark ? t.gl2 : "#fff"),
-                  cursor: "pointer", textAlign: "center", transition: "all .2s", fontFamily: FN.b
-                }}>
-                  <div style={{ fontSize: "1.2rem", marginBottom: 4 }}>{emoji}</div>
-                  <div style={{ fontSize: ".78rem", fontWeight: 600, color: t.tx }}>{name}</div>
-                  <div style={{ fontSize: ".58rem", color: t.tx3, fontWeight: 300 }}>{desc}</div>
-                </button>
+        {/* Art style */}
+        <AnimIn delay={0.18}>
+          <div className="skazka-card" style={{ marginBottom: 20, padding: 20 }}>
+            <SectionLabel>{L.artStyle}</SectionLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              {[
+                { key: "book", icon: BookImage, label: L.styleBook, desc: L.styleBookDesc },
+                { key: "anime", icon: Brush, label: L.styleAnime, desc: L.styleAnimeDesc },
+                { key: "realistic", icon: Camera, label: L.styleRealistic, desc: L.styleRealisticDesc },
+              ].map(({ key, icon: I, label, desc }) => (
+                <div key={key} onClick={async () => { setArtStyle(key); await ST.set("artStyle", key); }} style={{ textAlign: "center", padding: "14px 8px", borderRadius: 16, border: `2px solid ${artStyle === key ? T.accent : T.border}`, background: artStyle === key ? T.accentBg : T.bgCard, cursor: "pointer", transition: "all .25s" }}>
+                  <I size={24} color={artStyle === key ? T.accent : T.tx3} style={{ marginBottom: 6 }} />
+                  <div style={{ fontSize: 12, fontWeight: 700, color: artStyle === key ? T.accent : T.tx2 }}>{label}</div>
+                  <div style={{ fontSize: 10, color: T.tx3, marginTop: 2 }}>{desc}</div>
+                </div>
               ))}
             </div>
           </div>
+        </AnimIn>
 
-          {/* Start buttons */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, animation: "fu .5s .15s ease-out both" }}>
-            <PBtn onClick={() => startSession(activeChild, backstory)} disabled={!backstory.trim()} style={{ width: "100%", opacity: backstory.trim() ? 1 : .5 }}>
-              {L.startStory}
-            </PBtn>
-            {backstory && <button onClick={() => { setBackstory(""); }} style={{ padding: "10px", border: "none", background: "transparent", color: t.tx3, fontSize: ".78rem", fontFamily: FN.b, cursor: "pointer", fontWeight: 400 }}>{L.clear}</button>}
-          </div>
-        </div>
+        <AnimIn delay={0.22}>
+          <PillBtn onClick={() => startSession(activeChild, backstory)} disabled={!backstory.trim()} style={{ width: "100%" }}><Sparkles size={16} />{L.startStory}</PillBtn>
+          {backstory && <div style={{ textAlign: "center", marginTop: 10 }}>
+            <PillBtn variant="subtle" onClick={() => setBackstory("")} style={{ fontSize: 12 }}>{L.clear}</PillBtn>
+          </div>}
+        </AnimIn>
       </div>
-    );
-  }
+    </div>
+  );
 
-
-
-
-
-
-  // ═══ SESSION (react-flipbook) ═══
+  // ═══════════════════════════════════
+  // SESSION (Mobile-first portrait)
+  // ═══════════════════════════════════
   if (view === "session") {
-    const BF = "'Literata', 'Cormorant Garamond', Georgia, serif";
-    const allPages = curPage ? [...pages, { ...curPage, _curImg: curImg, _isCurrent: true }] : [...pages];
+    const allPages = curPage ? [...pages, { ...curPage, _isCurrent: true }] : [...pages];
     const totalReady = allPages.length;
     const showChoices = curPage && !curPage.isEnd && textDone && !loading && !sel;
     const showEnd = curPage && curPage.isEnd;
-    const childName = activeChild?.name || "";
-
-    const flipNext = () => { try { bookRef.current?.flipNext(); } catch {} };
-    const flipPrev = () => { try { bookRef.current?.flipPrev(); } catch {} };
-
-    // Auto-flip handled by top-level useEffect
 
     return (
-    <div style={{ height: "100vh", background: "linear-gradient(160deg, #FFFBF7, #FFF5EE, #FFEDE0)", fontFamily: FN.b, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <style>{CSS}{`
-        .stf__parent { background: transparent !important; }
-        .stf__block { background: #fff !important; }
-        .stf__item { background: #fff !important; }
-      `}</style>
-      {showSettings && <SettingsPanel />}
+      <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body, position: "relative" }}>
+        <style>{CSS}</style>
+        <div style={{ maxWidth: 480, margin: "0 auto", padding: "16px 16px 24px" }}>
+          {/* Top bar */}
+          <AnimIn>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <PillBtn variant="subtle" onClick={() => setView("dashboard")} style={{ padding: "8px 12px", borderRadius: T.r }}><ArrowLeft size={14} /></PillBtn>
+              <ProgressBar current={totalReady} total={TOTAL_PAGES} />
+              <div style={{ display: "flex", gap: 6 }}>
+                <PillBtn variant="subtle" onClick={() => { if (speaking) stopSpeak(); else if (curPage?.text) speakText(curPage.tts_text || curPage.text); }} style={{ padding: "8px", borderRadius: T.r }}>
+                  {speaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                </PillBtn>
+              </div>
+            </div>
+          </AnimIn>
 
-      {/* Top bar */}
-      <div style={{ padding: "7px 16px", background: "rgba(255,251,247,0.95)", borderBottom: "1px solid rgba(45,52,54,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: ".8rem" }}>{theme?.emoji}</span>
-          <span style={{ fontFamily: BF, fontSize: ".85rem", fontWeight: 500, color: "#2D3436", fontStyle: "italic" }}>{childName}</span>
-          <span style={{ fontSize: ".65rem", color: "#95A5A6", fontFamily: "monospace" }}>{fmtT(timer)}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: ".6rem", color: "#95A5A6" }}>{totalReady}/{TOTAL_PAGES}</span>
-          <button onClick={() => { if (curPage) finishSession(); else setView("dashboard") }} style={{ background: "rgba(232,93,117,0.08)", border: "1px solid rgba(232,93,117,0.15)", color: "#E85D75", fontSize: ".68rem", fontWeight: 600, padding: "4px 12px", borderRadius: 16, fontFamily: FN.b, cursor: "pointer" }}>{L.finish}</button>
-        </div>
-      </div>
-
-      {/* Main: LEFT | BOOK | RIGHT */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-
-        {/* LEFT: Nav + TTS */}
-        <div style={{ width: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "12px 4px", flexShrink: 0 }}>
-          <button onClick={flipPrev} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: "rgba(255,255,255,0.5)", color: "#7F8C8D", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowLeft size={16}/></button>
-          <button onClick={() => { if (speaking) stopSpeak(); else if (curPage) speakText(curPage.tts_text || curPage.text); }} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: speaking ? "rgba(232,93,117,0.1)" : "rgba(255,255,255,0.5)", color: speaking ? "#E85D75" : "#7F8C8D", fontSize: ".8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: speaking ? "pulse 2s ease-in-out infinite" : "none" }}>{speaking ? <VolumeX size={16}/> : <Volume2 size={16}/>}</button>
-          {elKey && <button onClick={async () => { const next = !sfxEnabled; setSfxEnabled(next); await ST.set("sfxEnabled", next); if (!next) stopSfx(); else if (curPage?.sfx) playSfx(curPage.sfx); }} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.06)", background: sfxEnabled ? "rgba(122,158,126,0.08)" : "rgba(255,255,255,0.4)", color: sfxEnabled ? "#5a8a5e" : "#7F8C8D", fontSize: ".65rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{sfxEnabled ? <Music size={14}/> : <VolumeX size={14}/>}</button>}
-        </div>
-
-        {/* CENTER: Book */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 0" }}>
-          {loading && totalReady === 0 ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ width: 32, height: 32, border: "2px solid rgba(45,52,54,0.08)", borderTopColor: "#E85D75", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
-              <p style={{ fontFamily: BF, fontSize: ".88rem", color: "#7F8C8D", fontStyle: "italic" }}>
-                {lang === "ru" ? `Создаём историю для ${childName}…` : `Creating story for ${childName}…`}
-              </p>
-              {error && <div style={{ marginTop: 12, padding: "10px 14px", background: "rgba(232,93,117,0.06)", borderRadius: 12, border: "1px solid rgba(232,93,117,0.15)", fontSize: ".75rem", color: "#E85D75" }}>
-                {error}
-                <button onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc, lang }, antKey).then(r => { setCurPage(r); setLoading(false) }).catch(() => { setError("Retry failed."); setLoading(false) }) }} style={{ display: "block", margin: "8px auto 0", padding: "5px 14px", borderRadius: 14, background: "#E85D75", color: "#fff", border: "none", fontSize: ".7rem", fontFamily: FN.b, fontWeight: 600, cursor: "pointer" }}>Retry</button>
+          {/* Loading state */}
+          {loading && totalReady === 0 && (
+            <div style={{ textAlign: "center", padding: "80px 0" }}>
+              <Loader2 size={28} color={T.accent} style={{ animation: "spin .8s linear infinite", marginBottom: 14 }} />
+              <p style={{ fontFamily: T.display, fontSize: 15, color: T.tx3, fontStyle: "italic" }}>{L.creatingStory} {activeChild?.name}...</p>
+              {error && <div style={{ marginTop: 16, padding: "12px 16px", background: T.coralBg, borderRadius: T.r2, border: `1px solid rgba(255,107,138,0.15)`, fontSize: 13, color: T.coral }}>{error}
+                <PillBtn variant="coral" onClick={() => { setError(null); setLoading(true); genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: [], choice: null, charDesc, lang }, antKey).then(r => { if (r.characterDesc) setCharDesc(r.characterDesc); setCurPage(r); setLoading(false); }).catch(() => { setError("Retry failed."); setLoading(false); }); }} style={{ marginTop: 8, padding: "8px 18px", fontSize: 12 }}>Retry</PillBtn>
               </div>}
             </div>
-          ) : (
-            <div style={{ position: "relative" }}>
-              {/* Book shadow */}
-              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.07), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
+          )}
 
-              <ReactFlipBook
-                key={`book-${allPages.map((p,i) => `${p?.text?.length||0}${p?.imgUrl?'I':'_'}${(i===totalReady-1 && curImg)?'C':''}`).join('-')}`}
-                ref={bookRef}
-                width={420}
-                height={580}
-                size="stretch"
-                minWidth={300}
-                maxWidth={500}
-                minHeight={400}
-                maxHeight={680}
-                drawShadow={true}
-                flippingTime={1200}
-                usePortrait={false}
-                showCover={false}
-                maxShadowOpacity={0.4}
-                mobileScrollSupport={true}
-                startPage={Math.max(0, (totalReady > 1 ? (totalReady % 2 === 0 ? totalReady - 2 : totalReady - 1) : 0))}
-                style={{ boxShadow: "0 2px 14px rgba(0,0,0,0.07)" }}
-              >
-                {[0,1,2,3,4,5].map(i => {
-                  const pg = allPages[i] || null;
-                  const isCur = pg?._isCurrent || false;
-                  const isBlur = !pg && i > 0 && allPages[i-1] && i === totalReady;
-                  return (
-                    <BookPage
-                      key={i}
-                      page={pg}
-                      pageNum={i + 1}
-                      isCurrent={isCur}
-                      isBlurred={isBlur}
-                      curImg={curImg}
-                      imgLoading={imgLoading}
-                      lang={lang}
-                    />
-                  );
-                })}
-              </ReactFlipBook>
-            </div>
+          {/* Story content */}
+          {curPage && (
+            <>
+              {/* Illustration */}
+              <AnimIn delay={0.05}>
+                <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 20, overflow: "hidden", position: "relative", background: "linear-gradient(135deg,#2A3D2A,#3D5A3D)", marginBottom: 20 }}>
+                  {curImg ? (
+                    <img src={curImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", animation: "kenburns 20s ease-in-out infinite alternate" }} />
+                  ) : imgLoading ? (
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
+                      <Loader2 size={24} color="rgba(255,255,255,0.5)" style={{ animation: "spin .8s linear infinite" }} />
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{lang === "ru" ? "Рисуем сцену..." : "Drawing scene..."}</span>
+                    </div>
+                  ) : (
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Image size={24} color="rgba(255,255,255,0.15)" />
+                    </div>
+                  )}
+                </div>
+              </AnimIn>
+
+              {/* Chapter title & text */}
+              <AnimIn delay={0.1}>
+                <h2 style={{ fontFamily: T.display, fontStyle: "italic", fontWeight: 400, fontSize: 20, color: T.accent, marginBottom: 12 }}>{curPage.title}</h2>
+                <p style={{ fontFamily: T.story, fontSize: 16, lineHeight: 1.8, color: T.tx2, marginBottom: 24 }}>{curPage.text}</p>
+              </AnimIn>
+
+              {/* Choices */}
+              {showChoices && (
+                <AnimIn delay={0.2}>
+                  <SectionLabel>{L.whatNext}</SectionLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {curPage.choices?.map((ch, i) => {
+                      const valInfo = VALS[ch.value] || {};
+                      const isPos = valInfo.pos !== false;
+                      return (
+                        <div key={i} onClick={() => pickChoice(ch)} style={{
+                          padding: "16px 18px", borderRadius: 20, cursor: sel ? "default" : "pointer",
+                          background: sel === ch.label ? T.accentBg : T.bgCard,
+                          border: `2px solid ${sel === ch.label ? T.accent : T.border}`,
+                          display: "flex", alignItems: "center", gap: 14, transition: "all .25s",
+                        }}>
+                          <IconCircle icon={isPos ? TrendingUp : TrendingDown} size={40}
+                            bg={isPos ? T.tealBg : T.coralBg}
+                            color={isPos ? T.teal : T.coral} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: T.tx }}>{ch.label}</div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: isPos ? T.teal : T.coral, marginTop: 2 }}>
+                              {lang === "ru" ? valInfo.n : (valInfo.nEn || ch.value)}
+                            </div>
+                          </div>
+                          <ChevronRight size={16} color={T.tx3} />
+                        </div>
+                      );
+                    })}
+                    {/* Custom input */}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input className="skazka-input" value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder={L.customPlaceholder} style={{ flex: 1, padding: "12px 16px", fontSize: 13 }} />
+                      <PillBtn onClick={submitCustom} disabled={!customInput.trim()} style={{ padding: "12px 16px", borderRadius: 14, fontSize: 14 }}><Send size={14} /></PillBtn>
+                    </div>
+                  </div>
+                </AnimIn>
+              )}
+
+              {/* End state */}
+              {showEnd && (
+                <AnimIn delay={0.2}>
+                  <div style={{ textAlign: "center", padding: "20px 0" }}>
+                    <Award size={32} color={T.accent} style={{ marginBottom: 12 }} />
+                    <p style={{ fontFamily: T.display, fontSize: 18, color: T.accent, fontWeight: 600, fontStyle: "italic", marginBottom: 16 }}>{L.end}</p>
+                    <PillBtn onClick={finishSession} disabled={imgLoading} style={{ minWidth: 200 }}>
+                      <BarChart3 size={16} />{L.viewReport}
+                    </PillBtn>
+                  </div>
+                </AnimIn>
+              )}
+
+              {/* Loading next page */}
+              {loading && totalReady > 0 && (
+                <div style={{ textAlign: "center", padding: "20px 0" }}>
+                  <Loader2 size={20} color={T.accent} style={{ animation: "spin .8s linear infinite", marginBottom: 8 }} />
+                  <p style={{ fontSize: 12, color: T.tx3, fontStyle: "italic" }}>{L.continuing}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
-
-        {/* RIGHT: Forward + Choices */}
-        <div style={{ width: 190, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 12px 12px 4px", flexShrink: 0, gap: 6 }}>
-          <button onClick={flipNext} style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(45,52,54,0.08)", background: "rgba(255,255,255,0.5)", color: "#7F8C8D", fontSize: ".85rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 4px" }}><ArrowRight size={16}/></button>
-
-          {showEnd ? (
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: BF, fontSize: ".85rem", color: "#E85D75", fontWeight: 500, fontStyle: "italic", marginBottom: 8 }}>{L.end}</p>
-              {imgLoading && <p style={{ fontSize: ".58rem", color: "#95A5A6", marginBottom: 6 }}>{lang === "ru" ? "Ждём иллюстрацию…" : "Waiting..."}</p>}
-              <button onClick={finishSession} disabled={imgLoading} style={{ width: "100%", padding: "9px 14px", borderRadius: 12, fontFamily: FN.b, fontSize: ".78rem", fontWeight: 600, border: "none", cursor: imgLoading ? "default" : "pointer", background: imgLoading ? "rgba(232,93,117,0.12)" : "#E85D75", color: "#fff", opacity: imgLoading ? .5 : 1 }}>{L.viewReport}</button>
-            </div>
-          ) : showChoices ? (
-            <div>
-              <div style={{ fontSize: ".55rem", color: "#95A5A6", textAlign: "center", marginBottom: 6, fontWeight: 500, textTransform: "uppercase", letterSpacing: ".1em", fontFamily: FN.b }}>{lang === "ru" ? "Что дальше?" : "What next?"}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {curPage.choices?.map((ch, i) => (
-                  <button key={i} onClick={() => pickChoice(ch)} disabled={!!sel || loading} style={{ background: sel === ch.label ? "rgba(232,93,117,0.08)" : "rgba(255,255,255,0.65)", border: `1px solid ${sel === ch.label ? "rgba(232,93,117,0.2)" : "rgba(45,52,54,0.08)"}`, borderRadius: 10, padding: "7px 9px", display: "flex", alignItems: "center", gap: 6, fontSize: ".7rem", fontWeight: 500, fontFamily: FN.b, color: "#2D3436", textAlign: "left", cursor: sel ? "default" : "pointer", transition: "all .3s", animation: `si .3s ${i * .05}s ease-out both` }} onMouseOver={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(232,93,117,0.2)" }} onMouseOut={e => { if (!sel) e.currentTarget.style.borderColor = "rgba(45,52,54,0.08)" }}>
-                    <span style={{ fontSize: ".8rem", flexShrink: 0 }}>{ch.emoji}</span><span style={{ flex: 1, lineHeight: 1.25 }}>{ch.label}</span>
-                  </button>))}
-              </div>
-              <div style={{ marginTop: 7 }}>
-                <div style={{ fontSize: ".45rem", color: "#95A5A6", textAlign: "center", marginBottom: 3, fontFamily: FN.b }}>{L.orCustom}</div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === "Enter" && submitCustom()} placeholder="..." style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: "1px solid rgba(45,52,54,0.08)", background: "rgba(255,255,255,0.65)", color: "#2D3436", fontSize: ".7rem", fontFamily: FN.b, outline: "none" }}/>
-                  <button onClick={submitCustom} disabled={!customInput.trim()} style={{ padding: "6px 10px", borderRadius: 8, border: "none", background: customInput.trim() ? "#E85D75" : "rgba(45,52,54,0.05)", color: customInput.trim() ? "#fff" : "#95A5A6", fontSize: ".7rem", fontWeight: 600, fontFamily: FN.b, cursor: customInput.trim() ? "pointer" : "default" }}><ChevronRight size={14}/></button>
-                </div>
-              </div>
-            </div>
-          ) : loading && totalReady > 0 ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ width: 18, height: 18, border: "2px solid rgba(45,52,54,0.06)", borderTopColor: "#E85D75", borderRadius: "50%", animation: "spin .8s linear infinite", margin: "0 auto 6px" }}/>
-              <p style={{ fontSize: ".65rem", color: "#95A5A6", fontStyle: "italic" }}>{L.continuing}</p>
-            </div>
-          ) : null}
-        </div>
       </div>
-    </div>
     );
   }
 
-  // ═══ REPORT ═══
+  // ═══════════════════════════════════
+  // REPORT
+  // ═══════════════════════════════════
   if (view === "report") {
     const vals = getVals();
-    const dur = t0 ? Math.ceil((Date.now()-t0)/60000) : 0;
+    const dur = t0 ? Math.ceil((Date.now() - t0) / 60000) : 0;
     const topVal = vals[0];
     const allPages = [...pages, curPage].filter(Boolean);
-    
-    // Determine ending type
-    const posCount = vals.filter(v => VALS[v.k]?.pos).reduce((s,v) => s+v.count, 0);
-    const negCount = vals.filter(v => !VALS[v.k]?.pos).reduce((s,v) => s+v.count, 0);
+    const posCount = vals.filter(v => VALS[v.k]?.pos).reduce((s, v) => s + v.count, 0);
+    const negCount = vals.filter(v => !VALS[v.k]?.pos).reduce((s, v) => s + v.count, 0);
     const endType = negCount > posCount ? "sad" : negCount === posCount && negCount > 0 ? "mixed" : "good";
-    const endLabel = endType === "sad" ? "😢 Грустный конец" : endType === "mixed" ? "🌗 Смешанный финал" : "🌟 Счастливый конец";
-    const endColor = endType === "sad" ? "#8B4C4C" : endType === "mixed" ? "#8B7B3C" : t.sage;
-    
-    const qs = {
-      generosity: "проявил(а) щедрость. Спросите: «Поделишься, если мало?»",
-      empathy: "проявил(а) сочувствие! «Что сделаешь, увидев грустного?»",
-      courage: "выбрал(а) смелость! «Что помогает, когда страшно?»",
-      curiosity: "проявил(а) любопытство. «Что хочешь исследовать?»",
-      kindness: "выбрал(а) доброту. «Кому ты помог(ла)?»",
-      honesty: "выбрал(а) честность. «Почему важно говорить правду?»",
-      patience: "проявил(а) терпение. «Было ли трудно ждать?»",
-      teamwork: "выбрал(а) дружбу. «Что лучше: один или с друзьями?»",
-      selfishness: "выбрал(а) жадность. Спросите: «Что потерял герой из-за жадности?»",
-      cowardice: "выбрал(а) трусость. «Бывает страшно — но что бы ты изменил?»",
-      cruelty: "поступил(а) жестоко. «Как думаешь, что почувствовал другой?»",
-      greed: "выбрал(а) алчность. «Стоило ли это того?»",
-      laziness: "выбрал(а) лень. «Что было бы, если бы постарался?»",
-      dishonesty: "выбрал(а) обман. «Что случится, когда правда выйдет наружу?»",
-      aggression: "проявил(а) агрессию. «Можно ли решить иначе?»",
-      indifference: "проявил(а) равнодушие. «Что бы ты чувствовал на месте того, кого проигнорировали?»",
-    };
-    return (
-      <div style={{ minHeight: "100vh", background: t.bg, fontFamily: FN.b, position: "relative", overflow: "hidden", transition: "background .5s" }}>
-        <style>{CSS}</style>
-        <div style={{ position: "relative", zIndex: 1, maxWidth: 520, margin: "0 auto", padding: "36px 16px" }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}><ThemeSwitch dark={dark} onToggle={toggleTheme}/></div>
+    const endColors = { good: T.teal, mixed: T.amber, sad: T.coral };
+    const endBgs = { good: T.tealBg, mixed: T.amberBg, sad: T.coralBg };
 
-          <div style={{ textAlign: "center", marginBottom: 36, animation: "fu .5s ease-out" }}>
-            <Label center>{L.sessionReport}</Label>
-            <h2 style={{ fontFamily: FN.d, fontSize: "clamp(1.6rem,5vw,2.2rem)", fontWeight: 300, letterSpacing: "-.02em", marginBottom: 8, color: t.tx }}>
-              {L.journey} <em style={{ color: t.accent, fontStyle: "italic", fontWeight: 400 }}>{activeChild?.name}</em>
-            </h2>
-            <p style={{ color: t.tx3, fontSize: ".83rem", fontWeight: 300 }}>{theme?.emoji} {theme?.name} · {dur} {L.min} · {picks.length} {L.choices} · {allPages.length} {L.pages}</p>
-            <div style={{ display: "inline-block", marginTop: 10, padding: "5px 14px", borderRadius: 20, background: endColor + "15", border: "1px solid " + endColor + "30", fontSize: ".78rem", fontWeight: 600, color: endColor }}>{endLabel}</div>
-          </div>
+    const qs = {
+      generosity: lang === "ru" ? "проявил(а) щедрость. Спросите: «Поделишься, если мало?»" : "showed generosity. Ask: 'Would you share if you had little?'",
+      empathy: lang === "ru" ? "проявил(а) сочувствие! «Что сделаешь, увидев грустного?»" : "showed empathy! 'What would you do if you saw someone sad?'",
+      courage: lang === "ru" ? "выбрал(а) смелость! «Что помогает, когда страшно?»" : "chose courage! 'What helps when you're scared?'",
+      curiosity: lang === "ru" ? "проявил(а) любопытство. «Что хочешь исследовать?»" : "showed curiosity. 'What do you want to explore?'",
+      kindness: lang === "ru" ? "выбрал(а) доброту. «Кому ты помог(ла)?»" : "chose kindness. 'Who did you help?'",
+      honesty: lang === "ru" ? "выбрал(а) честность. «Почему важно говорить правду?»" : "chose honesty. 'Why is it important to tell the truth?'",
+      patience: lang === "ru" ? "проявил(а) терпение. «Было ли трудно ждать?»" : "showed patience. 'Was it hard to wait?'",
+      teamwork: lang === "ru" ? "выбрал(а) дружбу. «Что лучше: один или с друзьями?»" : "chose teamwork. 'What's better: alone or with friends?'",
+      selfishness: lang === "ru" ? "выбрал(а) жадность. «Что потерял герой из-за жадности?»" : "chose selfishness. 'What did the hero lose because of greed?'",
+      cowardice: lang === "ru" ? "выбрал(а) трусость. «Бывает страшно — но что бы ты изменил?»" : "chose cowardice. 'It's scary — but what would you change?'",
+      cruelty: lang === "ru" ? "поступил(а) жестоко. «Как думаешь, что почувствовал другой?»" : "was cruel. 'How do you think the other felt?'",
+      greed: lang === "ru" ? "выбрал(а) алчность. «Стоило ли это того?»" : "chose greed. 'Was it worth it?'",
+    };
+
+    return (
+      <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body, position: "relative", overflow: "hidden" }}>
+        <style>{CSS}</style>
+        <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle,rgba(46,196,160,0.05),transparent 65%)", top: 40, right: -80, pointerEvents: "none" }} />
+
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 480, margin: "0 auto", padding: "32px 20px" }}>
+          {/* Header */}
+          <AnimIn style={{ textAlign: "center", marginBottom: 28 }}>
+            <SectionLabel>{L.sessionReport}</SectionLabel>
+            <h1 style={{ fontFamily: T.display, fontSize: 26, fontWeight: 600, marginBottom: 8 }}>
+              {L.journey} <GradientText colors={["#6C63FF","#FF6B8A","#6C63FF"]}>{activeChild?.name}</GradientText>
+            </h1>
+            <p style={{ fontSize: 12, color: T.tx3 }}>{theme?.name} · {dur} {L.min} · {picks.length} {L.choices} · {allPages.length} {L.pages}</p>
+            <div style={{ marginTop: 14 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 16px", borderRadius: 20, background: endBgs[endType], color: endColors[endType], fontSize: 13, fontWeight: 700 }}>
+                {endType === "good" ? <Star size={14} /> : endType === "mixed" ? <CircleDot size={14} /> : <Heart size={14} />}
+                {L.ending[endType]}
+              </span>
+            </div>
+          </AnimIn>
 
           {/* Values */}
-          {vals.length > 0 && <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .1s ease-out both" }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: "1.1rem", fontWeight: 600, marginBottom: 18, color: t.tx, fontStyle: "italic" }}>{L.choicesOf} {activeChild?.name}</h3>
-            {vals.map((v, i) => <div key={v.k} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, animation: `si .4s ${i*.1}s ease-out both` }}>
-              <div style={{ width: 38, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", background: `${v.c}12`, border: `1px solid ${v.c}22`, flexShrink: 0 }}>{v.e}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span style={{ fontSize: ".82rem", fontWeight: 600, color: t.tx }}>{v.n} <span style={{ fontSize: ".6rem", fontWeight: 400, color: VALS[v.k]?.pos ? t.sage : "#8B4C4C" }}>{VALS[v.k]?.pos ? "✓" : "✗"}</span></span>
-                  <span style={{ fontSize: ".78rem", fontWeight: 700, color: v.c }}>{v.pct}%</span>
-                </div>
-                <div style={{ height: 5, background: `${v.c}0D`, borderRadius: 5, overflow: "hidden" }}><AB c={v.c} p={v.pct} d={i * 180}/></div>
+          {vals.length > 0 && <AnimIn delay={0.1}>
+            <div className="skazka-card" style={{ marginBottom: 14 }}>
+              <SectionLabel>{L.choicesOf} {activeChild?.name}</SectionLabel>
+              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                {vals.map((v, i) => {
+                  const isPos = VALS[v.k]?.pos;
+                  return (
+                    <div key={v.k}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {isPos ? <TrendingUp size={14} color={T.teal} /> : <TrendingDown size={14} color={T.coral} />}
+                          <span style={{ fontWeight: 700, fontSize: 14, color: T.tx }}>{lang === "ru" ? v.n : (v.nEn || v.k)}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: isPos ? T.tealBg : T.coralBg, color: isPos ? T.teal : T.coral }}>
+                            {isPos ? <Check size={10} /> : <X size={10} />}
+                          </span>
+                        </div>
+                        <span style={{ fontWeight: 800, fontSize: 14, color: v.c }}>{v.pct}%</span>
+                      </div>
+                      <AnimBar color={`linear-gradient(90deg,${v.c},${v.c}88)`} pct={v.pct} delay={i * 150} />
+                    </div>
+                  );
+                })}
               </div>
-            </div>)}
-          </div>}
+            </div>
+          </AnimIn>}
 
           {/* Discussion question */}
-          <div style={{ background: t.accentBg, border: `1px solid ${t.accent}18`, borderRadius: 18, padding: "22px 20px", marginBottom: 16, animation: "fu .5s .2s ease-out both" }}>
-            <div style={{ fontSize: ".58rem", textTransform: "uppercase", letterSpacing: ".18em", fontWeight: 500, color: t.accent, marginBottom: 8 }}>{L.discussionQ}</div>
-            <p style={{ fontFamily: FN.d, fontSize: ".95rem", fontStyle: "italic", lineHeight: 1.65, color: t.tx2, fontWeight: 400 }}>{activeChild?.name} {qs[topVal?.k] || "Что запомнилось из сказки?"}</p>
-          </div>
+          <AnimIn delay={0.15}>
+            <div style={{ background: `linear-gradient(135deg,${T.accentBg},${T.coralBg})`, borderRadius: T.r3, padding: 22, marginBottom: 14, border: `1px solid rgba(108,99,255,0.06)` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                <Lightbulb size={14} color={T.accent} />
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: T.accent }}>{L.discussionQ}</span>
+              </div>
+              <p style={{ fontFamily: T.display, fontStyle: "italic", fontSize: 15, lineHeight: 1.7, color: T.tx2 }}>
+                {activeChild?.name} {qs[topVal?.k] || (lang === "ru" ? "Что запомнилось из сказки?" : "What do you remember from the story?")}
+              </p>
+            </div>
+          </AnimIn>
 
           {/* Full story recap */}
-          <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .25s ease-out both" }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: "1.1rem", fontWeight: 600, marginBottom: 18, color: t.tx, fontStyle: "italic" }}>{L.fullStory}</h3>
-            {backstory && <div style={{ marginBottom: 16, padding: "12px 14px", background: t.accentBg, borderRadius: 14, border: "1px solid " + t.accent + "18" }}>
-              <div style={{ fontSize: ".6rem", textTransform: "uppercase", letterSpacing: ".12em", fontWeight: 500, color: t.accent, marginBottom: 4 }}>{L.parentPremise}</div>
-              <p style={{ fontFamily: FN.d, fontSize: ".82rem", fontStyle: "italic", lineHeight: 1.6, color: t.tx2, fontWeight: 400 }}>{backstory}</p>
-            </div>}
-            {allPages.map((pg, i) => (
-              <div key={i} style={{ marginBottom: 16, paddingBottom: i < allPages.length - 1 ? 16 : 0, borderBottom: i < allPages.length - 1 ? `1px solid ${t.gb}` : "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: t.accentBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".6rem", fontWeight: 700, color: t.accent, flexShrink: 0 }}>{i+1}</div>
-                  <span style={{ fontFamily: FN.d, fontSize: ".82rem", fontWeight: 600, color: t.accent, fontStyle: "italic" }}>{pg?.title || `Глава ${i+1}`}</span>
+          <AnimIn delay={0.2}>
+            <div className="skazka-card" style={{ marginBottom: 14 }}>
+              <SectionLabel>{L.fullStory}</SectionLabel>
+              {backstory && <div style={{ marginBottom: 16, padding: "12px 14px", background: T.accentBg, borderRadius: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: T.accent, marginBottom: 4 }}>{L.parentPremise}</div>
+                <p style={{ fontFamily: T.display, fontSize: 13, fontStyle: "italic", lineHeight: 1.6, color: T.tx2 }}>{backstory}</p>
+              </div>}
+              {allPages.map((pg, i) => (
+                <div key={i} style={{ marginBottom: 16, paddingBottom: i < allPages.length - 1 ? 16 : 0, borderBottom: i < allPages.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: T.accentBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: T.accent, flexShrink: 0 }}>{i + 1}</div>
+                    <span style={{ fontFamily: T.display, fontSize: 13, fontWeight: 600, color: T.accent, fontStyle: "italic" }}>{pg?.title}</span>
+                  </div>
+                  {pg?.imgUrl && <div style={{ marginBottom: 8, borderRadius: T.r2, overflow: "hidden", border: `1px solid ${T.border}`, maxHeight: 200 }}><img src={pg.imgUrl} alt="" style={{ width: "100%", display: "block", objectFit: "cover" }} /></div>}
+                  <p style={{ fontFamily: T.story, fontSize: 14, fontStyle: "italic", lineHeight: 1.8, color: T.tx2 }}>{pg?.text}</p>
+                  {pg?.choice && (() => {
+                    const isPos = VALS[pg.choice.value]?.pos !== false;
+                    return <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 8, background: isPos ? T.tealBg : T.coralBg, fontSize: 11, color: isPos ? T.teal : T.coral, fontWeight: 600 }}>
+                      {isPos ? <TrendingUp size={10} /> : <TrendingDown size={10} />} {pg.choice.label}
+                    </div>;
+                  })()}
                 </div>
-                {pg?.imgUrl && <div style={{ marginBottom: 8, borderRadius: 12, overflow: "hidden", border: `1px solid ${t.gb}`, maxHeight: 200 }}>
-                  <img src={pg.imgUrl} alt="" style={{ width: "100%", display: "block", objectFit: "cover" }}/>
-                </div>}
-                <p style={{ fontFamily: FN.d, fontSize: ".85rem", fontStyle: "italic", lineHeight: 1.8, color: t.tx2, fontWeight: 400 }}>{pg?.text}</p>
-                {pg?.choice && (() => { const isPos = VALS[pg.choice.value]?.pos !== false; return <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 8, background: isPos ? t.sageBg : "rgba(139,76,76,.08)", fontSize: ".68rem", color: isPos ? t.sage : "#8B4C4C", fontWeight: 500 }}>
-                  <span>{pg.choice.emoji}</span> {pg.choice.label}
-                </div>; })()}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </AnimIn>
 
           {/* Decision path */}
-          {picks.length > 0 && <div style={{ background: dark ? t.gl : "#fff", border: `1px solid ${t.gb}`, borderRadius: 20, padding: "24px 22px", marginBottom: 16, boxShadow: t.shadow, animation: "fu .5s .3s ease-out both" }}>
-            <h3 style={{ fontFamily: FN.d, fontSize: "1rem", fontWeight: 600, marginBottom: 12, color: t.tx, fontStyle: "italic" }}>{L.decisionPath}</h3>
-            {picks.map((p, i) => {
-              const vl = p.value === "custom" ? { n: "Свой ответ", c: "#8A7E6E" } : (VALS[p.value] || { n: p.value, c: "#888" });
-              return <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", background: t.blushBg, borderRadius: 14, border: `1px solid ${t.gb}`, marginBottom: 5, animation: `si .3s ${i*.06}s ease-out both` }}>
-                <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${vl.c}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".63rem", fontWeight: 700, color: vl.c, flexShrink: 0 }}>{i+1}</div>
-                <span style={{ fontSize: ".95rem" }}>{p.emoji}</span>
-                <span style={{ flex: 1, fontSize: ".78rem", fontWeight: 600, color: t.tx }}>{p.label}</span>
-                <span style={{ fontSize: ".58rem", fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: `${vl.c}0D`, color: vl.c, border: `1px solid ${vl.c}18` }}>{vl.n}</span>
-              </div>;
-            })}
-          </div>}
+          {picks.length > 0 && <AnimIn delay={0.25}>
+            <div className="skazka-card" style={{ marginBottom: 20 }}>
+              <SectionLabel>{L.decisionPath}</SectionLabel>
+              <div style={{ position: "relative", paddingLeft: 24 }}>
+                <div style={{ position: "absolute", left: 11, top: 8, bottom: 8, width: 2, borderRadius: 2, background: `linear-gradient(180deg,${T.accent},${T.accentSoft},${T.coral},${T.amber})` }} />
+                {picks.map((p, i) => {
+                  const vl = VALS[p.value] || {};
+                  const isPos = vl.pos !== false;
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", position: "relative" }}>
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: vl.c || T.tx3, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, zIndex: 1, boxShadow: `0 0 0 4px ${T.bg}`, flexShrink: 0 }}>{i + 1}</div>
+                      <span style={{ fontSize: 14, fontWeight: 600, flex: 1, color: T.tx }}>{p.label}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 10, background: isPos ? T.tealBg : T.coralBg, color: isPos ? T.teal : T.coral }}>
+                        {lang === "ru" ? vl.n : (vl.nEn || p.value)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </AnimIn>}
 
           {/* Actions */}
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", animation: "fu .5s .4s ease-out both" }}>
-            <PBtn onClick={() => setView("dashboard")}>{L.newSessionBtn}</PBtn>
-            <button onClick={() => setView("dashboard")} style={{ padding: "14px 28px", borderRadius: 50, fontFamily: FN.b, fontSize: ".9rem", fontWeight: 500, border: `1.5px solid ${t.gb}`, cursor: "pointer", background: "transparent", color: t.tx3, letterSpacing: ".02em" }}>{L.dashboardBtn}</button>
-          </div>
+          <AnimIn delay={0.3}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <PillBtn variant="coral" onClick={() => setView("dashboard")} style={{ flex: 1 }}><Sparkles size={16} />{L.newSessionBtn}</PillBtn>
+              <PillBtn variant="ghost" onClick={() => setView("dashboard")} style={{ flex: 1 }}>{L.dashboardBtn}</PillBtn>
+            </div>
+          </AnimIn>
         </div>
       </div>
     );
