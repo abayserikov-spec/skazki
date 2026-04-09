@@ -149,7 +149,6 @@ function buildScenePrompt(illustration, identityTag, charDesc, artStyleKey, comp
 
   return parts.join(' ').slice(0, 350);
 }
-
 // ═══════════════════════════════════════
 // PHASE 1: SCENE GENERATION via Kontext Fast
 // Always uses portrait as img_cond_path
@@ -246,7 +245,7 @@ export async function genPage(ctx, apiKey) {
 
   const prevScenes = history.map((h, i) => { const p = [h.sceneSummary, h.actionSummary].filter(Boolean).join(", "); return p ? `P${i+1}: ${p}` : ""; }).filter(Boolean);
   const diversityInstr = history.length > 0
-    ? `\n- LOCATION DIVERSITY: Previous: [${prevScenes.join("; ") || history.map(h => h.mood).filter(Boolean).join(", ")}]. MUST be COMPLETELY DIFFERENT place.\n- ACTION DIVERSITY: Character must do something PHYSICALLY DIFFERENT from all previous pages.`
+    ? `\n- LOCATION: Vary locations naturally with the story. Avoid repeating the exact same scene, but staying in the same area for 2-3 pages is fine if the story calls for it.\n- ACTION: Character should be doing something relevant to the story. Vary poses naturally.`
     : "\n- Start with a vivid, unique setting.";
 
   const copyrightInstr = "\n- COPYRIGHT: Create ORIGINAL characters inspired by any mentioned movie/game characters. New name, same abilities.";
