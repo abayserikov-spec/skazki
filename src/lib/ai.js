@@ -131,41 +131,27 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
 // ═══════════════════════════════════════
 
 function buildScenePrompt(illustration, identityTag, charDesc, artStyleKey, companionDesc, reinforced) {
-  // BLOCK 1: Style Anchor (frozen per session)
   const styleAnchor = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
 
-  // BLOCK 2: Character Identity (frozen per session) + anti-hallucination
-  const isFemale = /girl|woman|queen|princess|she |her |daughter|sister|mother|lady|maiden/i.test(charDesc);
-  const isMale = /boy|man|king|prince|he |his |son|brother|father|knight/i.test(charDesc);
-  const isAnimal = /fox|cat|dog|bear|rabbit|wolf|owl|mouse|dragon|lion|tiger|deer|pup|cub|kitten/i.test(charDesc);
-  const anti = [];
-  if (isFemale) anti.push("NOT a man", "NOT an old man", "NOT bearded");
-  if (isMale) anti.push("NOT a woman", "NOT female");
-  if (isAnimal) anti.push("NOT a human");
-  if (!isAnimal) anti.push("NOT an animal");
-  const antiStr = anti.length > 0 ? ` ${anti.join(", ")}.` : "";
-
   const matchPhrase = reinforced
-    ? `IMPORTANT: character MUST be ${identityTag}. EXACTLY as in the reference image`
-    : "Same character as in the reference image, maintaining identical appearance, clothing, and proportions";
+    ? 'MUST be ' + identityTag + '. EXACTLY as reference'
+    : 'Same character as reference image';
 
-  const identityBlock = `The main character is ${identityTag}. ${matchPhrase}.${antiStr}`;
-
-  // BLOCK 3: Scene (unique per page)
   const ill = illustration || {};
-  const parts = [];
-  if (ill.composition) parts.push(ill.composition);
-  if (ill.camera) parts.push(ill.camera);
-  if (ill.character_action) parts.push(`The character is ${ill.character_action}.`);
-  if (ill.character_items?.length > 0) parts.push(ill.character_items.map(item => `Holding/wearing ${item}.`).join(" "));
-  if (companionDesc) parts.push(`Accompanied by ${companionDesc}. Both characters clearly visible.`);
-  if (ill.environment) parts.push(`Setting: ${ill.environment}.`);
-  if (ill.lighting) parts.push(`Lighting: ${ill.lighting}.`);
-  if (ill.color_palette) parts.push(`Color mood: ${ill.color_palette}.`);
-  // Fallback if no structured fields
-  if (parts.length === 0 && ill.scene) parts.push(ill.scene);
+  const action = ill.character_action || '';
+  const env = (ill.environment || '').split(',')[0].trim();
+  const items = (ill.character_items || []).slice(0, 2).join(', ');
 
-  return `${styleAnchor} ${identityBlock} ${parts.join(" ")} No text, no words, no letters.`.trim();
+  const parts = [styleAnchor];
+  parts.push(identityTag + '. ' + matchPhrase + '.');
+  if (action) parts.push(action + '.');
+  if (items) parts.push('Holding ' + items + '.');
+  if (env) parts.push(env + '.');
+  if (companionDesc) parts.push('With ' + companionDesc.split('.')[0] + '.');
+  parts.push('No text.');
+
+  return parts.join(' ').slice(0, 350);
+}
 }
 
 // ═══════════════════════════════════════
