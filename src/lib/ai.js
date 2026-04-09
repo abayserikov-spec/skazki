@@ -10,8 +10,8 @@ import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 // ── CONFIG ──
 // Phase 3: Change this to your trained LoRA path when ready
 // e.g. "your-username/skazka-style" or keep as childbook
-const STYLE_LORA = "alvdansen/frosting_lane_flux";
-const STYLE_TRIGGER = "frstingln illustration";
+// const STYLE_LORA = "alvdansen/frosting_lane_flux"; // Phase 3: swap to custom LoRA
+const STYLE_TRIGGER = "Children's book illustration";
 
 // ── STYLE ANCHORS for 3-block prompts (Phase 1) ──
 const STYLE_ANCHORS = {
@@ -87,18 +87,18 @@ async function fetchWithRetry(url, opts, maxRetries = 3) {
 
 export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   if (!token) return null;
-  var styleHint = artStyleKey === "anime"
-    ? "Anime style children book character."
-    : "Children book illustration, soft gouache painting. Character reference sheet showing ALL characters together.";
-  var prompt = styleHint + " " + charDesc + ". Full body, ALL characters standing together in a row on plain beige background. Clear distinct appearances. No text.";
+  const styleHint = artStyleKey === "anime"
+    ? "Anime style children's book character reference sheet."
+    : "Children's book illustration, soft gouache painting. Character reference sheet showing ALL characters together.";
+  const prompt = `${styleHint} ${charDesc}. Full body, ALL characters standing together in a row on plain beige background. Clear distinct appearances. No text, no words, no letters.`;
   try {
-    var res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
+    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
       method: "POST",
-      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Prefer: "wait=60" },
-      body: JSON.stringify({ input: { prompt: prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } }),
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
+      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } }),
     });
-    var resp = await res.json();
-    if (resp.detail || resp.error) console.error("Portrait (schnell) error:", JSON.stringify(resp));
+    const resp = await res.json();
+    if (resp.detail || resp.error) console.error("Portrait (Flux 2 Pro) error:", JSON.stringify(resp));
     return await pollPrediction(token, resp);
   } catch (err) { console.error("Portrait error:", err); return null; }
 }
@@ -128,16 +128,216 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
 // ═══════════════════════════════════════
 
 function buildScenePrompt(illustration, identityTag, charDesc, artStyleKey, companionDesc, reinforced) {
-  var styleAnchor = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
-  var matchPhrase = reinforced
+  const styleAnchor = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
+  const matchPhrase = reinforced
     ? "MUST be " + identityTag + ". EXACTLY as reference"
     : "Same character as reference image";
-  var ill = illustration || {};
-  var scene = ill.scene || [ill.character_action, ill.environment].filter(Boolean).join(". ");
-  var items = (ill.character_items || []).join(", ");
-  var prompt = styleAnchor + " " + identityTag + ". " + matchPhrase + ". " + scene + ".";
+  const ill = illustration || {};
+  const scene = ill.scene || [ill.character_action, ill.environment].filter(Boolean).join(". ");
+  const items = (ill.character_items || []).join(", ");
+  let prompt = styleAnchor + " " + identityTag + ". " + matchPhrase + ". " + scene + ".";
   if (items) prompt += " Character holds: " + items + ".";
+  if (ill.environment) prompt += " Setting: " + ill.environment + ".";
   if (companionDesc) prompt += " Also in scene: " + companionDesc.split(".")[0] + ".";
   prompt += " No text.";
   return prompt;
+}
+
+// ═══════════════════════════════════════
+// PHASE 1: SCENE GENERATION via Kontext Fast
+// Always uses portrait as img_cond_path
+// ═══════════════════════════════════════
+
+export async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey, opts = {}) {
+  if (!token || !portraitUrl) return null;
+  if (!portraitUrl.startsWith("http")) {
+    console.error("genNextImage: invalid portraitUrl:", portraitUrl);
+    return null;
+  }
+
+  const { illustration, identityTag, companionDesc, reinforced } = opts;
+
+  let prompt;
+  if (illustration && identityTag) {
+    prompt = buildScenePrompt(illustration, identityTag, charDesc, artStyleKey, companionDesc, reinforced);
+  } else {
+    // Legacy fallback
+    const shortStyle = artStyleKey === "anime" ? "Anime children's illustration."
+      : artStyleKey === "realistic" ? "Realistic children's book illustration."
+      : "Watercolor children's book illustration, soft washes, paper texture visible.";
+    const shortScene = (scene || "").split(/[.!]/).slice(0, 2).join(". ").trim().slice(0, 200);
+    const negWords = /frown|tear|cry|sad|scared|afraid|angry|worried|lonely|upset|nervous|anxious|hurt|pain|lost|confused|guilt|shame/i;
+    const antiSmile = negWords.test(scene) ? " Character is NOT smiling, NOT happy." : "";
+    prompt = `${shortStyle} ${shortScene}.${antiSmile} Same character from reference image. No text.`;
+  }
+
+  try {
+    const res = await fetchWithRetry("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
+      body: JSON.stringify({ input: { prompt, img_cond_path: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } }),
+    });
+    const resp = await res.json();
+    if (resp.detail || resp.error) console.error("Kontext Fast error:", JSON.stringify(resp));
+    return await pollPrediction(token, resp);
+  } catch (err) { console.error("Kontext Fast error:", err); return null; }
+}
+
+// ═══════════════════════════════════════
+// PHASE 1+2: STORY GENERATION (Sonnet)
+// Art Director + Visual Rhythm + Identity Tags
+// Phase 2: Quality check piggyback
+// ═══════════════════════════════════════
+
+export async function genPage(ctx, apiKey) {
+  const {
+    name, age, theme, history, choice, charDesc, backstory,
+    lang: storyLang, identityTag,
+    prevIllustrationUrl, prevScene,
+  } = ctx;
+
+  const pn = history.length + 1;
+  const isEnd = pn >= TOTAL_PAGES;
+
+  const hist = history.map((h, i) =>
+    "P" + (i + 1) + ": " + h.text +
+    (h.sceneSummary ? " [location: " + h.sceneSummary + "]" : "") +
+    (h.actionSummary ? " [action: " + h.actionSummary + "]" : "") +
+    (h.choice ? " [chose: " + h.choice.label + "/" + h.choice.value + "]" : "")
+  ).join("\n");
+
+  const charBlock = charDesc
+    ? `\n- The main characters have been established: ${charDesc}. Keep ALL characters visually consistent.
+- NEW MAIN CHARACTER: If an important new character JOINS the group, return "newMainCharacter" with their detailed visual description. Only for recurring characters.`
+    : `\n- FIRST PAGE: Return these character fields:
+  "characterDesc": detailed visual description of MAIN CHARACTER + companions. Include species/type, hair/fur color, eye color, clothing, accessories, body build, distinctive features.
+  "identityTag": comma-separated list of EXACTLY 4 most visually distinctive features that NEVER change. Format: "[species/type], [primary color], [key clothing], [unique accessory]". Example: "red fox cub, green eyes, blue scarf, brown satchel"`;
+
+  const charDescJson = !charDesc ? ',"characterDesc":"...","identityTag":"species, color, clothing, accessory"' : "";
+
+  const positiveValues = ["generosity","empathy","courage","curiosity","kindness","honesty","patience","teamwork"];
+  const negativeValues = ["selfishness","cowardice","cruelty","greed","laziness","dishonesty","aggression","indifference"];
+
+  let endingInstruction = "";
+  if (isEnd) {
+    const choiceValues = history.filter(h => h.choice).map(h => h.choice.value || "custom");
+    const negCount = choiceValues.filter(v => negativeValues.includes(v)).length;
+    const posCount = choiceValues.filter(v => positiveValues.includes(v)).length;
+    if (negCount > posCount) endingInstruction = "LAST PAGE — SAD ENDING. Consequences of bad choices. Character feels regret. No happy twist.";
+    else if (negCount === posCount && negCount > 0) endingInstruction = "LAST PAGE — MIXED ENDING. Partly works out, something lost. Bittersweet but hopeful.";
+    else endingInstruction = "LAST PAGE — HAPPY ENDING. Good choices paid off! Warm ending with gentle moral.";
+  }
+
+  const choicesOrEnd = isEnd
+    ? '"isEnd":true,"ending":"good|mixed|sad"'
+    : '"choices":[{"label":"...","emoji":"...","value":"generosity|empathy|courage|curiosity|kindness|honesty|patience|teamwork|selfishness|cowardice|cruelty|greed|laziness|dishonesty|aggression|indifference"}]';
+  const choicesInstruction = isEnd ? endingInstruction
+    : "Give 2-3 choices. Include at least one POSITIVE and one NEGATIVE/TEMPTING choice. Negative should feel tempting. Natural consequences, not preachy.";
+
+  const backstoryBlock = backstory ? `\n- STORY PREMISE: ${backstory}. Build around this.` : "";
+  const langInstr = storyLang === "en" ? "Write story text in ENGLISH." : "Write story text in RUSSIAN.";
+
+  const prevScenes = history.map((h, i) => { const p = [h.sceneSummary, h.actionSummary].filter(Boolean).join(", "); return p ? `P${i+1}: ${p}` : ""; }).filter(Boolean);
+  const diversityInstr = history.length > 0
+    ? `\n- LOCATION: Vary locations naturally with the story. Staying in the same area for 2-3 pages is fine.\n- ACTION: Character should do something relevant to the story. Vary poses naturally.`
+    : "\n- Start with a vivid, unique setting.";
+
+  const copyrightInstr = "\n- COPYRIGHT: Create ORIGINAL characters inspired by any mentioned movie/game characters. New name, same abilities.";
+
+  const cameraAngle = CAMERA_CYCLE[(pn - 1) % CAMERA_CYCLE.length];
+  const prevCamera = pn > 1 ? CAMERA_CYCLE[(pn - 2) % CAMERA_CYCLE.length] : null;
+
+  const illustrationInstr = `
+- ILLUSTRATION (you are the ART DIRECTOR): Return "illustration" object:
+  { "composition": "framing description", "camera": "angle/perspective", "character_action": "PHYSICAL verb + body position", "character_items": ["ALL objects from child's choice"], "environment": "2-3 vivid setting details", "lighting": "specific light source + quality", "color_palette": "dominant colors + accent" }
+  Camera for THIS page: ${cameraAngle}${prevCamera ? ` Previous was: ${prevCamera} — must be DIFFERENT.` : ""}
+  - Alternate WARM/COOL palette, INDOOR/OUTDOOR between pages
+  - character_action starts with PHYSICAL VERB (runs, climbs, reaches, hides, leaps)
+  - character_items MUST include ALL objects/weapons/tools from child's choice — NEVER omit
+  - Show emotion through BODY LANGUAGE, not abstract words`;
+
+  let qualityCheckInstr = "";
+  if (prevIllustrationUrl && identityTag) {
+    qualityCheckInstr = `\n- QUALITY CHECK the attached image: return "prevIllustrationCheck":{"character_match":1-10,"scene_match":1-10,"notes":"brief"} where character_match rates if character matches "${identityTag}"`;
+  }
+
+  const sys = `You are a master storyteller AND art director for illustrated children's stories. ${langInstr} Story with consequences — choices shape the outcome.
+Rules:
+- Child: ${name}, age ${age}${charBlock}${backstoryBlock}
+- Page ${pn}/${TOTAL_PAGES}. 2-3 vivid sentences, age-appropriate.${diversityInstr}${copyrightInstr}
+- TONE: Match premise. Realistic premise = grounded. Fantasy premise = magical.
+- ${choicesInstruction}
+- Negative choice consequences on NEXT page. Positive = warm rewards.${illustrationInstr}${qualityCheckInstr}
+- "mood": forest|ocean|space|castle|magic|city|school|sports|home
+
+Respond ONLY valid JSON:
+{"text":"...","mood":"...","scene":"SHORT English scene description for illustration, 1-2 sentences, under 40 words. Describe what character is DOING and WHERE. Include key objects.","illustration":{...},"sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"${prevIllustrationUrl ? ',"prevIllustrationCheck":{...}' : ""}}`;
+
+  const textMsg = history.length === 0
+    ? `Create a new story for ${name}. Premise: ${backstory || "a surprise creative adventure"}. Exciting opening!`
+    : `${hist}\n\nChild chose: "${choice?.label || ""}" (${choice?.value || "custom"}). Continue. Show consequences.`;
+
+  let userContent;
+  if (prevIllustrationUrl && identityTag) {
+    userContent = [
+      { type: "image", source: { type: "url", url: prevIllustrationUrl } },
+      { type: "text", text: textMsg },
+    ];
+  } else {
+    userContent = textMsg;
+  }
+
+  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
+  if (apiKey) {
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-dangerous-direct-browser-access"] = "true";
+  }
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST", headers,
+    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, system: sys, messages: [{ role: "user", content: userContent }] }),
+  });
+
+  const data = await res.json();
+  if (data.error) {
+    console.error("Sonnet API error:", data.error);
+    throw new Error(data.error.message || "Sonnet API error");
+  }
+
+  const txt = data.content?.map(b => (b.type === "text" ? b.text : "")).join("") || "";
+
+  // Safe JSON parse
+  let parsed;
+  try {
+    parsed = JSON.parse(txt.replace(/```json|```/g, "").trim());
+  } catch (e) {
+    console.error("JSON parse error. Raw:", txt.slice(0, 500));
+    const jsonMatch = txt.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try { parsed = JSON.parse(jsonMatch[0]); }
+      catch { throw new Error("Failed to parse Sonnet JSON"); }
+    } else {
+      throw new Error("No JSON in Sonnet response");
+    }
+  }
+
+  // Backward compat: old scene → illustration object
+  if (!parsed.illustration && parsed.scene) {
+    parsed.illustration = {
+      composition: CAMERA_CYCLE[(pn - 1) % CAMERA_CYCLE.length],
+      camera: CAMERA_CYCLE[(pn - 1) % CAMERA_CYCLE.length],
+      character_action: parsed.scene,
+      character_items: [],
+      environment: parsed.scene,
+      lighting: "natural light",
+      color_palette: "warm tones",
+    };
+  }
+  // Generate legacy scene from illustration
+  if (parsed.illustration && !parsed.scene) {
+    const ill = parsed.illustration;
+    parsed.scene = [ill.character_action, ill.environment].filter(Boolean).join(". ").slice(0, 200);
+  }
+
+  return parsed;
 }
