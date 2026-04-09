@@ -10,8 +10,8 @@ import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 // ── CONFIG ──
 // Phase 3: Change this to your trained LoRA path when ready
 // e.g. "your-username/skazka-style" or keep as childbook
-const STYLE_LORA = "samsa-ai/flux-childbook-illustration";
-const STYLE_TRIGGER = "in the style of TOK";
+const STYLE_LORA = "alvdansen/frosting_lane_flux";
+const STYLE_TRIGGER = "frstingln illustration";
 
 // ── STYLE ANCHORS for 3-block prompts (Phase 1) ──
 const STYLE_ANCHORS = {
