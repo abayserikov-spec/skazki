@@ -244,7 +244,8 @@ export default function App() {
   const [charDesc, setCharDesc] = useState(null);
   const [identityTag, setIdentityTag] = useState(null);       // Phase 1: frozen 4-marker identity
   const [companionDesc, setCompanionDesc] = useState(null);    // Phase 1: secondary character text-only
-  const [refImgUrl, setRefImgUrl] = useState(null);            // main portrait URL (NEVER overwritten after set)
+  const [refImgUrl, setRefImgUrl] = useState(null);
+  const [portraitRegenDone, setPortraitRegenDone] = useState(false);            // main portrait URL (NEVER overwritten after set)
   const [backstory, setBackstory] = useState("");
   const [presets, setPresets] = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
@@ -504,7 +505,7 @@ export default function App() {
     const storyTheme = { id: "custom", name: (premise || "").slice(0, 30) + (premise?.length > 30 ? "…" : ""), prompt: premise || "surprise creative story" };
     setActiveChild(child); setTheme(storyTheme); setPages([]); setCurPage(null); setCurImg(null);
     setPicks([]); setSel(null); setT0(Date.now()); setTimer(0); setError(null); setTextDone(false);
-    setCustomInput(""); setCharDesc(null); setIdentityTag(null); setCompanionDesc(null); setRefImgUrl(null);
+    setCustomInput(""); setCharDesc(null); setIdentityTag(null); setCompanionDesc(null); setRefImgUrl(null); setPortraitRegenDone(false);
     ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url)); ttsCacheRef.current.clear();
     sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
     setView("session"); setLoading(true);
@@ -574,11 +575,12 @@ export default function App() {
           prevIllustrationUrl: curImg || null,
           prevScene: curPage?.scene || null,
         }, antKey);
-        if (r.newMainCharacter && repToken) {
+        if (r.newMainCharacter && repToken && !portraitRegenDone) {
           // Re-generate portrait with ALL characters together
           
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
           genCharPortrait(repToken, updDesc, r.scene, artStyle).then(url => { if (url) setRefImgUrl(url); });
+          setPortraitRegenDone(true);
           setCharDesc(updDesc);
         }
         setCurPage(r); setLoading(false);
