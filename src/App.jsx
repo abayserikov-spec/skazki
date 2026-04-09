@@ -574,10 +574,11 @@ export default function App() {
           prevIllustrationUrl: curImg || null,
           prevScene: curPage?.scene || null,
         }, antKey);
-        if (r.newMainCharacter) {
-          // Phase 1: Don't overwrite refImgUrl — use companionDesc for text-only secondary character
-          setCompanionDesc(r.newMainCharacter);
+        if (r.newMainCharacter && repToken) {
+          // Re-generate portrait with ALL characters together
+          
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
+          genCharPortrait(repToken, updDesc, r.scene, artStyle).then(url => { if (url) setRefImgUrl(url); });
           setCharDesc(updDesc);
         }
         setCurPage(r); setLoading(false);
