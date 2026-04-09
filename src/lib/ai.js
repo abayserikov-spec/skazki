@@ -95,7 +95,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
     const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, prompt, go_fast: true, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
+      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
     });
     const resp = await res.json();
     if (resp.detail || resp.error) console.error("Portrait (Flux 2 Pro) error:", JSON.stringify(resp));
@@ -115,7 +115,7 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, prompt, go_fast: true, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
+      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
     });
     const resp = await res.json();
     return await pollPrediction(token, resp);
@@ -129,17 +129,17 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
 
 function buildScenePrompt(illustration, identityTag, charDesc, artStyleKey, companionDesc, reinforced) {
   const styleAnchor = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
-  const matchPhrase = reinforced
-    ? "MUST be " + identityTag + ". EXACTLY as reference"
-    : "Same character as reference image";
   const ill = illustration || {};
   const scene = ill.scene || [ill.character_action, ill.environment].filter(Boolean).join(". ");
-  const items = (ill.character_items || []).join(", ");
-  let prompt = styleAnchor + " " + identityTag + ". " + matchPhrase + ". " + scene + ".";
-  if (items) prompt += " Character holds: " + items + ".";
-  if (ill.environment) prompt += " Setting: " + ill.environment + ".";
-  if (companionDesc) prompt += " Also in scene: " + companionDesc.split(".")[0] + ".";
-  prompt += " No text.";
+  const matchStr = reinforced
+    ? "The main character MUST be " + identityTag + " — EXACTLY as in the reference image."
+    : "The main character from the reference portrait (" + identityTag + ") must appear with IDENTICAL visual identity — same face, hair, clothing.";
+  let prompt = styleAnchor + " Create a completely NEW illustration for this scene: " + scene + ". " + matchStr;
+  prompt += " The character POSE, EXPRESSION, and BODY LANGUAGE must match this NEW scene — NOT the neutral portrait pose.";
+  prompt += " Show vivid emotion through body language.";
+  if (ill.character_items && ill.character_items.length > 0) prompt += " Character holds: " + ill.character_items.join(", ") + ".";
+  if (companionDesc) prompt += " Also in scene: " + companionDesc + ", clearly visible with distinct appearance.";
+  prompt += " Rich detailed environment. No text in image.";
   return prompt;
 }
 
@@ -271,7 +271,7 @@ Rules:
 - "mood": forest|ocean|space|castle|magic|city|school|sports|home
 
 Respond ONLY valid JSON:
-{"text":"...","mood":"...","scene":"SHORT English scene description for illustration, 1-2 sentences, under 40 words. Describe what character is DOING and WHERE. Include key objects.","illustration":{...},"sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"${prevIllustrationUrl ? ',"prevIllustrationCheck":{...}' : ""}}`;
+{"text":"...","mood":"...","scene":"CINEMATIC English description for illustration (40-80 words). Include: ALL characters and what each is DOING, character EXPRESSIONS and body language, rich ENVIRONMENT details, CAMERA ANGLE. Make each scene visually DISTINCT from previous pages.","illustration":{...},"sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"${prevIllustrationUrl ? ',"prevIllustrationCheck":{...}' : ""}}`;
 
   const textMsg = history.length === 0
     ? `Create a new story for ${name}. Premise: ${backstory || "a surprise creative adventure"}. Exciting opening!`
