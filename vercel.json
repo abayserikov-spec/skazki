@@ -1,9 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
   "rewrites": [
-    { "source": "/api/replicate/:path*", "destination": "/api/replicate" },
-    { "source": "/api/elevenlabs/:path*", "destination": "/api/elevenlabs" }
+    { "source": "/api/replicate/(.*)", "destination": "https://api.replicate.com/$1" },
+    { "source": "/api/elevenlabs/(.*)", "destination": "https://api.elevenlabs.io/$1" }
   ]
 }

@@ -84,7 +84,7 @@ export async function savePage(bookId, page) {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("book_pages")
-    .insert({
+    .upsert({
       book_id: bookId,
       page_number: page.pageNumber,
       title: page.title,
@@ -99,7 +99,7 @@ export async function savePage(bookId, page) {
       choice_label: page.choiceLabel,
       choice_value: page.choiceValue,
       is_end: page.isEnd || false,
-    })
+    }, { onConflict: "book_id,page_number" })
     .select()
     .single();
   if (error) { console.error("savePage error:", error); return null; }

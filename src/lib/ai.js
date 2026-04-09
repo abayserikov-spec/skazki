@@ -70,6 +70,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
       })
     });
     const resp = await res.json();
+    if (resp.detail || resp.error) console.error("Portrait (flux-watercolor) 4xx:", JSON.stringify(resp));
     return await pollPrediction(token, resp);
   } catch (err) { console.error("Portrait error:", err); return null; }
 }
@@ -89,6 +90,10 @@ async function fetchWithRetry(url, opts, maxRetries = 3) {
 // ── PAGES 2+: Kontext Fast ──
 export async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey) {
   if (!token || !portraitUrl) return null;
+  if (!portraitUrl.startsWith("http")) {
+    console.error("genNextImage: invalid portraitUrl (not a URL):", portraitUrl);
+    return null;
+  }
   const shortStyle = artStyleKey === "anime" ? "Anime children's illustration."
     : artStyleKey === "realistic" ? "Realistic children's book illustration."
     : "Watercolor children's book illustration, soft washes, paper texture visible.";
@@ -103,6 +108,7 @@ export async function genNextImage(token, scene, charDesc, portraitUrl, mood, ar
       body: JSON.stringify({ input: { prompt, img_cond_path: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } })
     });
     const resp = await res.json();
+    if (resp.detail || resp.error) console.error("Kontext Fast 4xx:", JSON.stringify(resp));
     return await pollPrediction(token, resp);
   } catch (err) { console.error("Kontext Fast error:", err); return null; }
 }
