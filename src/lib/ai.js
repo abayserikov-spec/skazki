@@ -8,7 +8,7 @@ import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 const STYLE_TRIGGER = "Children's book illustration";
 
 const STYLE_ANCHORS = {
-  book: `Children's book illustration. Warm gouache and watercolor on textured cream paper, soft edges, visible brushstrokes, paint bleeding at edges. Muted earthy palette.`,
+  book: `Soft watercolor children's book illustration, gouache on cream paper, visible brushstrokes, muted earthy colors.`,
   anime: `Anime-style children's book illustration. Vibrant colors, expressive characters with large eyes. Studio Ghibli warmth, cinematic lighting.`,
   realistic: `Photorealistic children's book illustration. Cinematic composition, detailed textures, warm natural lighting. Professional quality.`,
 };
@@ -74,7 +74,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
     const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
+      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 8 } }),
     });
     const resp = await res.json();
     if (resp.detail || resp.error) console.error("Portrait (Schnell) error:", JSON.stringify(resp));
@@ -94,7 +94,7 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
+      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 8 } }),
     });
     const resp = await res.json();
     return await pollPrediction(token, resp);
