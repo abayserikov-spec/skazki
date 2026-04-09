@@ -13,7 +13,7 @@ import {
 
 import ST from "./lib/storage.js";
 import { TOTAL_PAGES, VALS, ART_STYLES, I18N } from "./lib/constants.js";
-import { genPage, genFirstImage, genCharPortrait, genNextImage } from "./lib/ai.js";
+import { genPage, genFirstImage, genCharPortrait, genNextImage, addCharToPortrait } from "./lib/ai.js";
 import { supabase } from "./lib/supabase.js";
 import {
   ensureUser, getChildren as dbGetChildren, addChild as dbAddChild,
@@ -579,7 +579,7 @@ export default function App() {
           // Re-generate portrait with ALL characters together
           
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
-          genCharPortrait(repToken, updDesc, r.scene, artStyle).then(url => { if (url) setRefImgUrl(url); });
+          addCharToPortrait(repToken, refImgUrl, r.newMainCharacter, artStyle).then(url => { if (url) setRefImgUrl(url); });
           setPortraitRegenDone(true);
           setCharDesc(updDesc);
         }

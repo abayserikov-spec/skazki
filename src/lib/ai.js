@@ -8,7 +8,7 @@ import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 const STYLE_TRIGGER = "Children's book illustration";
 
 const STYLE_ANCHORS = {
-  book: `Hand-drawn children's book illustration with thin black ink outlines, slightly imperfect and charming. Large expressive dot-eyes, oversized heads on small bodies. Flat color fills with visible pencil texture and paper grain. Limited warm palette, simple decorative backgrounds. Whimsical quirky proportions like a handmade picture book.`,
+  book: `Soft watercolor children's book illustration, gouache on cream paper, visible brushstrokes, muted earthy colors.`,
   anime: `Anime-style children's book illustration. Vibrant colors, expressive characters with large eyes. Studio Ghibli warmth, cinematic lighting.`,
   realistic: `Photorealistic children's book illustration. Cinematic composition, detailed textures, warm natural lighting. Professional quality.`,
 };
@@ -80,6 +80,23 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
     if (resp.detail || resp.error) console.error("Portrait (Schnell) error:", JSON.stringify(resp));
     return await pollPrediction(token, resp);
   } catch (err) { console.error("Portrait error:", err); return null; }
+}
+
+// Add new character to existing portrait via Kontext Fast (preserves existing characters)
+export async function addCharToPortrait(token, existingPortraitUrl, newCharDesc, artStyleKey) {
+  if (!token || !existingPortraitUrl) return null;
+  const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
+  const prompt = `${style} Add a new character standing next to the existing characters: ${newCharDesc}. Keep ALL existing characters EXACTLY as they are — same face, clothing, proportions. The new character should match the same art style. All characters visible, plain background. No text.`;
+  try {
+    const res = await fetchWithRetry("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
+      body: JSON.stringify({ input: { prompt, img_cond_path: existingPortraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } }),
+    });
+    const resp = await res.json();
+    if (resp.detail || resp.error) console.error("Add char error:", JSON.stringify(resp));
+    return await pollPrediction(token, resp);
+  } catch (err) { console.error("Add char error:", err); return null; }
 }
 
 // ═══════════════════════════════════════
