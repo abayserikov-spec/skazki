@@ -92,10 +92,10 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
     : "Children's book illustration, soft gouache painting. Character reference sheet showing ALL characters together.";
   const prompt = `${styleHint} ${charDesc}. Full body, ALL characters standing together in a row on plain beige background. Clear distinct appearances. No text, no words, no letters.`;
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
+    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } }),
+      body: JSON.stringify({ input: { prompt, prompt, go_fast: true, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
     });
     const resp = await res.json();
     if (resp.detail || resp.error) console.error("Portrait (Flux 2 Pro) error:", JSON.stringify(resp));
@@ -112,10 +112,10 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
   const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
   const prompt = `${style}. ${scene}. The main character is ${charDesc}. Show ALL characters with distinct appearances. Dynamic poses and clear interaction. No text, words, letters.`;
   try {
-    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
+    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } }),
+      body: JSON.stringify({ input: { prompt, prompt, go_fast: true, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
     });
     const resp = await res.json();
     return await pollPrediction(token, resp);
