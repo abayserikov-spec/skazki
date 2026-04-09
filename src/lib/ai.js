@@ -89,13 +89,13 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   if (!token) return null;
   var styleHint = artStyleKey === "anime"
     ? "Anime style children book character."
-    : "Children book illustration, soft gouache painting.";
-  var prompt = styleHint + " " + charDesc + ". Full body, relaxed pose, plain cream background. Front view. No text.";
+    : "Children book illustration, soft gouache painting. Character reference sheet showing ALL characters together.";
+  var prompt = styleHint + " " + charDesc + ". Full body, ALL characters standing together in a row on plain beige background. Clear distinct appearances. No text.";
   try {
-    var res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
+    var res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-2-pro/predictions", {
       method: "POST",
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Prefer: "wait=60" },
-      body: JSON.stringify({ input: { prompt: prompt, go_fast: true, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
+      body: JSON.stringify({ input: { prompt: prompt, aspect_ratio: "16:9", output_format: "webp", output_quality: 90, safety_tolerance: 5 } }),
     });
     var resp = await res.json();
     if (resp.detail || resp.error) console.error("Portrait (schnell) error:", JSON.stringify(resp));
