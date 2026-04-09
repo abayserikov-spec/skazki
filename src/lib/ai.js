@@ -143,7 +143,9 @@ function buildScenePrompt(illustration, identityTag, charDesc, artStyleKey, comp
   if (companionDesc) parts.push("Also in scene: " + companionDesc.split(".")[0] + ", clearly visible.");
   parts.push("No text, no words, no letters.");
   return parts.join(" ");
-}m "./constants.js";
+}
+
+import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 
 // ═══════════════════════════════════════════════════════════
 // SKAZKA VMESTE — AI Module v3
