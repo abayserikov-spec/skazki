@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/replicate/(.*)", "destination": "https://api.replicate.com/$1" },
-    { "source": "/api/elevenlabs/(.*)", "destination": "https://api.elevenlabs.io/$1" }
+    { "source": "/api/replicate/:path*", "destination": "https://api.replicate.com/:path*" },
+    { "source": "/api/elevenlabs/:path*", "destination": "https://api.elevenlabs.io/:path*" }
   ]
 }
