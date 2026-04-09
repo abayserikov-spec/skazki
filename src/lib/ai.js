@@ -210,6 +210,7 @@ Rules:
 - CRITICAL: If the child previously made a negative choice, show realistic consequences in the NEXT page. Don't immediately fix bad choices.
 - If the child made a positive choice, show warm rewards — new friendships, discovered treasures, growing trust.
 - Include a "scene" field: a CINEMATIC English description for illustration. CRITICAL RULES FOR SCENE:
+  1. UNIQUE POSES: Each character MUST have a DIFFERENT body pose and position than the previous page. If a character was standing with arms crossed before, now they should be sitting, leaning, pointing, walking, or gesturing. NEVER repeat the same pose twice.
   (1) Include ALL characters mentioned in the text
   (2) Show CHARACTER INTERACTION — body language between characters
   (3) Describe what each character is ACTIVELY DOING (never just standing)
