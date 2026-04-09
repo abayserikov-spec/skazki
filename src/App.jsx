@@ -579,7 +579,8 @@ export default function App() {
           // Re-generate portrait with ALL characters together
           
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
-          addCharToPortrait(repToken, refImgUrl, r.newMainCharacter, artStyle).then(url => { if (url) setRefImgUrl(url); });
+          const newPortrait = await addCharToPortrait(repToken, refImgUrl, r.newMainCharacter, artStyle);
+          if (newPortrait) setRefImgUrl(newPortrait);
           setPortraitRegenDone(true);
           setCharDesc(updDesc);
         }
