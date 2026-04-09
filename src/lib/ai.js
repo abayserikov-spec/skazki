@@ -96,7 +96,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({
-        version: "d613f7e1237e29c6e0b8bf1ff795e0b36e0aa4e41765225b1a8ee0e02afbcf51",
+        version: "091495765fa5ef2725a175a57b276ec30dc9d39c22d30410f2ede68a3eab66b3",
         input: { prompt, hf_lora: STYLE_LORA, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 28, lora_scale: 0.9 },
       }),
     });
