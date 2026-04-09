@@ -92,10 +92,11 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
     : `${STYLE_TRIGGER}, children's book character illustration.`;
   const prompt = `${styleHint} ${charDesc}. Full body standing in relaxed pose on plain cream background. Front view, clear details of face, clothing, and accessories. Simple flat background. No text, no words, no letters.`;
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/lucataco/flux-dev-lora/predictions", {
+    const res = await fetchWithRetry("/api/replicate/v1/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({
+        version: "d613f7e1237e29c6e0b8bf1ff795e0b36e0aa4e41765225b1a8ee0e02afbcf51",
         input: { prompt, hf_lora: STYLE_LORA, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 28, lora_scale: 0.9 },
       }),
     });
