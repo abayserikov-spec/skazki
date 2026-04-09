@@ -61,11 +61,10 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
     ? `Anime style children's book character. ${charDesc}. Full body, plain beige background. No text.`
     : `TOK watercolor painting of a children's book character. ${charDesc}. Full body standing on plain cream background. Soft watercolor washes, visible paper texture, warm gentle colors. No text.`;
   try {
-    const res = await fetch("/api/replicate/v1/predictions", {
+    const res = await fetch("/api/replicate/v1/models/lucataco/flux-watercolor/predictions", {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({
-        version: "846d1eb3e225eb0e1008e7b113741fa48948283f9bb1ce09e5fbbfef18b10e2c",
         input: { prompt, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 28 }
       })
     });
