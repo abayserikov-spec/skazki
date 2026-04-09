@@ -8,7 +8,7 @@ import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 const STYLE_TRIGGER = "Children's book illustration";
 
 const STYLE_ANCHORS = {
-  book: `Soft watercolor children's book illustration, gouache on cream paper, visible brushstrokes, muted earthy colors.`,
+  book: `Hand-drawn children's book illustration with thin black ink outlines, slightly imperfect and charming. Large expressive dot-eyes, oversized heads on small bodies. Flat color fills with visible pencil texture and paper grain. Limited warm palette, simple decorative backgrounds. Whimsical quirky proportions like a handmade picture book.`,
   anime: `Anime-style children's book illustration. Vibrant colors, expressive characters with large eyes. Studio Ghibli warmth, cinematic lighting.`,
   realistic: `Photorealistic children's book illustration. Cinematic composition, detailed textures, warm natural lighting. Professional quality.`,
 };
