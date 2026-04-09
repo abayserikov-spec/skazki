@@ -149,7 +149,6 @@ function buildScenePrompt(illustration, identityTag, charDesc, artStyleKey, comp
 
   return parts.join(' ').slice(0, 350);
 }
-}
 
 // ═══════════════════════════════════════
 // PHASE 1: SCENE GENERATION via Kontext Fast
