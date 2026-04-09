@@ -484,8 +484,8 @@ export default function App() {
     if (!antKey) return;
     setPresetsLoading(true);
     const prompt = lang === "en"
-      ? `Create 6 short story premises for interactive stories for ${childName} (${childAge} years old). Mix: 2 realistic, 2 fantasy, 2 unusual. Each 1 sentence, 10-18 words. Respond ONLY JSON: [{"text":"..."}]`
-      : `Придумай 6 коротких завязок для интерактивных историй для ребёнка ${childName} (${childAge} лет). Микс: 2 реалистичных, 2 фэнтези, 2 необычных. Каждая — 1 предложение, 10-18 слов. Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
+      ? `Create 6 short story premises for illustrated children's storybooks (reader age ${childAge}). Each premise describes a FICTIONAL CHARACTER (not the reader) in an interesting situation. Mix: 2 realistic adventures, 2 fantasy quests, 2 unusual/funny scenarios. Each 1 sentence, 10-18 words. Do NOT use the child's name. Example: "A tiny dragon who is afraid of fire tries to pass the dragon school exam". Respond ONLY JSON: [{"text":"..."}]`
+      : `Придумай 6 коротких завязок для иллюстрированных детских сказок (возраст читателя ${childAge} лет). Каждая завязка описывает ВЫМЫШЛЕННОГО ПЕРСОНАЖА (не ребёнка-читателя) в интересной ситуации. Микс: 2 реалистичных приключения, 2 фэнтези, 2 необычных/смешных. Каждая — 1 предложение, 10-18 слов. НЕ используй имя ребёнка. Пример: "Маленький дракон, который боится огня, пытается сдать экзамен в школе драконов". Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
