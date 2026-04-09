@@ -74,7 +74,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
     const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 8 } }),
+      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
     });
     const resp = await res.json();
     if (resp.detail || resp.error) console.error("Portrait (Schnell) error:", JSON.stringify(resp));
@@ -94,7 +94,7 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
     const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 8 } }),
+      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
     });
     const resp = await res.json();
     return await pollPrediction(token, resp);
