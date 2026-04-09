@@ -14,6 +14,14 @@ import {
 import ST from "./lib/storage.js";
 import { TOTAL_PAGES, VALS, ART_STYLES, I18N } from "./lib/constants.js";
 import { genPage, genFirstImage, genCharPortrait, genNextImage } from "./lib/ai.js";
+import { supabase } from "./lib/supabase.js";
+import {
+  ensureUser, getChildren as dbGetChildren, addChild as dbAddChild,
+  createBook, savePage, finalizeBook, saveBookValues,
+  getAllBooks, getBookWithPages, deleteBook,
+  createCharacter, updateCharacterAfterStory,
+} from "./lib/db.js";
+import { uploadIllustration } from "./lib/storage-cloud.js";
 import BlurText from "./components/reactbits/BlurText.jsx";
 import GradientText from "./components/reactbits/GradientText.jsx";
 import ShinyText from "./components/reactbits/ShinyText.jsx";
@@ -239,6 +247,12 @@ export default function App() {
   const [presets, setPresets] = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
   
+  // Supabase state
+  const [dbUser, setDbUser] = useState(null);
+  const [bookId, setBookId] = useState(null);      // current session's book ID in Supabase
+  const [library, setLibrary] = useState([]);       // saved books for library view
+  const [readingBook, setReadingBook] = useState(null); // book being read from library
+  
   // TTS state
   const [speaking, setSpeaking] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
@@ -273,7 +287,23 @@ export default function App() {
     if (ek) setElKey(ek);
     if (sl) setLang(sl);
     if (ss) setArtStyle(ss);
-    if (u) { setUser(u); setSessions(await ST.get("sessions") || []); setChildren(await ST.get("children") || []); setView("dashboard"); }
+    if (u) {
+      setUser(u);
+      setSessions(await ST.get("sessions") || []);
+      setChildren(await ST.get("children") || []);
+      setView("dashboard");
+      // Sync with Supabase
+      if (supabase) {
+        const dbU = await ensureUser(u.email, u.name);
+        if (dbU) {
+          setDbUser(dbU);
+          const kids = await dbGetChildren(dbU.id);
+          if (kids.length > 0) setChildren(kids);
+          const books = await getAllBooks(dbU.id);
+          setLibrary(books);
+        }
+      }
+    }
     else setView("auth");
   })(); }, []);
 
@@ -385,8 +415,27 @@ export default function App() {
   const saveAntKey = async v => { setAntKey(v); await ST.set("antKey", v); };
   const saveElKey = async v => { setElKey(v); await ST.set("elKey", v); };
   const toggleLang = async () => { const n = lang === "ru" ? "en" : "ru"; setLang(n); await ST.set("lang", n); };
-  const register = async () => { if (!authName.trim() || !authEmail.trim()) return; const u = { name: authName.trim(), email: authEmail.trim() }; await ST.set("user", u); setUser(u); setView("dashboard"); };
-  const addChildFn = async () => { if (!newChild.trim()) return; const ch = { id: Date.now().toString(), name: newChild.trim(), age: newAge }; const upd = [...children, ch]; setChildren(upd); await ST.set("children", upd); setNewChild(""); setShowAdd(false); };
+  const register = async () => {
+    if (!authName.trim() || !authEmail.trim()) return;
+    const u = { name: authName.trim(), email: authEmail.trim() };
+    await ST.set("user", u); setUser(u);
+    if (supabase) {
+      const dbU = await ensureUser(u.email, u.name);
+      if (dbU) { setDbUser(dbU); }
+    }
+    setView("dashboard");
+  };
+  const addChildFn = async () => {
+    if (!newChild.trim()) return;
+    let ch;
+    if (supabase && dbUser) {
+      ch = await dbAddChild(dbUser.id, newChild.trim(), parseInt(newAge));
+    }
+    if (!ch) ch = { id: Date.now().toString(), name: newChild.trim(), age: newAge };
+    const upd = [...children, ch];
+    setChildren(upd); await ST.set("children", upd);
+    setNewChild(""); setShowAdd(false);
+  };
 
   // ── Generate presets ──
   const generatePresets = async (childName, childAge) => {
@@ -418,6 +467,19 @@ export default function App() {
     ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url)); ttsCacheRef.current.clear();
     sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
     setView("session"); setLoading(true);
+
+    // Create book in Supabase
+    if (supabase) {
+      const book = await createBook({
+        childId: child.id,
+        characterId: null,
+        premise: premise || "surprise creative story",
+        artStyle,
+        lang,
+      });
+      if (book) setBookId(book.id);
+    }
+
     if (!antKey) { setError(lang === "ru" ? "Нужен Anthropic API ключ! Откройте настройки." : "Need Anthropic API key! Open settings."); setLoading(false); return; }
     try {
       const r = await genPage({ name: child.name, age: child.age, theme: premise || "surprise creative story", history: [], choice: null, charDesc: null, backstory: premise || "", lang }, antKey);
@@ -432,8 +494,35 @@ export default function App() {
     setSel(ch.label); setTextDone(false); setCustomInput("");
     setPicks(p => [...p, { label: ch.label, value: ch.value || "custom", page: pages.length + 1 }]);
     setTimeout(async () => {
-      const up = [...pages, { ...curPage, imgUrl: curImg, choice: ch }];
+      const pageData = { ...curPage, imgUrl: curImg, choice: ch };
+      const up = [...pages, pageData];
       setPages(up); setCurPage(null); setCurImg(null); setSel(null); setLoading(true);
+
+      // Save page to Supabase (async, don't block UI)
+      if (supabase && bookId) {
+        (async () => {
+          let permanentImgUrl = pageData.imgUrl;
+          if (permanentImgUrl) {
+            permanentImgUrl = await uploadIllustration(permanentImgUrl, bookId, up.length);
+          }
+          await savePage(bookId, {
+            pageNumber: up.length,
+            title: pageData.title,
+            text: pageData.text,
+            ttsText: pageData.tts_text,
+            scene: pageData.scene,
+            sceneSummary: pageData.sceneSummary,
+            actionSummary: pageData.actionSummary,
+            mood: pageData.mood,
+            imageUrl: permanentImgUrl,
+            sfx: pageData.sfx,
+            choiceLabel: ch.label,
+            choiceValue: ch.value || "custom",
+            isEnd: false,
+          });
+        })();
+      }
+
       try {
         const r = await genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: up.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: ch, charDesc, lang }, antKey);
         if (r.newMainCharacter) {
@@ -454,7 +543,61 @@ export default function App() {
     clearInterval(timerRef.current);
     const allPages = [...pages, { ...curPage, imgUrl: curImg }];
     const s = { id: Date.now().toString(), child: activeChild, theme, pages: allPages, picks, duration: Math.floor((Date.now() - t0) / 1000), date: Date.now(), charDesc, backstory };
-    const upd = [s, ...sessions]; setSessions(upd); await ST.set("sessions", upd); setView("report");
+    const upd = [s, ...sessions]; setSessions(upd); await ST.set("sessions", upd);
+
+    // Finalize in Supabase
+    if (supabase && bookId) {
+      // Save last page (the ending page)
+      const lastPage = allPages[allPages.length - 1];
+      if (lastPage) {
+        let permanentImgUrl = lastPage.imgUrl;
+        if (permanentImgUrl) {
+          permanentImgUrl = await uploadIllustration(permanentImgUrl, bookId, allPages.length);
+        }
+        await savePage(bookId, {
+          pageNumber: allPages.length,
+          title: lastPage.title,
+          text: lastPage.text,
+          ttsText: lastPage.tts_text,
+          scene: lastPage.scene,
+          sceneSummary: lastPage.sceneSummary,
+          actionSummary: lastPage.actionSummary,
+          mood: lastPage.mood,
+          imageUrl: permanentImgUrl,
+          sfx: lastPage.sfx,
+          choiceLabel: null,
+          choiceValue: null,
+          isEnd: lastPage.isEnd || true,
+        });
+      }
+
+      // Compute ending type
+      const posVals = ["generosity","empathy","courage","curiosity","kindness","honesty","patience","teamwork"];
+      const negVals = ["selfishness","cowardice","cruelty","greed","laziness","dishonesty","aggression","indifference"];
+      const posCount = picks.filter(p => posVals.includes(p.value)).length;
+      const negCount = picks.filter(p => negVals.includes(p.value)).length;
+      const endingType = negCount > posCount ? "sad" : negCount === posCount && negCount > 0 ? "mixed" : "good";
+
+      await finalizeBook(bookId, {
+        title: theme?.name || allPages[0]?.title || "Story",
+        endingType,
+        durationSeconds: Math.floor((Date.now() - t0) / 1000),
+        pageCount: allPages.length,
+      });
+
+      // Save values
+      const vs = {};
+      picks.forEach(p => { if (p.value && p.value !== "custom") vs[p.value] = (vs[p.value] || 0) + 1; });
+      await saveBookValues(bookId, vs);
+
+      // Refresh library
+      if (dbUser) {
+        const books = await getAllBooks(dbUser.id);
+        setLibrary(books);
+      }
+    }
+
+    setView("report");
   };
 
   const getVals = () => {
@@ -515,6 +658,196 @@ export default function App() {
 
         <PillBtn onClick={() => setShowSettings(false)} style={{ width: "100%" }}>{L.done}</PillBtn>
       </motion.div>
+    </div>
+  );
+
+  // ═══════════════════════════════════
+  // LIBRARY — Read a saved book (SKZ-9)
+  // ═══════════════════════════════════
+  if (view === "reading" && readingBook) {
+    const rb = readingBook;
+    const rbPages = rb.pages || [];
+    const rbVals = (rb.values || []).map(v => {
+      const vi = VALS[v.value_key] || {};
+      const total = rb.values.reduce((s, x) => s + x.count, 0) || 1;
+      return { k: v.value_key, ...vi, count: v.count, pct: Math.round((v.count / total) * 100) };
+    }).sort((a, b) => b.count - a.count);
+
+    const endColors = { good: T.teal, mixed: T.amber, sad: T.coral };
+    const endBgs = { good: T.tealBg, mixed: T.amberBg, sad: T.coralBg };
+
+    return (
+      <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body }}>
+        <style>{CSS}</style>
+        <div style={{ maxWidth: 540, margin: "0 auto", padding: "28px 20px" }}>
+          {/* Header */}
+          <AnimIn>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+              <PillBtn variant="subtle" onClick={() => { setReadingBook(null); setView("library"); }} style={{ padding: "8px 16px", fontSize: 12 }}><ArrowLeft size={14} />{L.back}</PillBtn>
+              <span style={{ fontFamily: T.display, fontSize: 16, fontWeight: 600, color: T.tx, flex: 1 }}>{rb.title}</span>
+              {rb.ending_type && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 12px", borderRadius: 12, background: endBgs[rb.ending_type], color: endColors[rb.ending_type], fontSize: 11, fontWeight: 700 }}>
+                  {rb.ending_type === "good" ? <Star size={12} /> : rb.ending_type === "mixed" ? <CircleDot size={12} /> : <Heart size={12} />}
+                  {L.ending[rb.ending_type]}
+                </span>
+              )}
+            </div>
+          </AnimIn>
+
+          {/* Book info */}
+          <AnimIn delay={0.05}>
+            <div className="skazka-card" style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
+              {rb.cover_image_url && (
+                <div style={{ width: 80, height: 80, borderRadius: T.r2, overflow: "hidden", flexShrink: 0, border: `1px solid ${T.border}` }}>
+                  <img src={rb.cover_image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.tx, marginBottom: 4 }}>{rb.child?.name}, {rb.child?.age} {L.years}</div>
+                {rb.premise && <p style={{ fontSize: 12, color: T.tx3, lineHeight: 1.5 }}>{rb.premise}</p>}
+                <div style={{ fontSize: 11, color: T.tx3, marginTop: 4 }}>
+                  {rbPages.length} {L.pages} · {rb.duration_seconds ? Math.ceil(rb.duration_seconds / 60) : "?"} {L.min} · {new Date(rb.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          </AnimIn>
+
+          {/* Pages */}
+          {rbPages.map((pg, i) => (
+            <AnimIn key={pg.id} delay={0.08 + i * 0.04}>
+              <div className="skazka-card" style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: T.accentBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: T.accent, flexShrink: 0 }}>{i + 1}</div>
+                  {pg.title && <span style={{ fontFamily: T.display, fontSize: 13, fontWeight: 600, color: T.accent, fontStyle: "italic" }}>{pg.title}</span>}
+                </div>
+                {pg.image_url && (
+                  <div style={{ marginBottom: 10, borderRadius: T.r2, overflow: "hidden", border: `1px solid ${T.border}`, maxHeight: 220 }}>
+                    <img src={pg.image_url} alt="" style={{ width: "100%", display: "block", objectFit: "cover" }} loading="lazy" />
+                  </div>
+                )}
+                <p style={{ fontFamily: T.story, fontSize: 15, fontStyle: "italic", lineHeight: 1.8, color: T.tx2 }}>{pg.text}</p>
+                {pg.choice_label && (() => {
+                  const isPos = VALS[pg.choice_value]?.pos !== false;
+                  return (
+                    <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 10, background: isPos ? T.tealBg : T.coralBg, fontSize: 12, color: isPos ? T.teal : T.coral, fontWeight: 600 }}>
+                      {isPos ? <TrendingUp size={11} /> : <TrendingDown size={11} />} {pg.choice_label}
+                    </div>
+                  );
+                })()}
+              </div>
+            </AnimIn>
+          ))}
+
+          {/* Values summary */}
+          {rbVals.length > 0 && (
+            <AnimIn delay={0.15}>
+              <div className="skazka-card" style={{ marginBottom: 16 }}>
+                <SectionLabel>{L.choicesOf} {rb.child?.name}</SectionLabel>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {rbVals.map((v, i) => {
+                    const isPos = VALS[v.k]?.pos;
+                    return (
+                      <div key={v.k}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {isPos ? <TrendingUp size={13} color={T.teal} /> : <TrendingDown size={13} color={T.coral} />}
+                            <span style={{ fontWeight: 700, fontSize: 13, color: T.tx }}>{lang === "ru" ? v.n : (v.nEn || v.k)}</span>
+                          </div>
+                          <span style={{ fontWeight: 800, fontSize: 13, color: v.c }}>{v.pct}%</span>
+                        </div>
+                        <AnimBar color={`linear-gradient(90deg,${v.c},${v.c}88)`} pct={v.pct} delay={i * 100} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </AnimIn>
+          )}
+
+          {/* Actions */}
+          <AnimIn delay={0.2}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <PillBtn variant="ghost" onClick={() => { setReadingBook(null); setView("library"); }} style={{ flex: 1 }}><ArrowLeft size={14} />{lang === "ru" ? "Библиотека" : "Library"}</PillBtn>
+              <PillBtn variant="coral" onClick={() => setView("dashboard")} style={{ flex: 1 }}><Sparkles size={16} />{L.newSessionBtn}</PillBtn>
+            </div>
+          </AnimIn>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════
+  // LIBRARY — Grid of saved books (SKZ-9)
+  // ═══════════════════════════════════
+  if (view === "library") return (
+    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body }}>
+      <style>{CSS}</style>
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 20px" }}>
+        <AnimIn>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <PillBtn variant="subtle" onClick={() => setView("dashboard")} style={{ padding: "8px 16px", fontSize: 12 }}><ArrowLeft size={14} />{L.back}</PillBtn>
+            <h2 style={{ fontFamily: T.display, fontSize: 22, fontWeight: 600, color: T.tx }}>{lang === "ru" ? "Библиотека" : "Library"}</h2>
+            <div style={{ width: 80 }} />
+          </div>
+        </AnimIn>
+
+        {library.length === 0 ? (
+          <AnimIn delay={0.1}>
+            <div style={{ textAlign: "center", padding: "60px 20px" }}>
+              <BookMarked size={48} color={T.tx3} style={{ opacity: 0.3, marginBottom: 16 }} />
+              <p style={{ fontSize: 15, color: T.tx3, marginBottom: 4 }}>{lang === "ru" ? "Здесь пока пусто" : "Nothing here yet"}</p>
+              <p style={{ fontSize: 12, color: T.tx3 }}>{lang === "ru" ? "Завершённые истории появятся здесь" : "Completed stories will appear here"}</p>
+            </div>
+          </AnimIn>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            {library.map((book, i) => {
+              const endColors = { good: T.teal, mixed: T.amber, sad: T.coral };
+              const endBgs = { good: T.tealBg, mixed: T.amberBg, sad: T.coralBg };
+              return (
+                <AnimIn key={book.id} delay={0.05 + i * 0.03}>
+                  <div
+                    onClick={async () => {
+                      const full = await getBookWithPages(book.id);
+                      if (full) { setReadingBook(full); setView("reading"); }
+                    }}
+                    className="skazka-card"
+                    style={{ padding: 0, cursor: "pointer", overflow: "hidden", transition: "transform .2s, box-shadow .2s" }}
+                    onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = T.shadowMd; }}
+                    onMouseOut={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = T.shadowSm; }}
+                  >
+                    {/* Cover image */}
+                    <div style={{ width: "100%", height: 140, background: T.bgMuted, position: "relative", overflow: "hidden" }}>
+                      {book.cover_image_url ? (
+                        <img src={book.cover_image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <BookOpen size={28} color={T.tx3} style={{ opacity: 0.2 }} />
+                        </div>
+                      )}
+                      {book.ending_type && (
+                        <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 8px", borderRadius: 8, background: endBgs[book.ending_type], fontSize: 10, fontWeight: 700, color: endColors[book.ending_type] }}>
+                          {L.ending[book.ending_type]}
+                        </div>
+                      )}
+                    </div>
+                    {/* Info */}
+                    <div style={{ padding: "12px 14px" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: T.tx, marginBottom: 3, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.title}</div>
+                      <div style={{ fontSize: 11, color: T.tx3 }}>
+                        {book.child?.name} · {book.page_count || 0} {L.pages}
+                      </div>
+                      <div style={{ fontSize: 10, color: T.tx3, marginTop: 2 }}>
+                        {new Date(book.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                </AnimIn>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -655,8 +988,29 @@ export default function App() {
           </div>
         </AnimIn>}
 
-        {/* History */}
-        {sessions.length > 0 && <AnimIn delay={0.18}><div className="skazka-card">
+        {/* Library (Supabase) */}
+        {library.length > 0 && <AnimIn delay={0.16}>
+          <div onClick={() => setView("library")} className="skazka-card" style={{ marginBottom: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, padding: "18px 20px" }}>
+            <IconCircle icon={BookMarked} size={44} bg={T.tealBg} color={T.teal} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: T.tx, marginBottom: 2 }}>{lang === "ru" ? "Библиотека" : "Library"}</div>
+              <div style={{ fontSize: 12, color: T.tx3 }}>{library.length} {library.length === 1 ? (lang === "ru" ? "история" : "story") : (lang === "ru" ? (library.length < 5 ? "истории" : "историй") : "stories")}</div>
+            </div>
+            <div style={{ display: "flex", gap: -8 }}>
+              {library.slice(0, 3).map((b, i) => (
+                b.cover_image_url ? (
+                  <div key={b.id} style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", border: `2px solid ${T.bg}`, marginLeft: i > 0 ? -8 : 0 }}>
+                    <img src={b.cover_image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                ) : null
+              ))}
+            </div>
+            <ChevronRight size={16} color={T.teal} />
+          </div>
+        </AnimIn>}
+
+        {/* History (localStorage fallback — shown if no Supabase library) */}
+        {library.length === 0 && sessions.length > 0 && <AnimIn delay={0.18}><div className="skazka-card">
           <SectionLabel>{L.history}</SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {sessions.slice(0, 8).map((s, i) => (
