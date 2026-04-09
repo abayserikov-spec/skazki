@@ -575,7 +575,7 @@ export default function App() {
           prevIllustrationUrl: curImg || null,
           prevScene: curPage?.scene || null,
         }, antKey);
-        if (r.newMainCharacter && repToken && !portraitRegenDone) {
+        if (r.newMainCharacter && repToken) {
           // Re-generate portrait with ALL characters together
           
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
