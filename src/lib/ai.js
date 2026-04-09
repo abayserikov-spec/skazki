@@ -65,7 +65,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
       body: JSON.stringify({
-        model: "lucataco/flux-watercolor",
+        version: "846d1eb37059ed2ed268ff8dd4aa1531487fcdc3425a7a44c2a0a10723ef8383",
         input: { prompt, num_outputs: 1, aspect_ratio: "2:3", output_format: "png", output_quality: 90, num_inference_steps: 28 }
       })
     });
