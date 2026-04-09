@@ -131,18 +131,15 @@ function buildScenePrompt(illustration, identityTag, charDesc, artStyleKey, comp
   var styleAnchor = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
   var matchPhrase = reinforced
     ? "MUST be " + identityTag + ". EXACTLY as reference"
-    : "Same character as reference image, identical appearance";
+    : "Same character as reference image";
   var ill = illustration || {};
-  var parts = [styleAnchor];
-  parts.push(identityTag + ". " + matchPhrase + ".");
-  if (ill.composition) parts.push(ill.composition + ".");
-  if (ill.character_action) parts.push("Character is " + ill.character_action + ".");
-  if (ill.character_items && ill.character_items.length > 0) parts.push("Holding: " + ill.character_items.join(", ") + ".");
-  if (ill.environment) parts.push("Setting: " + ill.environment + ".");
-  if (ill.lighting) parts.push("Lighting: " + ill.lighting + ".");
-  if (companionDesc) parts.push("Also in scene: " + companionDesc.split(".")[0] + ", clearly visible.");
-  parts.push("No text, no words, no letters.");
-  return parts.join(" ");
+  var scene = ill.scene || [ill.character_action, ill.environment].filter(Boolean).join(". ");
+  var items = (ill.character_items || []).join(", ");
+  var prompt = styleAnchor + " " + identityTag + ". " + matchPhrase + ". " + scene + ".";
+  if (items) prompt += " Character holds: " + items + ".";
+  if (companionDesc) prompt += " Also in scene: " + companionDesc.split(".")[0] + ".";
+  prompt += " No text.";
+  return prompt;
 }
 
 import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
@@ -424,7 +421,7 @@ Rules:
 - "mood": forest|ocean|space|castle|magic|city|school|sports|home
 
 Respond ONLY valid JSON:
-{"text":"...","mood":"...","illustration":{...},"sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"${prevIllustrationUrl ? ',"prevIllustrationCheck":{...}' : ""}}`;
+{"text":"...","mood":"...","scene":"SHORT English scene description for illustration, 1-2 sentences, under 40 words. Describe what character is DOING and WHERE. Include key objects.","illustration":{...},"sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"${prevIllustrationUrl ? ',"prevIllustrationCheck":{...}' : ""}}`;
 
   const textMsg = history.length === 0
     ? `Create a new story for ${name}. Premise: ${backstory || "a surprise creative adventure"}. Exciting opening!`
