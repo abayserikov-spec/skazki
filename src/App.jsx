@@ -242,7 +242,9 @@ export default function App() {
   const [customInput, setCustomInput] = useState("");
   const [textDone, setTextDone] = useState(false);
   const [charDesc, setCharDesc] = useState(null);
-  const [refImgUrl, setRefImgUrl] = useState(null);
+  const [identityTag, setIdentityTag] = useState(null);       // Phase 1: frozen 4-marker identity
+  const [companionDesc, setCompanionDesc] = useState(null);    // Phase 1: secondary character text-only
+  const [refImgUrl, setRefImgUrl] = useState(null);            // main portrait URL (NEVER overwritten after set)
   const [backstory, setBackstory] = useState("");
   const [presets, setPresets] = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
@@ -359,36 +361,75 @@ export default function App() {
   useEffect(() => { if (textDone && ttsEnabled && curPage?.text) speakText(curPage.tts_text || curPage.text); }, [textDone, ttsEnabled]);
   useEffect(() => { stopSpeak(); }, [curPage]);
 
-  // ── Illustration generation ──
+  // ── Illustration generation (Phase 1: childbook LoRA + 3-block prompts) ──
   useEffect(() => {
-    if (!curPage?.scene) return;
+    if (!curPage?.scene && !curPage?.illustration) return;
     setCurImg(null);
     if (!repToken) return;
     setImgLoading(true);
     const mood = curPage.mood || "forest";
     const isFirst = !refImgUrl;
+
+    // Build opts for genNextImage (Phase 1: structured prompt)
+    const imgOpts = {
+      illustration: curPage.illustration || null,
+      identityTag: identityTag || null,
+      companionDesc: companionDesc || null,
+    };
+
     if (isFirst) {
       (async () => {
         try {
           let portraitUrl = null;
           if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
           if (portraitUrl) {
-            setRefImgUrl(portraitUrl);
-            const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle);
-            setCurImg(sceneUrl); 
+            setRefImgUrl(portraitUrl);  // Set once, never overwrite
+            const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle, imgOpts);
+            setCurImg(sceneUrl);
           } else {
             const sceneUrl = await genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", mood, artStyle);
-            setCurImg(sceneUrl); if (sceneUrl) setRefImgUrl(sceneUrl);
+            setCurImg(sceneUrl);
+            if (sceneUrl) setRefImgUrl(sceneUrl);
           }
           setImgLoading(false);
         } catch { setImgLoading(false); }
       })();
     } else {
-      genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, mood, artStyle)
-        .then(url => { setCurImg(url); setImgLoading(false); })
-        .catch(() => setImgLoading(false));
+      (async () => {
+        try {
+          const url = await genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, mood, artStyle, imgOpts);
+          setCurImg(url);  // Show immediately (Phase 2: check in background)
+          setImgLoading(false);
+
+          // Phase 2: Background quality check via next Sonnet call
+          // The check happens when pickChoice calls genPage with prevIllustrationUrl
+          // If score < 6, we silently re-gen here
+          if (url && identityTag && curPage.prevIllustrationCheck) {
+            const check = curPage.prevIllustrationCheck;
+            if (check.character_match < 6) {
+              console.log("Phase 2: Low character match score:", check.character_match, "- re-generating previous page image");
+              // Re-gen the PREVIOUS page's image with reinforced prompt
+              const prevPage = pages[pages.length - 1];
+              if (prevPage && prevPage.imgUrl) {
+                const betterUrl = await genNextImage(repToken, prevPage.scene, charDesc, refImgUrl, prevPage.mood || "forest", artStyle, {
+                  ...imgOpts,
+                  illustration: prevPage.illustration,
+                  reinforced: true,
+                });
+                if (betterUrl) {
+                  setPages(p => {
+                    const updated = [...p];
+                    updated[updated.length - 1] = { ...updated[updated.length - 1], imgUrl: betterUrl };
+                    return updated;
+                  });
+                }
+              }
+            }
+          }
+        } catch { setImgLoading(false); }
+      })();
     }
-  }, [curPage?.scene]);
+  }, [curPage?.scene, curPage?.illustration]);
 
   // ── Retroactive image fix ──
   useEffect(() => {
@@ -463,7 +504,7 @@ export default function App() {
     const storyTheme = { id: "custom", name: (premise || "").slice(0, 30) + (premise?.length > 30 ? "…" : ""), prompt: premise || "surprise creative story" };
     setActiveChild(child); setTheme(storyTheme); setPages([]); setCurPage(null); setCurImg(null);
     setPicks([]); setSel(null); setT0(Date.now()); setTimer(0); setError(null); setTextDone(false);
-    setCustomInput(""); setCharDesc(null); setRefImgUrl(null);
+    setCustomInput(""); setCharDesc(null); setIdentityTag(null); setCompanionDesc(null); setRefImgUrl(null);
     ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url)); ttsCacheRef.current.clear();
     sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
     setView("session"); setLoading(true);
@@ -482,8 +523,9 @@ export default function App() {
 
     if (!antKey) { setError(lang === "ru" ? "Нужен Anthropic API ключ! Откройте настройки." : "Need Anthropic API key! Open settings."); setLoading(false); return; }
     try {
-      const r = await genPage({ name: child.name, age: child.age, theme: premise || "surprise creative story", history: [], choice: null, charDesc: null, backstory: premise || "", lang }, antKey);
+      const r = await genPage({ name: child.name, age: child.age, theme: premise || "surprise creative story", history: [], choice: null, charDesc: null, backstory: premise || "", lang, identityTag: null }, antKey);
       if (r.characterDesc) setCharDesc(r.characterDesc);
+      if (r.identityTag) setIdentityTag(r.identityTag);
       setCurPage(r); setLoading(false);
     } catch { setError(lang === "ru" ? "Ошибка. Попробуйте ещё." : "Error. Try again."); setLoading(false); }
   };
@@ -494,7 +536,7 @@ export default function App() {
     setSel(ch.label); setTextDone(false); setCustomInput("");
     setPicks(p => [...p, { label: ch.label, value: ch.value || "custom", page: pages.length + 1 }]);
     setTimeout(async () => {
-      const pageData = { ...curPage, imgUrl: curImg, choice: ch };
+      const pageData = { ...curPage, imgUrl: curImg, choice: ch, illustration: curPage.illustration };
       const up = [...pages, pageData];
       setPages(up); setCurPage(null); setCurImg(null); setSel(null); setLoading(true);
 
@@ -524,11 +566,19 @@ export default function App() {
       }
 
       try {
-        const r = await genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: up.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: ch, charDesc, lang }, antKey);
+        const r = await genPage({
+          name: activeChild.name, age: activeChild.age, theme: theme.prompt,
+          history: up.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary, illustration: p.illustration })),
+          choice: ch, charDesc, lang, identityTag,
+          // Phase 2: pass previous illustration for quality check
+          prevIllustrationUrl: curImg || null,
+          prevScene: curPage?.scene || null,
+        }, antKey);
         if (r.newMainCharacter) {
-          const updDesc = charDesc + ". New companion: " + r.newMainCharacter;
+          // Phase 1: Don't overwrite refImgUrl — use companionDesc for text-only secondary character
+          setCompanionDesc(r.newMainCharacter);
+          const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
           setCharDesc(updDesc);
-          if (repToken) genCharPortrait(repToken, updDesc, r.scene, artStyle).then(url => { if (url) setRefImgUrl(url); });
         }
         setCurPage(r); setLoading(false);
       } catch { setError(lang === "ru" ? "Ошибка." : "Error."); setLoading(false); }
