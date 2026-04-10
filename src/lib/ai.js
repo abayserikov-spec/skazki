@@ -17,15 +17,29 @@ const STYLE_ANCHORS = {
 // ═══════════════════════════════════════
 // FAL.AI CONFIG
 // ═══════════════════════════════════════
-const ANYTURN_LORA_URL = "https://replicate.delivery/xezq/yQUC5UmbPA66Ihir6gIaaf34UfxKH0Xsg8mbMif9LbBpnDzsA/trained_model.tar";
+const ANYTURN_LORA_URL = "https://huggingface.co/abaydsd/anyturn-lora/resolve/main/anyturn-lora.safetensors";
+
+async function urlToBase64DataUri(url) {
+  try {
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) { console.error("base64 convert failed:", e); return url; }
+}
 
 async function falGenImage(falKey, prompt, imageUrl) {
+  // fal.ai cannot fetch external URLs — convert to base64 data URI
+  const imgData = imageUrl.startsWith("data:") ? imageUrl : await urlToBase64DataUri(imageUrl);
   const res = await fetchWithRetry("https://queue.fal.run/fal-ai/flux-kontext-lora", {
     method: "POST",
     headers: { Authorization: `Key ${falKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       prompt,
-      image_url: imageUrl,
+      image_url: imgData,
       loras: [{ path: ANYTURN_LORA_URL, scale: 1.1 }],
       num_inference_steps: 28,
       guidance_scale: 2.5,
