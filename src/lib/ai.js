@@ -68,16 +68,18 @@ async function fetchWithRetry(url, opts, maxRetries = 3) {
 
 export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   if (!token) return null;
-  const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
-  const prompt = `${style}. Character reference sheet, full body shot showing all characters clearly. Main character: ${charDesc}. Show ALL characters from this scene standing together in a row: ${scene}. Every character must be fully visible with clear distinct appearance. All characters face the viewer with natural relaxed poses on a plain simple light beige background. No scenery, no environment, no objects — ONLY the characters. Sharp clear details on each character's face, hair, clothing. Each character must look distinctly different from others. No text.`;
+  const prompt = "ANYTURN style illustration. " + charDesc + ". Full body, relaxed pose, plain cream background. Front view. No text.";
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
+    const res = await fetchWithRetry("/api/replicate/v1/predictions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Prefer: "wait=60" },
+      body: JSON.stringify({
+        version: "8f80adfcba13a43b5cfd2ed6fc8915ca6edd66a5839aca37dcf0fde10f0e6523",
+        input: { prompt: prompt, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90 }
+      }),
     });
     const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Portrait (Schnell) error:", JSON.stringify(resp));
+    if (resp.detail || resp.error) console.error("Portrait (ANYTURN LoRA) error:", JSON.stringify(resp));
     return await pollPrediction(token, resp);
   } catch (err) { console.error("Portrait error:", err); return null; }
 }
