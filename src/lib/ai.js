@@ -40,7 +40,7 @@ async function falGenImage(falKey, prompt, imageUrl) {
     body: JSON.stringify({
       prompt,
       image_url: imgData,
-      loras: [{ path: ANYTURN_LORA_URL, scale: 1.1 }],
+      loras: [{ path: ANYTURN_LORA_URL, scale: 1.4 }],
       num_inference_steps: 28,
       guidance_scale: 2.5,
       output_format: "png",
@@ -138,7 +138,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts 
       headers: { Authorization: "Key " + falKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt,
-        loras: [{ path: ANYTURN_LORA_URL, scale: 1.1 }],
+        loras: [{ path: ANYTURN_LORA_URL, scale: 1.4 }],
         image_size: { width: 1344, height: 768 },
         num_inference_steps: 28,
         guidance_scale: 3,
