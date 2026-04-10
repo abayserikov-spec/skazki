@@ -1,9 +1,9 @@
 import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 
 // ═══════════════════════════════════════════════════════════
-// ANYTURN — AI Module v6
-// LoRA portrait (Schnell) + Kontext Dev + LoRA for scenes
-// Style consistency via anyturn-style LoRA on both stages
+// ANYTURN — AI Module v7
+// Portrait: Replicate Schnell + LoRA
+// Scenes: fal.ai Kontext Dev + LoRA (style consistency!)
 // ═══════════════════════════════════════════════════════════
 
 const STYLE_TRIGGER = "Children's book illustration";
@@ -13,6 +13,53 @@ const STYLE_ANCHORS = {
   anime: `Anime-style children's book illustration. Vibrant colors, expressive characters with large eyes. Studio Ghibli warmth, cinematic lighting.`,
   realistic: `Photorealistic children's book illustration. Cinematic composition, detailed textures, warm natural lighting. Professional quality.`,
 };
+
+// ═══════════════════════════════════════
+// FAL.AI CONFIG
+// ═══════════════════════════════════════
+const ANYTURN_LORA_URL = "https://replicate.delivery/xezq/yQUC5UmbPA66Ihir6gIaaf34UfxKH0Xsg8mbMif9LbBpnDzsA/trained_model.tar";
+
+async function falGenImage(falKey, prompt, imageUrl) {
+  const res = await fetchWithRetry("https://queue.fal.run/fal-ai/flux-kontext-lora", {
+    method: "POST",
+    headers: { Authorization: `Key ${falKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      image_url: imageUrl,
+      loras: [{ path: ANYTURN_LORA_URL, scale: 1.1 }],
+      num_inference_steps: 28,
+      guidance_scale: 2.5,
+      output_format: "png",
+    }),
+  });
+  const data = await res.json();
+
+  // fal.ai queue: if we get request_id, poll for result
+  if (data.request_id) {
+    const reqId = data.request_id;
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const statusRes = await fetch(`https://queue.fal.run/fal-ai/flux-kontext-lora/requests/${reqId}/status`, {
+          headers: { Authorization: `Key ${falKey}` },
+        });
+        const status = await statusRes.json();
+        if (status.status === "COMPLETED") {
+          const resultRes = await fetch(`https://queue.fal.run/fal-ai/flux-kontext-lora/requests/${reqId}`, {
+            headers: { Authorization: `Key ${falKey}` },
+          });
+          const result = await resultRes.json();
+          return result?.images?.[0]?.url || null;
+        }
+        if (status.status === "FAILED") { console.error("fal.ai failed:", status); return null; }
+      } catch (e) { console.error("fal.ai poll error:", e); }
+    }
+    return null;
+  }
+
+  // Sync response
+  return data?.images?.[0]?.url || null;
+}
 
 // ═══════════════════════════════════════
 // REPLICATE UTILITIES
@@ -85,33 +132,21 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
   } catch (err) { console.error("Portrait error:", err); return null; }
 }
 
-// Add new character to existing portrait via Kontext Fast (preserves existing characters)
-export async function addCharToPortrait(token, existingPortraitUrl, newCharDesc, artStyleKey) {
-  if (!token || !existingPortraitUrl) return null;
-  const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
+// Add new character to existing portrait via fal.ai Kontext Dev + LoRA
+export async function addCharToPortrait(token, existingPortraitUrl, newCharDesc, artStyleKey, opts = {}) {
+  if (!existingPortraitUrl) return null;
+
+  const falKey = opts.falKey;
+  if (!falKey) {
+    console.error("addCharToPortrait: no fal.ai key provided");
+    return null;
+  }
+
   const prompt = `ANYTURN style illustration. Add a new character standing next to the existing characters: ${newCharDesc}. Keep ALL existing characters EXACTLY as they are — same face, clothing, proportions. The new character should match the same art style. Warm watercolor on cream textured paper, thin ink outlines. All characters visible, plain background. No text.`;
 
-  const ANYTURN_LORA = "https://replicate.com/abaydsd/anyturn-style";
-
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-dev/predictions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: {
-        prompt,
-        input_image: existingPortraitUrl,
-        lora_weights: ANYTURN_LORA,
-        lora_scale: 0.85,
-        aspect_ratio: "16:9",
-        output_format: "png",
-        safety_tolerance: 6,
-        go_fast: true,
-      } }),
-    });
-    const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Add char (Kontext Dev) error:", JSON.stringify(resp));
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Add char error:", err); return null; }
+    return await falGenImage(falKey, prompt, existingPortraitUrl);
+  } catch (err) { console.error("Add char (fal.ai) error:", err); return null; }
 }
 
 // ═══════════════════════════════════════
@@ -134,42 +169,28 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
 }
 
 // ═══════════════════════════════════════
-// SCENE GENERATION via Kontext Dev + LoRA
+// SCENE GENERATION via fal.ai Kontext Dev + LoRA
 // Uses portrait as reference + anyturn-style LoRA for consistency
 // ═══════════════════════════════════════
 
 export async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey, opts = {}) {
-  if (!token || !portraitUrl) return null;
+  if (!portraitUrl) return null;
   if (!portraitUrl.startsWith("http")) {
     console.error("genNextImage: invalid portraitUrl:", portraitUrl);
     return null;
   }
 
-  const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
-  const prompt = `ANYTURN style illustration. Same characters as in the reference image. ${scene}. Warm watercolor on cream textured paper, thin ink outlines, soft muted palette. No text.`;
+  const falKey = opts.falKey;
+  if (!falKey) {
+    console.error("genNextImage: no fal.ai key provided");
+    return null;
+  }
 
-  // LoRA weights URL for anyturn-style (Replicate-hosted)
-  const ANYTURN_LORA = "https://replicate.com/abaydsd/anyturn-style";
+  const prompt = `ANYTURN style. Same characters as reference. ${scene}. No text.`;
 
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-dev/predictions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: {
-        prompt,
-        input_image: portraitUrl,
-        lora_weights: ANYTURN_LORA,
-        lora_scale: 0.85,
-        aspect_ratio: "16:9",
-        output_format: "png",
-        safety_tolerance: 6,
-        go_fast: true,
-      } }),
-    });
-    const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Kontext Dev + LoRA error:", JSON.stringify(resp));
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Kontext Dev + LoRA error:", err); return null; }
+    return await falGenImage(falKey, prompt, portraitUrl);
+  } catch (err) { console.error("fal.ai Kontext + LoRA error:", err); return null; }
 }
 
 // ═══════════════════════════════════════
