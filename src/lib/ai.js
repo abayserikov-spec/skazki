@@ -133,7 +133,7 @@ export async function genNextImage(token, scene, charDesc, portraitUrl, mood, ar
   }
 
   const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
-  const prompt = `${style}. Create a completely NEW illustration for this scene: ${scene}. The main character from the reference portrait (${charDesc}) must appear with IDENTICAL visual identity — same face shape, hair, clothing colors and design. BUT the character's POSE, EXPRESSION, and BODY LANGUAGE must match the NEW scene — NOT the neutral portrait pose. Show vivid emotion: if scared, show wide eyes and hunched shoulders; if happy, show a big grin and open arms; if running, show dynamic motion blur. The character should feel ALIVE and ACTIVE in each scene. Add any other characters described with distinct appearances. Rich detailed NEW environment completely different from the reference. No text in image.`;
+  const prompt = `Same character as reference. ${scene}. No text.`;
 
   try {
     const res = await fetchWithRetry("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
