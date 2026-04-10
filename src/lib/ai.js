@@ -128,21 +128,46 @@ async function fetchWithRetry(url, opts, maxRetries = 3) {
 // Generates group portrait with ALL characters
 // ═══════════════════════════════════════
 
-export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
-  if (!token) return null;
+export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts = {}) {
+  const falKey = opts.falKey;
+  if (!falKey) { console.error("genCharPortrait: no fal.ai key"); return null; }
   const prompt = "ANYTURN style illustration. " + charDesc + ". Full body, relaxed pose, plain cream background. Front view. No text.";
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/predictions", {
+    const res = await fetch("https://queue.fal.run/fal-ai/flux-lora", {
       method: "POST",
-      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Prefer: "wait=60" },
+      headers: { Authorization: "Key " + falKey, "Content-Type": "application/json" },
       body: JSON.stringify({
-        version: "8f80adfcba13a43b5cfd2ed6fc8915ca6edd66a5839aca37dcf0fde10f0e6523",
-        input: { prompt: prompt, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90 }
+        prompt,
+        loras: [{ path: ANYTURN_LORA_URL, scale: 1.1 }],
+        image_size: { width: 1344, height: 768 },
+        num_inference_steps: 28,
+        guidance_scale: 3,
+        output_format: "png",
       }),
     });
-    const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Portrait (ANYTURN LoRA) error:", JSON.stringify(resp));
-    return await pollPrediction(token, resp);
+    const data = await res.json();
+    if (data.request_id) {
+      const reqId = data.request_id;
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+          const statusRes = await fetch("https://queue.fal.run/fal-ai/flux-lora/requests/" + reqId + "/status", {
+            headers: { Authorization: "Key " + falKey },
+          });
+          const status = await statusRes.json();
+          if (status.status === "COMPLETED") {
+            const resultRes = await fetch("https://queue.fal.run/fal-ai/flux-lora/requests/" + reqId, {
+              headers: { Authorization: "Key " + falKey },
+            });
+            const result = await resultRes.json();
+            return result?.images?.[0]?.url || null;
+          }
+          if (status.status === "FAILED") { console.error("fal.ai portrait failed:", status); return null; }
+        } catch (e) { console.error("fal.ai portrait poll error:", e); }
+      }
+      return null;
+    }
+    return data?.images?.[0]?.url || null;
   } catch (err) { console.error("Portrait error:", err); return null; }
 }
 

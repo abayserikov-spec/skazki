@@ -386,7 +386,7 @@ export default function App() {
       (async () => {
         try {
           let portraitUrl = null;
-          if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
+          if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle, { falKey });
           if (portraitUrl) {
             setRefImgUrl(portraitUrl);  // Set once, never overwrite
             const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle, imgOpts);
