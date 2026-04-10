@@ -1,8 +1,9 @@
 import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 
 // ═══════════════════════════════════════════════════════════
-// SKAZKA VMESTE — AI Module v5
-// Restored old-style rich prompts + Kontext Fast + Schnell portrait
+// ANYTURN — AI Module v6
+// LoRA portrait (Schnell) + Kontext Dev + LoRA for scenes
+// Style consistency via anyturn-style LoRA on both stages
 // ═══════════════════════════════════════════════════════════
 
 const STYLE_TRIGGER = "Children's book illustration";
@@ -88,15 +89,27 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey) {
 export async function addCharToPortrait(token, existingPortraitUrl, newCharDesc, artStyleKey) {
   if (!token || !existingPortraitUrl) return null;
   const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
-  const prompt = `${style} Add a new character standing next to the existing characters: ${newCharDesc}. Keep ALL existing characters EXACTLY as they are — same face, clothing, proportions. The new character should match the same art style. All characters visible, plain background. No text.`;
+  const prompt = `ANYTURN style illustration. Add a new character standing next to the existing characters: ${newCharDesc}. Keep ALL existing characters EXACTLY as they are — same face, clothing, proportions. The new character should match the same art style. Warm watercolor on cream textured paper, thin ink outlines. All characters visible, plain background. No text.`;
+
+  const ANYTURN_LORA = "https://replicate.com/abaydsd/anyturn-style";
+
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
+    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-dev/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, img_cond_path: existingPortraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } }),
+      body: JSON.stringify({ input: {
+        prompt,
+        input_image: existingPortraitUrl,
+        lora_weights: ANYTURN_LORA,
+        lora_scale: 0.85,
+        aspect_ratio: "16:9",
+        output_format: "png",
+        safety_tolerance: 6,
+        go_fast: true,
+      } }),
     });
     const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Add char error:", JSON.stringify(resp));
+    if (resp.detail || resp.error) console.error("Add char (Kontext Dev) error:", JSON.stringify(resp));
     return await pollPrediction(token, resp);
   } catch (err) { console.error("Add char error:", err); return null; }
 }
@@ -121,8 +134,8 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
 }
 
 // ═══════════════════════════════════════
-// SCENE GENERATION via Kontext Fast
-// Uses portrait as reference, rich cinematic prompt
+// SCENE GENERATION via Kontext Dev + LoRA
+// Uses portrait as reference + anyturn-style LoRA for consistency
 // ═══════════════════════════════════════
 
 export async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey, opts = {}) {
@@ -133,18 +146,30 @@ export async function genNextImage(token, scene, charDesc, portraitUrl, mood, ar
   }
 
   const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
-  const prompt = `Same character as reference. ${scene}. No text.`;
+  const prompt = `ANYTURN style illustration. Same characters as in the reference image. ${scene}. Warm watercolor on cream textured paper, thin ink outlines, soft muted palette. No text.`;
+
+  // LoRA weights URL for anyturn-style (Replicate-hosted)
+  const ANYTURN_LORA = "https://replicate.com/abaydsd/anyturn-style";
 
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/prunaai/flux-kontext-fast/predictions", {
+    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-dev/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, img_cond_path: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } }),
+      body: JSON.stringify({ input: {
+        prompt,
+        input_image: portraitUrl,
+        lora_weights: ANYTURN_LORA,
+        lora_scale: 0.85,
+        aspect_ratio: "16:9",
+        output_format: "png",
+        safety_tolerance: 6,
+        go_fast: true,
+      } }),
     });
     const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Kontext Fast error:", JSON.stringify(resp));
+    if (resp.detail || resp.error) console.error("Kontext Dev + LoRA error:", JSON.stringify(resp));
     return await pollPrediction(token, resp);
-  } catch (err) { console.error("Kontext Fast error:", err); return null; }
+  } catch (err) { console.error("Kontext Dev + LoRA error:", err); return null; }
 }
 
 // ═══════════════════════════════════════
