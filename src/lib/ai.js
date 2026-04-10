@@ -8,7 +8,7 @@ import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
 const STYLE_TRIGGER = "Children's book illustration";
 
 const STYLE_ANCHORS = {
-  book: `Naive childlike illustration drawn by a 7-year-old kid with crayons and colored pencils. Wobbly uneven outlines, messy coloring that goes outside the lines. Stick-figure proportions with huge round heads and tiny bodies. Simple dot-eyes and big goofy smiles. Crayon texture, rough paper grain visible. Bright bold primary colors, clumsy but charming. Looks like a page from a child's sketchbook, not professional art.`,
+  book: `ANYTURN style illustration. Warm watercolor on cream textured paper, thin ink outlines, soft muted palette, visible brushstrokes, hand-drawn charm.`,
   anime: `Anime-style children's book illustration. Vibrant colors, expressive characters with large eyes. Studio Ghibli warmth, cinematic lighting.`,
   realistic: `Photorealistic children's book illustration. Cinematic composition, detailed textures, warm natural lighting. Professional quality.`,
 };
