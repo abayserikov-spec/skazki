@@ -129,46 +129,20 @@ async function fetchWithRetry(url, opts, maxRetries = 3) {
 // ═══════════════════════════════════════
 
 export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts = {}) {
-  const falKey = opts.falKey;
-  if (!falKey) { console.error("genCharPortrait: no fal.ai key"); return null; }
+  if (!token) return null;
   const prompt = "ANYTURN style illustration. " + charDesc + ". Full body, relaxed pose, plain cream background. Front view. No text.";
   try {
-    const res = await fetch("https://queue.fal.run/fal-ai/flux-lora", {
+    const res = await fetchWithRetry("/api/replicate/v1/predictions", {
       method: "POST",
-      headers: { Authorization: "Key " + falKey, "Content-Type": "application/json" },
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Prefer: "wait=60" },
       body: JSON.stringify({
-        prompt,
-        loras: [{ path: ANYTURN_LORA_URL, scale: 1.4 }],
-        image_size: { width: 1344, height: 768 },
-        num_inference_steps: 4,
-        guidance_scale: 3,
-        model: "schnell",
-        output_format: "png",
+        version: "8f80adfcba13a43b5cfd2ed6fc8915ca6edd66a5839aca37dcf0fde10f0e6523",
+        input: { prompt: prompt, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90 }
       }),
     });
-    const data = await res.json();
-    if (data.request_id) {
-      const reqId = data.request_id;
-      for (let i = 0; i < 60; i++) {
-        await new Promise(r => setTimeout(r, 2000));
-        try {
-          const statusRes = await fetch("https://queue.fal.run/fal-ai/flux-lora/requests/" + reqId + "/status", {
-            headers: { Authorization: "Key " + falKey },
-          });
-          const status = await statusRes.json();
-          if (status.status === "COMPLETED") {
-            const resultRes = await fetch("https://queue.fal.run/fal-ai/flux-lora/requests/" + reqId, {
-              headers: { Authorization: "Key " + falKey },
-            });
-            const result = await resultRes.json();
-            return result?.images?.[0]?.url || null;
-          }
-          if (status.status === "FAILED") { console.error("fal.ai portrait failed:", status); return null; }
-        } catch (e) { console.error("fal.ai portrait poll error:", e); }
-      }
-      return null;
-    }
-    return data?.images?.[0]?.url || null;
+    const resp = await res.json();
+    if (resp.detail || resp.error) console.error("Portrait (ANYTURN LoRA) error:", JSON.stringify(resp));
+    return await pollPrediction(token, resp);
   } catch (err) { console.error("Portrait error:", err); return null; }
 }
 
@@ -214,23 +188,18 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
 // ═══════════════════════════════════════
 
 export async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey, opts = {}) {
-  if (!portraitUrl) return null;
-  if (!portraitUrl.startsWith("http")) {
-    console.error("genNextImage: invalid portraitUrl:", portraitUrl);
-    return null;
-  }
-
-  const falKey = opts.falKey;
-  if (!falKey) {
-    console.error("genNextImage: no fal.ai key provided");
-    return null;
-  }
-
-  const prompt = `ANYTURN style. Same characters as reference. ${scene}. No text.`;
-
+  if (!token || !portraitUrl) return null;
+  const prompt = "ANYTURN style. Same characters as reference. " + scene + ". No text.";
   try {
-    return await falGenImage(falKey, prompt, portraitUrl);
-  } catch (err) { console.error("fal.ai Kontext + LoRA error:", err); return null; }
+    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", "Prefer": "wait=60" },
+      body: JSON.stringify({ input: { prompt, input_image: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } }),
+    });
+    const resp = await res.json();
+    if (resp.detail || resp.error) console.error("Kontext Pro error:", JSON.stringify(resp));
+    return await pollPrediction(token, resp);
+  } catch (err) { console.error("Kontext Pro error:", err); return null; }
 }
 
 // ═══════════════════════════════════════
