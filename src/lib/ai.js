@@ -140,8 +140,9 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts 
         prompt,
         loras: [{ path: ANYTURN_LORA_URL, scale: 1.4 }],
         image_size: { width: 1344, height: 768 },
-        num_inference_steps: 28,
+        num_inference_steps: 4,
         guidance_scale: 3,
+        model: "schnell",
         output_format: "png",
       }),
     });
