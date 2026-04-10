@@ -225,7 +225,6 @@ export default function App() {
   const [repToken, setRepToken] = useState("");
   const [antKey, setAntKey] = useState("");
   const [elKey, setElKey] = useState("");
-  const [falKey, setFalKey] = useState("");
   
   // Story state
   const [theme, setTheme] = useState(null);
@@ -284,13 +283,11 @@ export default function App() {
     const rt = await ST.get("repToken");
     const ak = await ST.get("antKey");
     const ek = await ST.get("elKey");
-    const fk = await ST.get("falKey");
     const sl = await ST.get("lang");
     const ss = await ST.get("artStyle");
     if (rt) setRepToken(rt);
     if (ak) setAntKey(ak);
     if (ek) setElKey(ek);
-    if (fk) setFalKey(fk);
     if (sl) setLang(sl);
     if (ss) setArtStyle(ss);
     if (u) {
@@ -379,14 +376,13 @@ export default function App() {
       illustration: curPage.illustration || null,
       identityTag: identityTag || null,
       companionDesc: companionDesc || null,
-      falKey: falKey || null,
     };
 
     if (isFirst) {
       (async () => {
         try {
           let portraitUrl = null;
-          if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle, { falKey });
+          if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
           if (portraitUrl) {
             setRefImgUrl(portraitUrl);  // Set once, never overwrite
             const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle, imgOpts);
@@ -460,7 +456,6 @@ export default function App() {
   const saveRepToken = async v => { setRepToken(v); await ST.set("repToken", v); };
   const saveAntKey = async v => { setAntKey(v); await ST.set("antKey", v); };
   const saveElKey = async v => { setElKey(v); await ST.set("elKey", v); };
-  const saveFalKey = async v => { setFalKey(v); await ST.set("falKey", v); };
   const toggleLang = async () => { const n = lang === "ru" ? "en" : "ru"; setLang(n); await ST.set("lang", n); };
   const register = async () => {
     if (!authName.trim() || !authEmail.trim()) return;
@@ -584,7 +579,7 @@ export default function App() {
           // Re-generate portrait with ALL characters together
           
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
-          const newPortrait = await addCharToPortrait(repToken, refImgUrl, r.newMainCharacter, artStyle, { falKey });
+          const newPortrait = await addCharToPortrait(repToken, refImgUrl, r.newMainCharacter, artStyle);
           if (newPortrait) setRefImgUrl(newPortrait);
           setPortraitRegenDone(true);
           setCharDesc(updDesc);
@@ -683,7 +678,6 @@ export default function App() {
         {[
           { label: "Anthropic API Key", value: antKey, set: saveAntKey, placeholder: "sk-ant-...", hint: "console.anthropic.com", url: "https://console.anthropic.com/settings/keys" },
           { label: "Replicate API Token", value: repToken, set: saveRepToken, placeholder: "r8_...", hint: "replicate.com", url: "https://replicate.com/account/api-tokens" },
-          { label: "fal.ai API Key", value: falKey, set: saveFalKey, placeholder: "fal_...", hint: "fal.ai", url: "https://fal.ai/dashboard/keys" },
           { label: "ElevenLabs API Key", value: elKey, set: saveElKey, placeholder: "sk_...", hint: "elevenlabs.io", url: "https://elevenlabs.io/app/settings/api-keys" },
         ].map(({ label, value, set, placeholder, hint, url }) => (
           <div key={label} style={{ marginBottom: 18 }}>
