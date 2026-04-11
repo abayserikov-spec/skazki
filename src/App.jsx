@@ -19,7 +19,7 @@ import {
   ensureUser, getChildren as dbGetChildren, addChild as dbAddChild,
   createBook, savePage, finalizeBook, saveBookValues,
   getAllBooks, getBookWithPages, deleteBook,
-  createCharacter, updateCharacterAfterStory,
+  createCharacter, getCharacters, updateCharacterAfterStory,
 } from "./lib/db.js";
 import { uploadIllustration } from "./lib/storage-cloud.js";
 import BlurText from "./components/reactbits/BlurText.jsx";
@@ -160,10 +160,7 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
       ) : imgUrl ? (
         <img src={imgUrl} alt="" style={{
           width: "100%", height: "100%", objectFit: "cover", display: "block",
-          maskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 75%, transparent 100%), linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 75%, transparent 100%), linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%)",
-          maskComposite: "intersect",
-          WebkitMaskComposite: "destination-in",
+          borderRadius: 6,
         }} loading="lazy"/>
       ) : (
         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.15 }}>
@@ -255,6 +252,8 @@ export default function App() {
   const [bookId, setBookId] = useState(null);      // current session's book ID in Supabase
   const [library, setLibrary] = useState([]);       // saved books for library view
   const [readingBook, setReadingBook] = useState(null); // book being read from library
+  const [characters, setCharacters] = useState([]); // saved characters for reuse (SKZ-5)
+  const [selectedChar, setSelectedChar] = useState(null); // character picked for new story
   
   // TTS state
   const [speaking, setSpeaking] = useState(false);
@@ -312,6 +311,16 @@ export default function App() {
 
   // ── Timer ──
   useEffect(() => { if (view === "session" && t0) { timerRef.current = setInterval(() => setTimer(Math.floor((Date.now()-t0)/1000)), 1000); return () => clearInterval(timerRef.current); } }, [view, t0]);
+
+  // ── Load characters when child selected (SKZ-5) ──
+  useEffect(() => {
+    if (activeChild?.id && supabase) {
+      getCharacters(activeChild.id).then(chars => setCharacters(chars || []));
+    } else {
+      setCharacters([]);
+    }
+    setSelectedChar(null);
+  }, [activeChild?.id]);
 
   // ── TTS voice ──
   useEffect(() => {
@@ -385,6 +394,10 @@ export default function App() {
           if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
           if (portraitUrl) {
             setRefImgUrl(portraitUrl);  // Set once, never overwrite
+            // SKZ-5: Update character portrait in Supabase
+            if (selectedChar?.id && supabase) {
+              supabase.from("characters").update({ portrait_url: portraitUrl }).eq("id", selectedChar.id);
+            }
             const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
           } else {
@@ -505,16 +518,27 @@ export default function App() {
     const storyTheme = { id: "custom", name: (premise || "").slice(0, 30) + (premise?.length > 30 ? "…" : ""), prompt: premise || "surprise creative story" };
     setActiveChild(child); setTheme(storyTheme); setPages([]); setCurPage(null); setCurImg(null);
     setPicks([]); setSel(null); setT0(Date.now()); setTimer(0); setError(null); setTextDone(false);
-    setCustomInput(""); setCharDesc(null); setIdentityTag(null); setCompanionDesc(null); setRefImgUrl(null); setPortraitRegenDone(false);
+    setCustomInput(""); setIdentityTag(null); setCompanionDesc(null); setPortraitRegenDone(false);
     ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url)); ttsCacheRef.current.clear();
     sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
+
+    // SKZ-5: If reusing a saved character, restore charDesc + portrait
+    const reuse = selectedChar;
+    if (reuse) {
+      setCharDesc(reuse.description);
+      setRefImgUrl(reuse.portrait_url);
+    } else {
+      setCharDesc(null);
+      setRefImgUrl(null);
+    }
+
     setView("session"); setLoading(true);
 
     // Create book in Supabase
     if (supabase) {
       const book = await createBook({
         childId: child.id,
-        characterId: null,
+        characterId: reuse?.id || null,
         premise: premise || "surprise creative story",
         artStyle,
         lang,
@@ -524,9 +548,31 @@ export default function App() {
 
     if (!antKey) { setError(lang === "ru" ? "Нужен Anthropic API ключ! Откройте настройки." : "Need Anthropic API key! Open settings."); setLoading(false); return; }
     try {
-      const r = await genPage({ name: child.name, age: child.age, theme: premise || "surprise creative story", history: [], choice: null, charDesc: null, backstory: premise || "", lang, identityTag: null }, antKey);
-      if (r.characterDesc) setCharDesc(r.characterDesc);
+      const r = await genPage({
+        name: child.name, age: child.age,
+        theme: premise || "surprise creative story",
+        history: [], choice: null,
+        charDesc: reuse?.description || null,
+        backstory: premise || "", lang, identityTag: null,
+      }, antKey);
+
+      if (r.characterDesc && !reuse) setCharDesc(r.characterDesc);
       if (r.identityTag) setIdentityTag(r.identityTag);
+
+      // SKZ-5: Save new character to Supabase (async, don't block)
+      if (r.characterDesc && !reuse && supabase && child.id) {
+        const charName = r.title || (premise || "Hero").slice(0, 30);
+        createCharacter({
+          childId: child.id,
+          name: charName,
+          description: r.characterDesc,
+          portraitUrl: null, // will be updated when portrait generates
+          artStyle,
+        }).then(c => {
+          if (c) setSelectedChar(c); // track for updating portrait later
+        });
+      }
+
       setCurPage(r); setLoading(false);
     } catch { setError(lang === "ru" ? "Ошибка. Попробуйте ещё." : "Error. Try again."); setLoading(false); }
   };
@@ -648,6 +694,18 @@ export default function App() {
       if (dbUser) {
         const books = await getAllBooks(dbUser.id);
         setLibrary(books);
+      }
+
+      // SKZ-5: Update character stats after story
+      if (selectedChar?.id) {
+        const choiceMap = {};
+        picks.forEach(p => { if (p.value && p.value !== "custom") choiceMap[p.value] = (choiceMap[p.value] || 0) + 1; });
+        await updateCharacterAfterStory(selectedChar.id, choiceMap);
+        // Refresh characters list
+        if (activeChild?.id) {
+          const chars = await getCharacters(activeChild.id);
+          setCharacters(chars || []);
+        }
       }
     }
 
@@ -1025,6 +1083,47 @@ export default function App() {
             )}
           </div>
         </AnimIn>
+
+        {/* SKZ-5: Saved characters for reuse */}
+        {activeChild && characters.length > 0 && <AnimIn delay={0.10}>
+          <div className="skazka-card" style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <SectionLabel>{lang === "ru" ? "Герои" : "Characters"}</SectionLabel>
+              <span style={{ fontSize: 11, color: T.tx3 }}>{lang === "ru" ? "выберите для продолжения" : "pick to continue"}</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {/* "New character" option */}
+              <div
+                onClick={() => setSelectedChar(null)}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, cursor: "pointer", transition: "all .25s", background: !selectedChar ? T.accentBg : T.bgMuted, border: `2px solid ${!selectedChar ? T.accent : "transparent"}` }}
+              >
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: T.accentBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Sparkles size={16} color={T.accent} />
+                </div>
+                <div><div style={{ fontWeight: 600, fontSize: 13, color: T.tx }}>{lang === "ru" ? "Новый герой" : "New character"}</div></div>
+              </div>
+              {characters.map(c => (
+                <div
+                  key={c.id}
+                  onClick={() => setSelectedChar(selectedChar?.id === c.id ? null : c)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, cursor: "pointer", transition: "all .25s", background: selectedChar?.id === c.id ? T.tealBg : T.bgMuted, border: `2px solid ${selectedChar?.id === c.id ? T.teal : "transparent"}` }}
+                >
+                  {c.portrait_url ? (
+                    <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+                      <img src={c.portrait_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                  ) : (
+                    <Avatar name={c.name} size={36} />
+                  )}
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: T.tx }}>{c.name}</div>
+                    <div style={{ fontSize: 10, color: T.tx3 }}>{c.stories_count || 0} {lang === "ru" ? "историй" : "stories"}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </AnimIn>}
 
         {/* New Session CTA */}
         {children.length > 0 && <AnimIn delay={0.12}>
