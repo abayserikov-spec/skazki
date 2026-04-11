@@ -135,19 +135,18 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
 export async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey, opts = {}) {
   if (!token || !portraitUrl) return null;
 
-  // Build structured prompt: scene FIRST (environment priority), then character identity
-  // Kontext Pro tends to keep the reference background — we must override it explicitly
+  // Build structured prompt: positive-only instructions (diffusion models ignore NOT/NEVER)
   const charIdentity = charDesc && charDesc !== "the main character"
-    ? `The character from the reference image appears in this scene — same face, same fur/hair color, same eye color, same clothing, same accessories. Character: ${charDesc}.`
-    : `The character from the reference image appears in this scene with identical appearance.`;
+    ? `Keep the character's visual identity from the reference — same face, same fur/hair color, same eye color, same clothing, same accessories. Character: ${charDesc}.`
+    : `Keep the character's visual identity from the reference image.`;
 
   const styleAnchor = artStyleKey === "anime"
-    ? `Maintain the exact same anime children's book illustration style from the reference image — same vibrant colors, same expressive features, same cinematic lighting, same Studio Ghibli warmth.`
+    ? `Maintain the exact same anime children's book illustration style — same vibrant colors, same expressive features, same cinematic lighting, same Studio Ghibli warmth.`
     : artStyleKey === "realistic"
-    ? `Maintain the exact same photorealistic children's book illustration style from the reference image — same cinematic composition, same detailed textures, same warm natural lighting, same professional quality.`
-    : `Maintain the exact same watercolor and ink children's book illustration style from the reference image — same thin ink outlines, same visible cream paper texture, same transparent watercolor washes, same muted earthy palette, same hand-painted gentle quality.`;
+    ? `Maintain the exact same photorealistic children's book illustration style — same cinematic composition, same detailed textures, same warm natural lighting, same professional quality.`
+    : `Maintain the exact same watercolor and ink children's book illustration style — same thin ink outlines, same visible cream paper texture, same transparent watercolor washes, same muted earthy palette, same hand-painted gentle quality.`;
 
-  const prompt = `COMPLETELY CHANGE the background and environment. NEW SCENE: ${scene}. ${charIdentity} Do NOT keep the background from the reference image — generate the full new environment described above. ${styleAnchor} No text, no words, no letters, no writing of any kind anywhere in the image.`;
+  const prompt = `Place the character in a completely new scene with a rich detailed background. ${scene}. ${charIdentity} Show the full environment with buildings, trees, sky, ground, and all surroundings described in the scene. ${styleAnchor} Clean image without any text or writing.`;
 
   try {
     const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
