@@ -493,12 +493,17 @@ export default function App() {
   };
 
   // ── Generate presets ──
-  const generatePresets = async (childName, childAge) => {
+  const generatePresets = async (childName, childAge, character) => {
     if (!antKey) return;
     setPresetsLoading(true);
+    const charCtx = character
+      ? (lang === "en"
+        ? ` The main character is: ${character.name} (${character.description}). All premises must feature THIS character in new adventures.`
+        : ` Главный герой: ${character.name} (${character.description}). Все завязки должны быть про ЭТОГО персонажа в новых приключениях.`)
+      : "";
     const prompt = lang === "en"
-      ? `Create 6 short story premises for illustrated children's storybooks (reader age ${childAge}). Each premise describes a FICTIONAL CHARACTER (not the reader) in an interesting situation. Mix: 2 realistic adventures, 2 fantasy quests, 2 unusual/funny scenarios. Each 1 sentence, 10-18 words. Do NOT use the child's name. Example: "A tiny dragon who is afraid of fire tries to pass the dragon school exam". Respond ONLY JSON: [{"text":"..."}]`
-      : `Придумай 6 коротких завязок для иллюстрированных детских сказок (возраст читателя ${childAge} лет). Каждая завязка описывает ВЫМЫШЛЕННОГО ПЕРСОНАЖА (не ребёнка-читателя) в интересной ситуации. Микс: 2 реалистичных приключения, 2 фэнтези, 2 необычных/смешных. Каждая — 1 предложение, 10-18 слов. НЕ используй имя ребёнка. Пример: "Маленький дракон, который боится огня, пытается сдать экзамен в школе драконов". Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
+      ? `Create 6 short story premises for illustrated children's storybooks (reader age ${childAge}).${charCtx}${!character ? " Each premise describes a FICTIONAL CHARACTER (not the reader) in an interesting situation." : ""} Mix: 2 realistic adventures, 2 fantasy quests, 2 unusual/funny scenarios. Each 1 sentence, 10-18 words. Do NOT use the child's name. Example: "A tiny dragon who is afraid of fire tries to pass the dragon school exam". Respond ONLY JSON: [{"text":"..."}]`
+      : `Придумай 6 коротких завязок для иллюстрированных детских сказок (возраст читателя ${childAge} лет).${charCtx}${!character ? " Каждая завязка описывает ВЫМЫШЛЕННОГО ПЕРСОНАЖА (не ребёнка-читателя) в интересной ситуации." : ""} Микс: 2 реалистичных приключения, 2 фэнтези, 2 необычных/смешных. Каждая — 1 предложение, 10-18 слов. НЕ используй имя ребёнка. Пример: "Маленький дракон, который боится огня, пытается сдать экзамен в школе драконов". Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -1127,7 +1132,7 @@ export default function App() {
 
         {/* New Session CTA */}
         {children.length > 0 && <AnimIn delay={0.12}>
-          <div onClick={activeChild ? () => { setBackstory(""); setPresets([]); setView("setup"); generatePresets(activeChild.name, activeChild.age); } : undefined}
+          <div onClick={activeChild ? () => { setBackstory(""); setPresets([]); setView("setup"); generatePresets(activeChild.name, activeChild.age, selectedChar); } : undefined}
             className="skazka-card" style={{ marginBottom: 16, cursor: activeChild ? "pointer" : "default", background: activeChild ? `linear-gradient(135deg,${T.accent},#7B68EE,${T.accentSoft})` : T.bgCard, border: "none", padding: "26px 24px", opacity: activeChild ? 1 : 0.6 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 44, height: 44, borderRadius: 14, background: activeChild ? "rgba(255,255,255,0.18)" : T.accentBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1209,7 +1214,7 @@ export default function App() {
           <div className="skazka-card" style={{ marginBottom: 14, padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <SectionLabel style={{ margin: 0 }}>{L.storyIdeas}</SectionLabel>
-              <PillBtn variant="ghost" onClick={() => { setPresets([]); generatePresets(activeChild.name, activeChild.age); }} disabled={presetsLoading} style={{ padding: "6px 14px", borderRadius: T.r, fontSize: 11 }}><RefreshCw size={12} />{L.more}</PillBtn>
+              <PillBtn variant="ghost" onClick={() => { setPresets([]); generatePresets(activeChild.name, activeChild.age, selectedChar); }} disabled={presetsLoading} style={{ padding: "6px 14px", borderRadius: T.r, fontSize: 11 }}><RefreshCw size={12} />{L.more}</PillBtn>
             </div>
             {presetsLoading && presets.length === 0 ? (
               <div style={{ textAlign: "center", padding: 24 }}><Loader2 size={20} color={T.accent} style={{ animation: "spin .8s linear infinite" }} /><p style={{ fontSize: 12, color: T.tx3, marginTop: 8 }}>{L.generating}</p></div>
