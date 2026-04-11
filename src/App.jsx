@@ -21,7 +21,7 @@ import {
   getAllBooks, getBookWithPages, deleteBook,
   createCharacter, getCharacters, updateCharacterAfterStory,
 } from "./lib/db.js";
-import { uploadIllustration } from "./lib/storage-cloud.js";
+import { uploadIllustration, uploadPortrait } from "./lib/storage-cloud.js";
 import BlurText from "./components/reactbits/BlurText.jsx";
 import GradientText from "./components/reactbits/GradientText.jsx";
 import ShinyText from "./components/reactbits/ShinyText.jsx";
@@ -394,9 +394,13 @@ export default function App() {
           if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
           if (portraitUrl) {
             setRefImgUrl(portraitUrl);  // Set once, never overwrite
-            // SKZ-5: Update character portrait in Supabase
+            // SKZ-5: Upload portrait to permanent storage and save to character record
             if (selectedChar?.id && supabase) {
-              supabase.from("characters").update({ portrait_url: portraitUrl }).eq("id", selectedChar.id);
+              (async () => {
+                const permUrl = await uploadPortrait(portraitUrl, activeChild?.id || "unknown", selectedChar.id);
+                supabase.from("characters").update({ portrait_url: permUrl }).eq("id", selectedChar.id);
+                setRefImgUrl(permUrl); // update to permanent URL for consistency
+              })();
             }
             const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
@@ -631,7 +635,16 @@ export default function App() {
           
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
           const newPortrait = await addCharToPortrait(repToken, refImgUrl, r.newMainCharacter, artStyle);
-          if (newPortrait) setRefImgUrl(newPortrait);
+          if (newPortrait) {
+            setRefImgUrl(newPortrait);
+            // Upload updated group portrait to permanent storage
+            if (selectedChar?.id && supabase && activeChild?.id) {
+              uploadPortrait(newPortrait, activeChild.id, selectedChar.id).then(permUrl => {
+                supabase.from("characters").update({ portrait_url: permUrl, description: updDesc }).eq("id", selectedChar.id);
+                setRefImgUrl(permUrl);
+              });
+            }
+          }
           setPortraitRegenDone(true);
           setCharDesc(updDesc);
         }

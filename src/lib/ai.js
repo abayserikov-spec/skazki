@@ -135,12 +135,11 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
 export async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey, opts = {}) {
   if (!token || !portraitUrl) return null;
 
-  // Build structured prompt: identity → scene → style anchor → no-text
-  // NOTE: charDesc contains static appearance from page 1. We strip pose/expression
-  // words and tell Kontext to ONLY keep visual identity, NOT the pose.
-  const identityBlock = charDesc && charDesc !== "the main character"
-    ? `Same characters from the reference image — keep ONLY their visual identity (face, fur/hair color, eye color, clothing, accessories). CHANGE their pose and expression to match the new scene. Character appearance: ${charDesc}. `
-    : `Same characters from the reference image with identical appearance. `;
+  // Build structured prompt: scene FIRST (environment priority), then character identity
+  // Kontext Pro tends to keep the reference background — we must override it explicitly
+  const charIdentity = charDesc && charDesc !== "the main character"
+    ? `The character from the reference image appears in this scene — same face, same fur/hair color, same eye color, same clothing, same accessories. Character: ${charDesc}.`
+    : `The character from the reference image appears in this scene with identical appearance.`;
 
   const styleAnchor = artStyleKey === "anime"
     ? `Maintain the exact same anime children's book illustration style from the reference image — same vibrant colors, same expressive features, same cinematic lighting, same Studio Ghibli warmth.`
@@ -148,7 +147,7 @@ export async function genNextImage(token, scene, charDesc, portraitUrl, mood, ar
     ? `Maintain the exact same photorealistic children's book illustration style from the reference image — same cinematic composition, same detailed textures, same warm natural lighting, same professional quality.`
     : `Maintain the exact same watercolor and ink children's book illustration style from the reference image — same thin ink outlines, same visible cream paper texture, same transparent watercolor washes, same muted earthy palette, same hand-painted gentle quality.`;
 
-  const prompt = `${identityBlock}NEW SCENE: ${scene}. The character MUST be in the exact pose and action described above — do NOT copy the pose from the reference image. ${styleAnchor} No text, no words, no letters, no writing of any kind anywhere in the image.`;
+  const prompt = `COMPLETELY CHANGE the background and environment. NEW SCENE: ${scene}. ${charIdentity} Do NOT keep the background from the reference image — generate the full new environment described above. ${styleAnchor} No text, no words, no letters, no writing of any kind anywhere in the image.`;
 
   try {
     const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
