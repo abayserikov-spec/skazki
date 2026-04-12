@@ -1,169 +1,212 @@
-import { TOTAL_PAGES, ART_STYLES } from "./constants.js";
+import { TOTAL_PAGES } from "./constants.js";
 
 // ═══════════════════════════════════════════════════════════
-// ANYTURN — AI Module v8
-// Portrait: Replicate ANYTURN LoRA (abaydsd/anyturn-style)
-// Scenes: Replicate Kontext Pro (portrait as reference)
-// Story: Anthropic Claude Sonnet
+// ANYTURN — AI Module v9
+// Images: Google Gemini Nano Banana 2 (gemini-3.1-flash-image-preview)
+// Story:  Anthropic Claude Sonnet
 // ═══════════════════════════════════════════════════════════
 
+// ─── STYLE SYSTEM ───
+// Style anchors for text prompts (used when no style reference image)
 const STYLE_ANCHORS = {
-  book: `ANYTURN style illustration. Warm watercolor on cream textured paper, thin ink outlines, soft muted palette, visible brushstrokes, hand-drawn charm.`,
-  anime: `Anime-style children's book illustration. Vibrant colors, expressive characters with large eyes. Studio Ghibli warmth, cinematic lighting.`,
-  realistic: `Photorealistic children's book illustration. Cinematic composition, detailed textures, warm natural lighting. Professional quality.`,
+  book: `Warm watercolor children's book illustration on cream textured paper. Thin pencil outlines visible underneath transparent watercolor washes. Soft muted palette: ochre, burnt sienna, sage green, dusty blue, warm grey. Visible paper grain showing through thin paint layers. Gentle imperfect hand-drawn quality. Similar to Oliver Jeffers and Benji Davies picture book style.`,
+  anime: `Anime-style children's book illustration. Vibrant saturated colors, expressive characters with large eyes, dynamic poses. Studio Ghibli warmth with cinematic golden-hour lighting. Clean linework with soft cel-shading.`,
+  realistic: `Photorealistic children's book illustration. Cinematic composition with depth of field, detailed textures, warm natural lighting. Characters with realistic proportions and soft expressions. Professional quality.`,
 };
 
-// ═══════════════════════════════════════
-// REPLICATE UTILITIES
-// ═══════════════════════════════════════
+// Style instruction when reference image IS provided
+const STYLE_REF_INSTRUCTION = `Match the exact art style from the first reference image. Same technique, same color palette, same line quality, same texture, same level of detail. The output must look like it belongs in the same book.`;
 
-export async function pollPrediction(token, prediction) {
-  if (!prediction || prediction.error) {
-    console.error("Replicate API error:", prediction?.error || prediction?.detail || "empty response");
+// ═══════════════════════════════════════════════════════════
+// GEMINI NB2 — Core image generation
+// Single model for: portraits, scenes, character editing
+// No polling needed — returns result in one request
+// ═══════════════════════════════════════════════════════════
+
+async function geminiGenerate(apiKey, prompt, referenceImages = [], aspectRatio = "16:9") {
+  const body = {
+    prompt,
+    referenceImages: referenceImages.filter(Boolean),
+    aspectRatio,
+    imageSize: "1K",
+  };
+
+  const res = await fetch("/api/gemini", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+  if (data.error) {
+    console.error("Gemini NB2 error:", data.error);
     return null;
   }
-  if (prediction.status === "succeeded" && prediction.output) {
-    const out = prediction.output;
-    return typeof out === "string" ? out : Array.isArray(out) ? out[0] : out;
-  }
-  if (prediction.status === "failed") {
-    console.error("Replicate failed:", prediction.error);
-    return null;
-  }
-  if (!prediction.id) {
-    console.error("No prediction id, cannot poll. Response:", prediction);
-    return null;
-  }
-  const pollUrl = `/api/replicate/v1/predictions/${prediction.id}`;
-  for (let i = 0; i < 60; i++) {
-    await new Promise(r => setTimeout(r, 1500));
-    try {
-      const res = await fetch(pollUrl, { headers: { Authorization: `Bearer ${token}` } });
-      const p = await res.json();
-      if (p.status === "succeeded") {
-        const out = p.output;
-        return typeof out === "string" ? out : Array.isArray(out) ? out[0] : out;
-      }
-      if (p.status === "failed") { console.error("Replicate failed:", p.error); return null; }
-    } catch (e) { console.error("Poll error:", e); }
+
+  if (data.imageBase64) {
+    return `data:${data.mimeType || "image/png"};base64,${data.imageBase64}`;
   }
   return null;
 }
 
-async function fetchWithRetry(url, opts, maxRetries = 3) {
-  let res = await fetch(url, opts);
-  for (let i = 0; i < maxRetries && res.status === 429; i++) {
-    let wait = 5000;
-    try { const d = await res.json(); wait = (d.retry_after || 5) * 1000 + 1000; } catch {}
-    await new Promise(r => setTimeout(r, wait));
-    res = await fetch(url, opts);
-  }
-  return res;
-}
-
-// ═══════════════════════════════════════
-// CHARACTER PORTRAIT via Flux Schnell
-// Generates group portrait with ALL characters
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// CHARACTER PORTRAIT — Individual portrait generation
+// Creates a single character on plain background
+// Used for: new characters, character library
+// ═══════════════════════════════════════════════════════════
 
 export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts = {}) {
   if (!token) return null;
-  const prompt = "ANYTURN style illustration. " + charDesc + ". Full body, relaxed pose, plain cream background. Front view. No text.";
-  try {
-    const res = await fetchWithRetry("/api/replicate/v1/predictions", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", Prefer: "wait=60" },
-      body: JSON.stringify({
-        version: "8f80adfcba13a43b5cfd2ed6fc8915ca6edd66a5839aca37dcf0fde10f0e6523",
-        input: { prompt: prompt, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90 }
-      }),
-    });
-    const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Portrait (ANYTURN LoRA) error:", JSON.stringify(resp));
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Portrait error:", err); return null; }
-}
 
-// Add new character to existing portrait via Replicate Kontext Pro
-export async function addCharToPortrait(token, existingPortraitUrl, newCharDesc, artStyleKey, opts = {}) {
-  if (!token || !existingPortraitUrl) return null;
+  const styleRef = opts.styleRefUrl || null;
+  const hasRef = !!styleRef;
+  const styleText = hasRef ? STYLE_REF_INSTRUCTION : (STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book);
 
-  const styleAnchor = artStyleKey === "anime"
-    ? `Maintain the exact same anime illustration style — same vibrant colors, same expressive features, same cinematic lighting.`
-    : artStyleKey === "realistic"
-    ? `Maintain the exact same photorealistic style — same cinematic composition, same detailed textures, same warm lighting.`
-    : `Maintain the exact same watercolor and ink style from the reference — same thin ink outlines, same cream paper texture, same transparent watercolor washes, same muted earthy palette.`;
+  const prompt = [
+    styleText,
+    `Full body portrait of ${charDesc}.`,
+    `Relaxed neutral pose, slight three-quarter turn, arms slightly away from body.`,
+    `Plain cream background with no environment details.`,
+    `Warm soft lighting from upper left.`,
+    `Clear separation between character and background.`,
+    `Clean image without any text, words, or writing.`,
+  ].join(" ");
 
-  const prompt = `Same characters from the reference image with identical appearance. Add a new character standing next to the existing characters: ${newCharDesc}. Keep ALL existing characters EXACTLY as they are — same face, same clothing, same proportions, same colors. The new character should match the same art style. All characters visible, plain cream background. ${styleAnchor} No text, no words, no letters, no writing of any kind anywhere in the image.`;
+  const refs = hasRef ? [styleRef] : [];
 
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, input_image: existingPortraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } }),
-    });
-    const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Add char (Kontext Pro) error:", JSON.stringify(resp));
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Add char (Kontext Pro) error:", err); return null; }
+    return await geminiGenerate(token, prompt, refs, "1:1");
+  } catch (err) {
+    console.error("Portrait generation error:", err);
+    return null;
+  }
 }
 
-// ═══════════════════════════════════════
-// FALLBACK — Flux Schnell (if portrait fails)
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// NEW CHARACTER PORTRAIT — Mid-story character generation
+// When Sonnet detects a new important character
+// ═══════════════════════════════════════════════════════════
 
-export async function genFirstImage(token, scene, charDesc, mood, artStyleKey) {
+export async function genNewCharPortrait(token, newCharDesc, artStyleKey, opts = {}) {
   if (!token) return null;
-  const style = STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book;
-  const prompt = `${style}. ${scene}. The main character is ${charDesc}. Show ALL characters described in the scene with distinct appearances. Dynamic poses and clear interaction between characters. No text, words, letters, or writing anywhere in the image.`;
-  try {
-    const res = await fetch("/api/replicate/v1/models/black-forest-labs/flux-schnell/predictions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, go_fast: true, num_outputs: 1, aspect_ratio: "16:9", output_format: "png", output_quality: 90, num_inference_steps: 4 } }),
-    });
-    const resp = await res.json();
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Flux Schnell error:", err); return null; }
-}
 
-// ═══════════════════════════════════════
-// SCENE GENERATION via Replicate Kontext Pro
-// Uses portrait as reference for character consistency
-// ═══════════════════════════════════════
+  const styleRef = opts.styleRefUrl || null;
+  const hasRef = !!styleRef;
+  const styleText = hasRef ? STYLE_REF_INSTRUCTION : (STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book);
 
-export async function genNextImage(token, scene, charDesc, portraitUrl, mood, artStyleKey, opts = {}) {
-  if (!token || !portraitUrl) return null;
+  const prompt = [
+    styleText,
+    `Full body portrait of a NEW character: ${newCharDesc}.`,
+    `Relaxed neutral pose, slight three-quarter turn.`,
+    `Plain cream background. Warm soft lighting.`,
+    `Clean image without any text or writing.`,
+  ].join(" ");
 
-  // Build structured prompt: positive-only instructions (diffusion models ignore NOT/NEVER)
-  const charIdentity = charDesc && charDesc !== "the main character"
-    ? `Keep the character's visual identity from the reference — same face, same fur/hair color, same eye color, same clothing, same accessories. Character: ${charDesc}.`
-    : `Keep the character's visual identity from the reference image.`;
-
-  const styleAnchor = artStyleKey === "anime"
-    ? `Maintain the exact same anime children's book illustration style — same vibrant colors, same expressive features, same cinematic lighting, same Studio Ghibli warmth.`
-    : artStyleKey === "realistic"
-    ? `Maintain the exact same photorealistic children's book illustration style — same cinematic composition, same detailed textures, same warm natural lighting, same professional quality.`
-    : `Maintain the exact same watercolor and ink children's book illustration style — same thin ink outlines, same visible cream paper texture, same transparent watercolor washes, same muted earthy palette, same hand-painted gentle quality.`;
-
-  const prompt = `Place the character in a completely new scene with a rich detailed background. ${scene}. ${charIdentity} Show the full environment with buildings, trees, sky, ground, and all surroundings described in the scene. ${styleAnchor} Clean image without any text or writing.`;
+  const refs = hasRef ? [styleRef] : [];
 
   try {
-    const res = await fetchWithRetry("/api/replicate/v1/models/black-forest-labs/flux-kontext-pro/predictions", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", "Prefer": "wait=60" },
-      body: JSON.stringify({ input: { prompt, input_image: portraitUrl, aspect_ratio: "16:9", output_format: "png", safety_tolerance: 6 } }),
-    });
-    const resp = await res.json();
-    if (resp.detail || resp.error) console.error("Kontext Pro error:", JSON.stringify(resp));
-    return await pollPrediction(token, resp);
-  } catch (err) { console.error("Kontext Pro error:", err); return null; }
+    return await geminiGenerate(token, prompt, refs, "1:1");
+  } catch (err) {
+    console.error("New character portrait error:", err);
+    return null;
+  }
 }
 
-// ═══════════════════════════════════════
-// STORY GENERATION (Sonnet)
-// Old-style rich scene descriptions
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// SCENE GENERATION — Place characters in illustrated scene
+// Uses: style reference + character portrait(s) + scene text
+// Core function called for every story page
+// ═══════════════════════════════════════════════════════════
+
+export async function genNextImage(token, scene, charDesc, portraitUrls, mood, artStyleKey, opts = {}) {
+  if (!token) return null;
+
+  // portraitUrls can be a string (single) or array (multiple characters)
+  const portraits = Array.isArray(portraitUrls) ? portraitUrls : (portraitUrls ? [portraitUrls] : []);
+  const styleRef = opts.styleRefUrl || null;
+  const hasRef = !!styleRef;
+  const styleText = hasRef ? STYLE_REF_INSTRUCTION : (STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book);
+
+  const charCount = portraits.length;
+  const charInstruction = charCount > 0
+    ? `Keep ALL characters from reference images with identical appearance — same face, same colors, same clothing, same proportions. Do not alter any character's design.`
+    : (charDesc ? `The character: ${charDesc}.` : "");
+
+  const prompt = [
+    styleText,
+    `Place the character${charCount > 1 ? "s" : ""} in a completely new scene.`,
+    scene,
+    charInstruction,
+    `Show the full environment with rich background details.`,
+    `Clean image without any text, words, or writing.`,
+  ].join(" ");
+
+  // Build reference array: style ref first, then portraits
+  const refs = [];
+  if (styleRef) refs.push(styleRef);
+  portraits.forEach(p => { if (p) refs.push(p); });
+
+  try {
+    return await geminiGenerate(token, prompt, refs, "16:9");
+  } catch (err) {
+    console.error("Scene generation error:", err);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIRST IMAGE FALLBACK — Scene without portrait reference
+// Used when no portrait has been generated yet
+// ═══════════════════════════════════════════════════════════
+
+export async function genFirstImage(token, scene, charDesc, mood, artStyleKey, opts = {}) {
+  if (!token) return null;
+
+  const styleRef = opts.styleRefUrl || null;
+  const hasRef = !!styleRef;
+  const styleText = hasRef ? STYLE_REF_INSTRUCTION : (STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book);
+
+  const prompt = [
+    styleText,
+    scene,
+    `The main character is ${charDesc}.`,
+    `Show ALL characters described with distinct appearances.`,
+    `Dynamic poses showing clear interaction between characters.`,
+    `Clean image without any text, words, or writing.`,
+  ].join(" ");
+
+  const refs = hasRef ? [styleRef] : [];
+
+  try {
+    return await geminiGenerate(token, prompt, refs, "16:9");
+  } catch (err) {
+    console.error("First image error:", err);
+    return null;
+  }
+}
+
+// Legacy export for backward compatibility with App.jsx
+export async function addCharToPortrait(token, existingPortraitUrl, newCharDesc, artStyleKey, opts = {}) {
+  return genNewCharPortrait(token, newCharDesc, artStyleKey, opts);
+}
+
+// ═══════════════════════════════════════════════════════════
+// STORY GENERATION — Claude Sonnet
+// Enhanced with research-backed scene description prompting
+// ═══════════════════════════════════════════════════════════
+
+// Camera angle sequence for visual variety
+const CAMERA_SEQUENCE = [
+  "Wide establishing shot",
+  "Medium shot",
+  "Close-up",
+  "Bird's eye view",
+  "Low angle looking up",
+  "Over-the-shoulder",
+];
 
 export async function genPage(ctx, apiKey) {
   const {
@@ -178,14 +221,22 @@ export async function genPage(ctx, apiKey) {
     "P" + (i + 1) + ": " + h.text +
     (h.sceneSummary ? " [location: " + h.sceneSummary + "]" : "") +
     (h.actionSummary ? " [action: " + h.actionSummary + "]" : "") +
+    (h.cameraAngle ? " [camera: " + h.cameraAngle + "]" : "") +
     (h.choice ? " [chose: " + h.choice.label + "/" + h.choice.value + "]" : "")
   ).join("\n");
 
-  const charBlock = charDesc
-    ? "\n- The main characters have been established: " + charDesc + ". Keep ALL characters visually consistent.\n- NEW MAIN CHARACTER: If an important new character JOINS the party/group (a new friend, companion, rival who will stay in the story), return a \"newMainCharacter\" field with their detailed English visual description. Only for IMPORTANT recurring characters, not random NPCs or background people."
-    : '\n- FIRST PAGE: You MUST also return a "characterDesc" field with detailed English visual descriptions of the MAIN CHARACTER and any other key characters who will appear throughout the story. Describe each character separately. Example: "Main: a small red fox cub with bright green eyes, wearing a blue scarf and brown leather satchel, fluffy tail with white tip. Friend: a tall grey wolf pup with amber eyes, wearing a green vest and carrying a wooden staff". Include: species/type, hair/fur color, eye color, clothing, accessories, body build, distinctive features for EACH character.';
+  // Track previous camera angles to avoid repeats
+  const usedAngles = history.map(h => h.cameraAngle).filter(Boolean);
+  const availableAngles = CAMERA_SEQUENCE.filter(a => !usedAngles.includes(a));
+  const suggestedAngle = availableAngles.length > 0
+    ? availableAngles[0]
+    : CAMERA_SEQUENCE[pn % CAMERA_SEQUENCE.length];
 
-  const charDescJson = !charDesc ? ',"characterDesc":"...detailed english visual description of main character AND other key characters..."' : '';
+  const charBlock = charDesc
+    ? "\n- The main characters have been established: " + charDesc + ". Keep ALL characters visually consistent.\n- NEW MAIN CHARACTER: If an important new character JOINS the party/group (a new friend, companion, rival who will stay in the story), return a \"newMainCharacter\" field with their detailed English visual description for a SOLO portrait (single character on plain background). Describe ONLY the new character, not existing ones. Only for IMPORTANT recurring characters, not random NPCs."
+    : '\n- FIRST PAGE: You MUST return a "characterDesc" field with detailed English visual descriptions for individual portraits. Describe EACH character SEPARATELY for solo portrait generation. Format: "Main: a small red fox cub with bright green eyes, wearing a blue scarf and brown leather satchel, fluffy tail with white tip" Include: species/type, fur/hair color, eye color, clothing, accessories, body build, distinctive features. If multiple characters, separate with " | " delimiter.';
+
+  const charDescJson = !charDesc ? ',"characterDesc":"...detailed english visual description of EACH character separated by | ..."' : '';
 
   const positiveValues = ["generosity","empathy","courage","curiosity","kindness","honesty","patience","teamwork"];
   const negativeValues = ["selfishness","cowardice","cruelty","greed","laziness","dishonesty","aggression","indifference"];
@@ -209,37 +260,73 @@ export async function genPage(ctx, apiKey) {
   const backstoryBlock = backstory ? `\n- STORY PREMISE: ${backstory}. Build around this.` : "";
   const langInstr = storyLang === "en" ? "Write story text in ENGLISH." : "Write story text in RUSSIAN.";
 
-  const prevScenes = history.map((h, i) => { const p = [h.sceneSummary, h.actionSummary].filter(Boolean).join(", "); return p ? `P${i+1}: ${p}` : ""; }).filter(Boolean);
-  const diversityInstr = history.length > 0
-    ? `\n- LOCATION: Vary locations naturally with the story. Staying in the same area for 2-3 pages is fine.\n- ACTION: Character should do something relevant to the story. Vary poses naturally.`
-    : "\n- Start with a vivid, unique setting.";
+  const copyrightInstr = "\n- COPYRIGHT CHARACTERS: If the child mentions a character from movies/cartoons/comics/games, create an ORIGINAL character INSPIRED by them. Give them a new name, keep iconic abilities. Describe with SPECIFIC visual details in the scene field. Use 'outfit', 'clothes', 'attire' instead of 'costume', 'suit', 'uniform'. Never use original character names in the scene field.";
 
-  const copyrightInstr = "\n- COPYRIGHT CHARACTERS: If the child mentions a character from movies/cartoons/comics/games (Spider-Man, Elsa, Batman, etc.), create an ORIGINAL character INSPIRED by them as a REAL LIVING CHARACTER in the story — with real superpowers, real actions, real dialogue. Do NOT reduce them to a drawing, poster, toy, or picture. The inspired character must be a FULL PARTICIPANT in the story. Give them a new name, keep their iconic abilities and personality. Examples: Spider-Man → Arachnid (a boy with spider powers who shoots webs and climbs walls), Elsa → Ice Princess Aurora (a princess who controls ice and snow), Batman → Dark Guardian (a masked hero who fights crime at night). For visuals in the scene field, describe the character with SPECIFIC visual details that make them recognizable — exact costume colors, mask shape, cape style, weapon type. The reader should IMMEDIATELY recognize who inspired this character from the illustration alone. IMPORTANT FOR SCENE DESCRIPTIONS: describe characters as 'a boy/girl wearing a colorful outfit' rather than 'costume' or 'suit'. Use 'outfit', 'clothes', 'attire', 'garment' instead of 'costume', 'suit', 'uniform'. Never use the original character name in the scene field.";
+  // ── ENHANCED SCENE DESCRIPTION INSTRUCTIONS ──
+  // Based on prompting research for NB2 + children's book illustration
+  const sceneInstructions = `
+- Include a "scene" field: a CINEMATIC English description for illustration (40-80 words).
+- Also include "cameraAngle" field with the shot type used.
+
+SCENE DESCRIPTION FORMAT — write in this EXACT order:
+1. CAMERA ANGLE: Start with "${suggestedAngle}" for this page. Return the angle in the "cameraAngle" field.
+   Available angles: Wide establishing shot, Medium shot, Close-up, Bird's eye view, Low angle looking up, Over-the-shoulder.
+   NEVER repeat the same angle as the previous page.
+
+2. CHARACTER ACTION: What each character is PHYSICALLY DOING — use specific body-movement verbs:
+   leaping, crouching, reaching, climbing, crawling, carrying, pulling, pushing, balancing, tumbling.
+   Express emotions through WHOLE BODY posture, not just facial expressions:
+   - Joy: jumping with arms raised, spinning, running with big smile
+   - Fear: crouching low, hiding behind object, ears flat, tail tucked
+   - Courage: standing tall with chin up, marching forward, fists clenched
+   - Sadness: sitting hugging knees, head down, shoulders slumped
+   - Curiosity: leaning forward, reaching toward, peeking around corner
+
+3. MOTION INDICATORS: Make the scene feel ALIVE with implied movement:
+   - Trailing scarves/capes/tails in the wind
+   - Dust, leaves, snow disturbed by movement
+   - Objects mid-air (splashing water, falling petals, thrown ball)
+   - Hair/fur ruffled by speed or wind
+
+4. CHARACTER INTERACTION (if multiple characters):
+   - Physical contact: "paw resting on shoulder", "carrying on back"
+   - Eye contact: "looking directly at each other", "both staring at the crystal"
+   - Spatial: "back-to-back", "one in foreground one behind"
+
+5. ENVIRONMENT reflecting EMOTIONAL TONE:
+   - Happy: warm golden light, vibrant colors, open spaces, flowers
+   - Tense: cool blue tones, long shadows, enclosed spaces, bare branches
+   - Mysterious: purple/green palette, mist, glowing elements, deep forest
+   - Cozy: warm indoor lighting, earth tones, firelight, small spaces
+   - Brave: dramatic dawn/sunset, vast landscapes, red/gold accents
+
+6. COMPOSITION using rule of thirds:
+   - Vary character size dramatically: tiny in vast landscape OR filling the frame
+   - Character on LEFT facing RIGHT = moving forward
+   - Character on RIGHT facing LEFT = reflection/pause
+   - Include FOREGROUND elements (leaves, rocks) for depth
+   - Include BACKGROUND elements (sky, mountains, buildings) for scale
+
+FORBIDDEN in scene descriptions:
+- Characters "standing" or just "looking at" something
+- Same camera angle as previous page
+- Character centered in frame every time
+- Generic backgrounds without specific details
+- Words like "costume", "suit", "uniform" (use "outfit", "clothes", "attire")`;
 
   const sys = `You are a master storyteller creating interactive stories for children. ${langInstr} This is a STORY WITH CONSEQUENCES — the child's choices DIRECTLY shape the outcome.
 Rules:
 - Child: ${name}, age ${age}${charBlock}${backstoryBlock}
-- Page ${pn}/${TOTAL_PAGES}. Write 2-3 vivid sentences in simple, engaging language appropriate for the child's age.${diversityInstr}${copyrightInstr}
-- TONE MATCHING: Determine the tone from the premise. If the premise is realistic (sports, school, friendship, everyday life) — keep it grounded and realistic. NO magic, NO supernatural creatures unless the premise explicitly involves fantasy.
+- Page ${pn}/${TOTAL_PAGES}. Write 2-3 vivid sentences in simple, engaging language appropriate for the child's age.${copyrightInstr}
+- TONE MATCHING: Determine the tone from the premise. If the premise is realistic — keep it grounded. NO magic unless the premise involves fantasy.
 - ${choicesInstruction}
-- CRITICAL: If the child previously made a negative choice, show realistic consequences in the NEXT page. Don't immediately fix bad choices.
-- If the child made a positive choice, show warm rewards — new friendships, discovered treasures, growing trust.
-- Include a "scene" field: a CINEMATIC English description for illustration. CRITICAL RULES FOR SCENE:
-  1. UNIQUE POSES: Each character MUST have a DIFFERENT body pose and position than the previous page. If a character was standing with arms crossed before, now they should be sitting, leaning, pointing, walking, or gesturing. NEVER repeat the same pose twice.
-  (1) Include ALL characters mentioned in the text
-  (2) Show CHARACTER INTERACTION — body language between characters
-  (3) Describe what each character is ACTIVELY DOING (never just standing)
-  (4) Include EXPRESSIONS on each character face
-  (5) Rich UNIQUE ENVIRONMENT details — DIFFERENT from all previous pages
-  (6) CAMERA ANGLE — vary between wide shot, medium shot, close-up, bird's eye, low angle
-  (7) For REALISTIC stories: describe real-world settings accurately. For FANTASY: magical environments.
-  (8) IMPORTANT: Make each scene visually DISTINCT. Different colors, lighting, time of day, weather.
-  (9) CHARACTER POSES MUST VARY DRAMATICALLY: running, climbing, hiding, falling, reaching up, crouching, swimming, flying, dancing, fighting, hugging. NEVER the same pose twice.
-  (10) COMPOSITION VARIETY: Vary character size in frame — sometimes tiny in vast landscape, sometimes dramatic close-up, sometimes seen from behind.
+- CRITICAL: If the child previously made a negative choice, show realistic consequences in the NEXT page.
+- If the child made a positive choice, show warm rewards.
+${sceneInstructions}
 - "mood": forest|ocean|space|castle|magic|city|school|sports|home
 
 Respond ONLY valid JSON:
-{"text":"...","mood":"...","scene":"...cinematic english scene description, 40-80 words, all characters, expressions, environment, camera angle...","sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"}`;
+{"text":"...","mood":"...","scene":"...cinematic english scene description, 40-80 words...","cameraAngle":"...shot type used...","sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"}`;
 
   const textMsg = history.length === 0
     ? `Create a new story for ${name}. Premise: ${backstory || "a surprise creative adventure"}. Exciting opening!`
@@ -264,7 +351,6 @@ Respond ONLY valid JSON:
 
   const txt = data.content?.map(b => (b.type === "text" ? b.text : "")).join("") || "";
 
-  // Safe JSON parse
   let parsed;
   try {
     parsed = JSON.parse(txt.replace(/```json|```/g, "").trim());

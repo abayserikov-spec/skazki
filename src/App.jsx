@@ -13,7 +13,7 @@ import {
 
 import ST from "./lib/storage.js";
 import { TOTAL_PAGES, VALS, ART_STYLES, I18N } from "./lib/constants.js";
-import { genPage, genFirstImage, genCharPortrait, genNextImage, addCharToPortrait } from "./lib/ai.js";
+import { genPage, genFirstImage, genCharPortrait, genNextImage, genNewCharPortrait } from "./lib/ai.js";
 import { supabase } from "./lib/supabase.js";
 import {
   ensureUser, getChildren as dbGetChildren, addChild as dbAddChild,
@@ -219,7 +219,7 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [newChild, setNewChild] = useState("");
   const [newAge, setNewAge] = useState("5");
-  const [repToken, setRepToken] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
   const [antKey, setAntKey] = useState("");
   const [elKey, setElKey] = useState("");
   
@@ -279,12 +279,12 @@ export default function App() {
   // ── Init ──
   useEffect(() => { (async () => {
     const u = await ST.get("user");
-    const rt = await ST.get("repToken");
+    const rt = await ST.get("geminiKey");
     const ak = await ST.get("antKey");
     const ek = await ST.get("elKey");
     const sl = await ST.get("lang");
     const ss = await ST.get("artStyle");
-    if (rt) setRepToken(rt);
+    if (rt) setGeminiKey(rt);
     if (ak) setAntKey(ak);
     if (ek) setElKey(ek);
     if (sl) setLang(sl);
@@ -371,41 +371,50 @@ export default function App() {
   useEffect(() => { if (textDone && ttsEnabled && curPage?.text) speakText(curPage.tts_text || curPage.text); }, [textDone, ttsEnabled]);
   useEffect(() => { stopSpeak(); }, [curPage]);
 
-  // ── Illustration generation (Phase 1: childbook LoRA + 3-block prompts) ──
+  // ── Illustration generation (NB2 — Nano Banana 2 via Gemini API) ──
+  // Style reference images hosted in public/style-refs/
+  const STYLE_REFS = [
+    "/style-refs/ref-01-interior.png",
+    "/style-refs/ref-02-forest.png",
+    "/style-refs/ref-03-group.png",
+    "/style-refs/ref-04-owl.png",
+    "/style-refs/ref-05-hedgehog.png",
+    "/style-refs/ref-06-fox.png",
+  ];
+  const getStyleRef = (mood) => {
+    const map = { home: 0, school: 0, forest: 1, city: 1, ocean: 1, sports: 1, magic: 4, castle: 4, space: 4 };
+    return STYLE_REFS[map[mood] ?? 1];
+  };
+
   useEffect(() => {
     if (!curPage?.scene && !curPage?.illustration) return;
     setCurImg(null);
-    if (!repToken) return;
+    if (!geminiKey) return;
     setImgLoading(true);
     const mood = curPage.mood || "forest";
     const isFirst = !refImgUrl;
+    const styleRefUrl = getStyleRef(mood);
 
-    // Build opts for genNextImage (Phase 1: structured prompt)
-    const imgOpts = {
-      illustration: curPage.illustration || null,
-      identityTag: identityTag || null,
-      companionDesc: companionDesc || null,
-    };
+    const imgOpts = { styleRefUrl };
 
     if (isFirst) {
       (async () => {
         try {
           let portraitUrl = null;
-          if (charDesc) portraitUrl = await genCharPortrait(repToken, charDesc, curPage.scene, artStyle);
+          if (charDesc) portraitUrl = await genCharPortrait(geminiKey, charDesc, curPage.scene, artStyle, imgOpts);
           if (portraitUrl) {
-            setRefImgUrl(portraitUrl);  // Set once, never overwrite
-            // SKZ-5: Upload portrait to permanent storage and save to character record
+            setRefImgUrl(portraitUrl);
             if (selectedChar?.id && supabase) {
               (async () => {
                 const permUrl = await uploadPortrait(portraitUrl, activeChild?.id || "unknown", selectedChar.id);
                 supabase.from("characters").update({ portrait_url: permUrl }).eq("id", selectedChar.id);
-                setRefImgUrl(permUrl); // update to permanent URL for consistency
+                setRefImgUrl(permUrl);
               })();
             }
-            const sceneUrl = await genNextImage(repToken, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle, imgOpts);
+            const sceneUrl = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
           } else {
-            const sceneUrl = await genFirstImage(repToken, curPage.scene, charDesc || "a friendly character", mood, artStyle);
+            const sceneUrl = await genFirstImage(geminiKey, curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
             if (sceneUrl) setRefImgUrl(sceneUrl);
           }
@@ -415,35 +424,9 @@ export default function App() {
     } else {
       (async () => {
         try {
-          const url = await genNextImage(repToken, curPage.scene, charDesc || "the main character", refImgUrl, mood, artStyle, imgOpts);
-          setCurImg(url);  // Show immediately (Phase 2: check in background)
+          const url = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", refImgUrl, mood, artStyle, imgOpts);
+          setCurImg(url);
           setImgLoading(false);
-
-          // Phase 2: Background quality check via next Sonnet call
-          // The check happens when pickChoice calls genPage with prevIllustrationUrl
-          // If score < 6, we silently re-gen here
-          if (url && identityTag && curPage.prevIllustrationCheck) {
-            const check = curPage.prevIllustrationCheck;
-            if (check.character_match < 6) {
-              console.log("Phase 2: Low character match score:", check.character_match, "- re-generating previous page image");
-              // Re-gen the PREVIOUS page's image with reinforced prompt
-              const prevPage = pages[pages.length - 1];
-              if (prevPage && prevPage.imgUrl) {
-                const betterUrl = await genNextImage(repToken, prevPage.scene, charDesc, refImgUrl, prevPage.mood || "forest", artStyle, {
-                  ...imgOpts,
-                  illustration: prevPage.illustration,
-                  reinforced: true,
-                });
-                if (betterUrl) {
-                  setPages(p => {
-                    const updated = [...p];
-                    updated[updated.length - 1] = { ...updated[updated.length - 1], imgUrl: betterUrl };
-                    return updated;
-                  });
-                }
-              }
-            }
-          }
         } catch { setImgLoading(false); }
       })();
     }
@@ -470,7 +453,7 @@ export default function App() {
   }, [allPagesLen, view]);
 
   // ── Save helpers ──
-  const saveRepToken = async v => { setRepToken(v); await ST.set("repToken", v); };
+  const saveGeminiKey = async v => { setGeminiKey(v); await ST.set("geminiKey", v); };
   const saveAntKey = async v => { setAntKey(v); await ST.set("antKey", v); };
   const saveElKey = async v => { setElKey(v); await ST.set("elKey", v); };
   const toggleLang = async () => { const n = lang === "ru" ? "en" : "ru"; setLang(n); await ST.set("lang", n); };
@@ -630,22 +613,24 @@ export default function App() {
           prevIllustrationUrl: curImg || null,
           prevScene: curPage?.scene || null,
         }, antKey);
-        if (r.newMainCharacter && repToken) {
-          // Re-generate portrait with ALL characters together
-          
+        if (r.newMainCharacter && geminiKey) {
+          // Generate individual portrait for the new character
+          const styleRefUrl = getStyleRef(curPage?.mood || "forest");
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
-          const newPortrait = await addCharToPortrait(repToken, refImgUrl, r.newMainCharacter, artStyle);
+          const newPortrait = await genNewCharPortrait(geminiKey, r.newMainCharacter, artStyle, { styleRefUrl });
           if (newPortrait) {
-            setRefImgUrl(newPortrait);
-            // Upload updated group portrait to permanent storage
-            if (selectedChar?.id && supabase && activeChild?.id) {
-              uploadPortrait(newPortrait, activeChild.id, selectedChar.id).then(permUrl => {
-                supabase.from("characters").update({ portrait_url: permUrl, description: updDesc }).eq("id", selectedChar.id);
-                setRefImgUrl(permUrl);
+            // Save new character to library with individual portrait
+            if (supabase && activeChild?.id) {
+              const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
+              createCharacter({
+                childId: activeChild.id,
+                name: charName,
+                description: r.newMainCharacter,
+                portraitUrl: newPortrait,
+                artStyle,
               });
             }
           }
-          setPortraitRegenDone(true);
           setCharDesc(updDesc);
         }
         setCurPage(r); setLoading(false);
@@ -753,7 +738,7 @@ export default function App() {
 
         {[
           { label: "Anthropic API Key", value: antKey, set: saveAntKey, placeholder: "sk-ant-...", hint: "console.anthropic.com", url: "https://console.anthropic.com/settings/keys" },
-          { label: "Replicate API Token", value: repToken, set: saveRepToken, placeholder: "r8_...", hint: "replicate.com", url: "https://replicate.com/account/api-tokens" },
+          { label: "Gemini API Key", value: geminiKey, set: saveGeminiKey, placeholder: "AIza...", hint: "aistudio.google.com", url: "https://aistudio.google.com/apikey" },
           { label: "ElevenLabs API Key", value: elKey, set: saveElKey, placeholder: "sk_...", hint: "elevenlabs.io", url: "https://elevenlabs.io/app/settings/api-keys" },
         ].map(({ label, value, set, placeholder, hint, url }) => (
           <div key={label} style={{ marginBottom: 18 }}>
@@ -776,7 +761,7 @@ export default function App() {
         <div style={{ padding: 16, borderRadius: T.r2, background: T.bgMuted, marginBottom: 20 }}>
           {[
             { ok: !!antKey, on: "Sonnet connected", off: "Need Anthropic key" },
-            { ok: !!repToken, on: "Flux + Kontext connected", off: "No illustrations without Replicate key" },
+            { ok: !!geminiKey, on: "Nano Banana 2 connected", off: "Need Gemini key for illustrations" },
             { ok: !!elKey, on: `ElevenLabs — ${elVoiceName}`, off: "Using browser voice (free)" },
           ].map(({ ok, on, off }, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < 2 ? 8 : 0 }}>
@@ -1060,14 +1045,14 @@ export default function App() {
               <PillBtn variant="subtle" onClick={toggleLang} style={{ padding: "8px 12px", borderRadius: T.r }}><Globe size={14} /><span style={{ fontSize: 12 }}>{lang === "ru" ? "EN" : "RU"}</span></PillBtn>
               <PillBtn variant="subtle" onClick={() => setShowSettings(true)} style={{ padding: "8px 12px", borderRadius: T.r, position: "relative" }}>
                 <Settings size={14} />
-                {(!repToken || !antKey) && <div style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", background: T.coral, border: `2px solid ${T.bg}` }} />}
+                {(!geminiKey || !antKey) && <div style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", background: T.coral, border: `2px solid ${T.bg}` }} />}
               </PillBtn>
             </div>
           </div>
         </AnimIn>
 
         {/* API prompt */}
-        {(!antKey || !repToken) && <AnimIn delay={0.05}>
+        {(!antKey || !geminiKey) && <AnimIn delay={0.05}>
           <div onClick={() => setShowSettings(true)} className="skazka-card" style={{ padding: "16px 20px", marginBottom: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, background: T.amberBg, border: "1px solid rgba(245,166,35,0.12)" }}>
             <IconCircle icon={Palette} size={38} bg="rgba(245,166,35,0.1)" color={T.amber} />
             <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700, color: T.tx, marginBottom: 2 }}>{lang === "ru" ? "Подключите иллюстрации" : "Connect illustrations"}</div><div style={{ fontSize: 11, color: T.tx3 }}>{lang === "ru" ? "Добавьте API-ключи в настройках" : "Add API keys in settings"}</div></div>
