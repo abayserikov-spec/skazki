@@ -15,7 +15,7 @@ const STYLE_ANCHORS = {
 };
 
 // Style instruction when reference image IS provided
-const STYLE_REF_INSTRUCTION = `Match the exact art style from the first reference image. Same technique, same color palette, same line quality, same texture, same level of detail. The output must look like it belongs in the same book.`;
+const STYLE_REF_INSTRUCTION = `Replicate the exact art style from the reference images. Characters must have simple small dot eyes and minimal facial features. The generated image must look like it belongs in the same book as the references.`;
 
 // ═══════════════════════════════════════════════════════════
 // GEMINI NB2 — Core image generation
@@ -69,9 +69,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts 
     styleText,
     `Full body portrait of ${charDesc}.`,
     `Relaxed neutral pose, slight three-quarter turn, arms slightly away from body.`,
-    `Plain cream background with no environment details.`,
-    `Warm soft lighting from upper left.`,
-    `Clear separation between character and background.`,
+    `Plain simple background. Clear separation between character and background.`,
     `Clean image without any text, words, or writing.`,
   ].join(" ");
 
@@ -101,7 +99,7 @@ export async function genNewCharPortrait(token, newCharDesc, artStyleKey, opts =
     styleText,
     `Full body portrait of a NEW character: ${newCharDesc}.`,
     `Relaxed neutral pose, slight three-quarter turn.`,
-    `Plain cream background. Warm soft lighting.`,
+    `Plain simple background.`,
     `Clean image without any text or writing.`,
   ].join(" ");
 
@@ -137,10 +135,9 @@ export async function genNextImage(token, scene, charDesc, portraitUrls, mood, a
 
   const prompt = [
     styleText,
-    `Place the character${charCount > 1 ? "s" : ""} in a completely new scene.`,
+    `Place the character${charCount > 1 ? "s" : ""} in this scene:`,
     scene,
     charInstruction,
-    `Show the full environment with rich background details.`,
     `Clean image without any text, words, or writing.`,
   ].join(" ");
 
@@ -174,7 +171,6 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey, o
     scene,
     `The main character is ${charDesc}.`,
     `Show ALL characters described with distinct appearances.`,
-    `Dynamic poses showing clear interaction between characters.`,
     `Clean image without any text, words, or writing.`,
   ].join(" ");
 
