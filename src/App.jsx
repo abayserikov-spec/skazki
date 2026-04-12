@@ -373,13 +373,14 @@ export default function App() {
 
   // ── Illustration generation (NB2 — Nano Banana 2 via Gemini API) ──
   // Style reference images hosted in public/style-refs/
+  const ORIGIN = window.location.origin;
   const STYLE_REFS = [
-    "/style-refs/ref-01-interior.png",
-    "/style-refs/ref-02-forest.png",
-    "/style-refs/ref-03-group.png",
-    "/style-refs/ref-04-owl.png",
-    "/style-refs/ref-05-hedgehog.png",
-    "/style-refs/ref-06-fox.png",
+    ORIGIN + "/style-refs/ref-01-interior.png",
+    ORIGIN + "/style-refs/ref-02-forest.png",
+    ORIGIN + "/style-refs/ref-03-group.png",
+    ORIGIN + "/style-refs/ref-04-owl.png",
+    ORIGIN + "/style-refs/ref-05-hedgehog.png",
+    ORIGIN + "/style-refs/ref-06-fox.png",
   ];
   const getStyleRef = (mood) => {
     const map = { home: 0, school: 0, forest: 1, city: 1, ocean: 1, sports: 1, magic: 4, castle: 4, space: 4 };
