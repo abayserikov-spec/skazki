@@ -241,6 +241,12 @@ export async function createCharacter({ childId, name, description, portraitUrl,
   return data;
 }
 
+/** Delete a character */
+export async function deleteCharacter(characterId) {
+  if (!supabase) return;
+  await supabase.from("characters").delete().eq("id", characterId);
+}
+
 /** Increment story count and update choices */
 export async function updateCharacterAfterStory(characterId, newChoices) {
   if (!supabase) return;
