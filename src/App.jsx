@@ -242,6 +242,7 @@ export default function App() {
   const [identityTag, setIdentityTag] = useState(null);       // Phase 1: frozen 4-marker identity
   const [companionDesc, setCompanionDesc] = useState(null);    // Phase 1: secondary character text-only
   const [refImgUrl, setRefImgUrl] = useState(null);
+  const [portraitUrls, setPortraitUrls] = useState([]); // array of all character portraits
   const [portraitRegenDone, setPortraitRegenDone] = useState(false);            // main portrait URL (NEVER overwritten after set)
   const [backstory, setBackstory] = useState("");
   const [presets, setPresets] = useState([]);
@@ -393,7 +394,7 @@ export default function App() {
     if (!geminiKey) return;
     setImgLoading(true);
     const mood = curPage.mood || "forest";
-    const isFirst = !refImgUrl;
+    const isFirst = portraitUrls.length === 0 && !refImgUrl;
     const styleRefUrl = getStyleRef(mood);
 
     const imgOpts = { styleRefUrl };
@@ -401,23 +402,43 @@ export default function App() {
     if (isFirst) {
       (async () => {
         try {
-          let portraitUrl = null;
-          if (charDesc) portraitUrl = await genCharPortrait(geminiKey, charDesc, curPage.scene, artStyle, imgOpts);
-          if (portraitUrl) {
-            setRefImgUrl(portraitUrl);
+          // Parse multi-character descriptions separated by " | "
+          const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
+          const generatedPortraits = [];
+
+          if (charParts.length > 0) {
+            // Generate individual portrait for each character
+            for (const partDesc of charParts) {
+              const portrait = await genCharPortrait(geminiKey, partDesc, curPage.scene, artStyle, imgOpts);
+              if (portrait) generatedPortraits.push(portrait);
+            }
+          }
+
+          if (generatedPortraits.length > 0) {
+            // Set first portrait as refImgUrl (legacy compat) and all as portraitUrls
+            setRefImgUrl(generatedPortraits[0]);
+            setPortraitUrls(generatedPortraits);
+
+            // Upload first portrait to Supabase if we have a saved character
             if (selectedChar?.id && supabase) {
               (async () => {
-                const permUrl = await uploadPortrait(portraitUrl, activeChild?.id || "unknown", selectedChar.id);
+                const permUrl = await uploadPortrait(generatedPortraits[0], activeChild?.id || "unknown", selectedChar.id);
                 supabase.from("characters").update({ portrait_url: permUrl }).eq("id", selectedChar.id);
                 setRefImgUrl(permUrl);
+                setPortraitUrls(prev => [permUrl, ...prev.slice(1)]);
               })();
             }
-            const sceneUrl = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", portraitUrl, mood, artStyle, imgOpts);
+
+            // Generate scene with ALL portraits
+            const sceneUrl = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
           } else {
             const sceneUrl = await genFirstImage(geminiKey, curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
-            if (sceneUrl) setRefImgUrl(sceneUrl);
+            if (sceneUrl) {
+              setRefImgUrl(sceneUrl);
+              setPortraitUrls([sceneUrl]);
+            }
           }
           setImgLoading(false);
         } catch { setImgLoading(false); }
@@ -425,7 +446,9 @@ export default function App() {
     } else {
       (async () => {
         try {
-          const url = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", refImgUrl, mood, artStyle, imgOpts);
+          // Pass full portraitUrls array (falls back to refImgUrl for single-char compat)
+          const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
+          const url = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", refs, mood, artStyle, imgOpts);
           setCurImg(url);
           setImgLoading(false);
         } catch { setImgLoading(false); }
@@ -520,9 +543,11 @@ export default function App() {
     if (reuse) {
       setCharDesc(reuse.description);
       setRefImgUrl(reuse.portrait_url);
+      setPortraitUrls(reuse.portrait_url ? [reuse.portrait_url] : []);
     } else {
       setCharDesc(null);
       setRefImgUrl(null);
+      setPortraitUrls([]);
     }
 
     setView("session"); setLoading(true);
@@ -620,6 +645,9 @@ export default function App() {
           const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
           const newPortrait = await genNewCharPortrait(geminiKey, r.newMainCharacter, artStyle, { styleRefUrl });
           if (newPortrait) {
+            // Add to portraitUrls so ALL future scenes include this character
+            setPortraitUrls(prev => [...prev, newPortrait]);
+
             // Save new character to library with individual portrait
             if (supabase && activeChild?.id) {
               const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
