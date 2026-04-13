@@ -16,48 +16,25 @@ export function useApp() {
 }
 
 export function AppProvider({ children: childrenProp }) {
-  // ── Navigation ──
   const [view, setView] = useState("loading");
-  const [showSettings, setShowSettings] = useState(false);
-
-  // ── User ──
   const [user, setUser] = useState(null);
   const [dbUser, setDbUser] = useState(null);
-
-  // ── Settings ──
   const [lang, setLang] = useState("ru");
   const [artStyle, setArtStyle] = useState("book");
-  const [geminiKey, setGeminiKey] = useState("");
-  const [antKey, setAntKey] = useState("");
-  const [elKey, setElKey] = useState("");
-  const [elVoiceId, setElVoiceId] = useState("EXAVITQu4vr4xnSDxMaL");
-  const [elVoiceName, setElVoiceName] = useState("Sarah");
-
-  // ── Children & Characters ──
   const [childrenList, setChildrenList] = useState([]);
   const [activeChild, setActiveChild] = useState(null);
   const [characters, setCharacters] = useState([]);
   const [selectedChars, setSelectedChars] = useState([]);
-
-  // ── Library ──
   const [library, setLibrary] = useState([]);
   const [sessions, setSessions] = useState([]);
 
-  // ── Derived ──
   const L = I18N[lang] || I18N.ru;
 
-  // ── Init ──
   useEffect(() => {
     (async () => {
       const u = await ST.get("user");
-      const rt = await ST.get("geminiKey");
-      const ak = await ST.get("antKey");
-      const ek = await ST.get("elKey");
       const sl = await ST.get("lang");
       const ss = await ST.get("artStyle");
-      if (rt) setGeminiKey(rt);
-      if (ak) setAntKey(ak);
-      if (ek) setElKey(ek);
       if (sl) setLang(sl);
       if (ss) setArtStyle(ss);
       if (u) {
@@ -81,7 +58,6 @@ export function AppProvider({ children: childrenProp }) {
     })();
   }, []);
 
-  // ── Load characters when child selected ──
   useEffect(() => {
     if (activeChild?.id && supabase) {
       getCharacters(activeChild.id).then(chars => setCharacters(chars || []));
@@ -90,11 +66,6 @@ export function AppProvider({ children: childrenProp }) {
     }
     setSelectedChars([]);
   }, [activeChild?.id]);
-
-  // ── Save helpers ──
-  const saveGeminiKey = useCallback(async (v) => { setGeminiKey(v); await ST.set("geminiKey", v); }, []);
-  const saveAntKey = useCallback(async (v) => { setAntKey(v); await ST.set("antKey", v); }, []);
-  const saveElKey = useCallback(async (v) => { setElKey(v); await ST.set("elKey", v); }, []);
 
   const toggleLang = useCallback(async () => {
     const n = lang === "ru" ? "en" : "ru";
@@ -151,25 +122,17 @@ export function AppProvider({ children: childrenProp }) {
     }
   }, [activeChild?.id]);
 
-  const value = {
-    // Navigation
-    view, setView, showSettings, setShowSettings,
-    // User
-    user, dbUser,
-    // Settings
-    lang, toggleLang, artStyle, saveArtStyle,
-    geminiKey, saveGeminiKey, antKey, saveAntKey, elKey, saveElKey,
-    elVoiceId, setElVoiceId, elVoiceName, setElVoiceName,
-    // Children & Characters
-    childrenList, setChildrenList, activeChild, setActiveChild,
-    characters, setCharacters, selectedChars, setSelectedChars,
-    // Library
-    library, setLibrary, sessions, setSessions,
-    // Actions
-    register, logout, addChild, refreshLibrary, refreshCharacters,
-    // i18n
-    L,
-  };
-
-  return <AppContext.Provider value={value}>{childrenProp}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={{
+      view, setView, user, dbUser,
+      lang, toggleLang, artStyle, saveArtStyle,
+      childrenList, setChildrenList, activeChild, setActiveChild,
+      characters, setCharacters, selectedChars, setSelectedChars,
+      library, setLibrary, sessions, setSessions,
+      register, logout, addChild, refreshLibrary, refreshCharacters,
+      L,
+    }}>
+      {childrenProp}
+    </AppContext.Provider>
+  );
 }

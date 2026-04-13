@@ -7,7 +7,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { useStory } from "../context/StoryContext.jsx";
 
 export default function SetupView() {
-  const { activeChild, lang, L, setView, artStyle, saveArtStyle, selectedChars, antKey } = useApp();
+  const { activeChild, lang, L, setView, artStyle, saveArtStyle, selectedChars } = useApp();
   const { backstory, setBackstory, presets, presetsLoading, generatePresets, startSession } = useStory();
 
   return (
@@ -46,7 +46,7 @@ export default function SetupView() {
                 ))}
               </div>
             ) : (
-              <p style={{ fontSize: 12, color: T.tx3, textAlign: "center", padding: 12 }}>{antKey ? L.noIdeas : L.needKey}</p>
+              <p style={{ fontSize: 12, color: T.tx3, textAlign: "center", padding: 12 }}>{L.noIdeas}</p>
             )}
           </div>
         </AnimIn>

@@ -23,7 +23,7 @@ const STYLE_REF_INSTRUCTION = `Replicate the exact art style from the reference 
 // No polling needed — returns result in one request
 // ═══════════════════════════════════════════════════════════
 
-async function geminiGenerate(apiKey, prompt, referenceImages = [], aspectRatio = "16:9") {
+async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "16:9") {
   const body = {
     prompt,
     referenceImages: referenceImages.filter(Boolean),
@@ -33,10 +33,7 @@ async function geminiGenerate(apiKey, prompt, referenceImages = [], aspectRatio 
 
   const res = await fetch("/api/gemini", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 
@@ -58,8 +55,7 @@ async function geminiGenerate(apiKey, prompt, referenceImages = [], aspectRatio 
 // Used for: new characters, character library
 // ═══════════════════════════════════════════════════════════
 
-export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts = {}) {
-  if (!token) return null;
+export async function genCharPortrait(charDesc, scene, artStyleKey, opts = {}) {
 
   const styleRef = opts.styleRefUrl || null;
   const hasRef = !!styleRef;
@@ -76,7 +72,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts 
   const refs = hasRef ? [styleRef] : [];
 
   try {
-    return await geminiGenerate(token, prompt, refs, "1:1");
+    return await geminiGenerate(prompt, refs, "1:1");
   } catch (err) {
     console.error("Portrait generation error:", err);
     return null;
@@ -88,8 +84,7 @@ export async function genCharPortrait(token, charDesc, scene, artStyleKey, opts 
 // When Sonnet detects a new important character
 // ═══════════════════════════════════════════════════════════
 
-export async function genNewCharPortrait(token, newCharDesc, artStyleKey, opts = {}) {
-  if (!token) return null;
+export async function genNewCharPortrait(newCharDesc, artStyleKey, opts = {}) {
 
   const styleRef = opts.styleRefUrl || null;
   const hasRef = !!styleRef;
@@ -106,7 +101,7 @@ export async function genNewCharPortrait(token, newCharDesc, artStyleKey, opts =
   const refs = hasRef ? [styleRef] : [];
 
   try {
-    return await geminiGenerate(token, prompt, refs, "1:1");
+    return await geminiGenerate(prompt, refs, "1:1");
   } catch (err) {
     console.error("New character portrait error:", err);
     return null;
@@ -119,8 +114,7 @@ export async function genNewCharPortrait(token, newCharDesc, artStyleKey, opts =
 // Core function called for every story page
 // ═══════════════════════════════════════════════════════════
 
-export async function genNextImage(token, scene, charDesc, portraitUrls, mood, artStyleKey, opts = {}) {
-  if (!token) return null;
+export async function genNextImage(scene, charDesc, portraitUrls, mood, artStyleKey, opts = {}) {
 
   // portraitUrls can be a string (single) or array (multiple characters)
   const portraits = Array.isArray(portraitUrls) ? portraitUrls : (portraitUrls ? [portraitUrls] : []);
@@ -147,7 +141,7 @@ export async function genNextImage(token, scene, charDesc, portraitUrls, mood, a
   portraits.forEach(p => { if (p) refs.push(p); });
 
   try {
-    return await geminiGenerate(token, prompt, refs, "16:9");
+    return await geminiGenerate(prompt, refs, "16:9");
   } catch (err) {
     console.error("Scene generation error:", err);
     return null;
@@ -159,8 +153,7 @@ export async function genNextImage(token, scene, charDesc, portraitUrls, mood, a
 // Used when no portrait has been generated yet
 // ═══════════════════════════════════════════════════════════
 
-export async function genFirstImage(token, scene, charDesc, mood, artStyleKey, opts = {}) {
-  if (!token) return null;
+export async function genFirstImage(scene, charDesc, mood, artStyleKey, opts = {}) {
 
   const styleRef = opts.styleRefUrl || null;
   const hasRef = !!styleRef;
@@ -177,7 +170,7 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey, o
   const refs = hasRef ? [styleRef] : [];
 
   try {
-    return await geminiGenerate(token, prompt, refs, "16:9");
+    return await geminiGenerate(prompt, refs, "16:9");
   } catch (err) {
     console.error("First image error:", err);
     return null;
@@ -185,8 +178,8 @@ export async function genFirstImage(token, scene, charDesc, mood, artStyleKey, o
 }
 
 // Legacy export for backward compatibility with App.jsx
-export async function addCharToPortrait(token, existingPortraitUrl, newCharDesc, artStyleKey, opts = {}) {
-  return genNewCharPortrait(token, newCharDesc, artStyleKey, opts);
+export async function addCharToPortrait(existingPortraitUrl, newCharDesc, artStyleKey, opts = {}) {
+  return genNewCharPortrait(newCharDesc, artStyleKey, opts);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -204,7 +197,7 @@ const CAMERA_SEQUENCE = [
   "Over-the-shoulder",
 ];
 
-export async function genPage(ctx, apiKey) {
+export async function genPage(ctx) {
   const {
     name, age, theme, history, choice, charDesc, backstory,
     lang: storyLang, identityTag, previousArc,
@@ -333,10 +326,7 @@ Respond ONLY valid JSON:
 
   const res = await fetch("/api/anthropic", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, system: sys, messages: [{ role: "user", content: textMsg }] }),
   });
 

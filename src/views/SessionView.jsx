@@ -7,14 +7,13 @@ import { TOTAL_PAGES, VALS } from "../lib/constants.js";
 import { genPage } from "../lib/ai.js";
 import { T, CSS, PillBtn } from "../components/UI.jsx";
 import BookPage from "../components/BookPage.jsx";
-import SettingsPanel from "../components/SettingsPanel.jsx";
 import { useApp } from "../context/AppContext.jsx";
 import { useStory } from "../context/StoryContext.jsx";
 
 export default function SessionView() {
   const app = useApp();
   const story = useStory();
-  const { activeChild, lang, L, showSettings, setShowSettings, antKey, setView } = app;
+  const { activeChild, lang, L, setView } = app;
   const {
     theme, pages, curPage, curImg, imgLoading, loading, sel, error,
     timer, customInput, setCustomInput, textDone, picks,
@@ -35,7 +34,6 @@ export default function SessionView() {
   return (
     <div style={{ height: "100vh", background: T.bg, fontFamily: T.body, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <style>{CSS}</style>
-      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
 
       {/* Top bar */}
       <div style={{ padding: "8px 16px", background: "rgba(248,247,252,0.95)", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
@@ -71,7 +69,7 @@ export default function SessionView() {
                 {error}
                 <PillBtn variant="coral" onClick={() => {
                   setError(null); setLoading(true);
-                  genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc: story.charDesc, lang }, antKey)
+                  genPage({ name: activeChild.name, age: activeChild.age, theme: theme.prompt, history: pages.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary })), choice: picks[picks.length-1] || null, charDesc: story.charDesc, lang })
                     .then(r => { setCurPage(r); setLoading(false); })
                     .catch(() => { setError("Retry failed."); setLoading(false); });
                 }} style={{ marginTop: 8, padding: "6px 16px", fontSize: 11 }}>Retry</PillBtn>

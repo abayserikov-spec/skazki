@@ -21,11 +21,12 @@ export function useStory() {
 export function StoryProvider({ children }) {
   const app = useApp();
   const {
-    activeChild, antKey, geminiKey, elKey, artStyle, lang, L,
+    activeChild, artStyle, lang, L,
     sessions, setSessions, setView, selectedChars, setSelectedChars,
     characters, setCharacters, refreshLibrary, refreshCharacters,
-    elVoiceId, elVoiceName,
   } = app;
+
+  const elVoiceId = "EXAVITQu4vr4xnSDxMaL";
 
   // ── Story state ──
   const [theme, setTheme] = useState(null);
@@ -107,37 +108,27 @@ export function StoryProvider({ children }) {
     if (!text) return;
     window.speechSynthesis?.cancel();
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    if (elKey) {
-      setSpeaking(true);
-      try {
-        const cacheKey = elVoiceId + ":" + text;
-        let url = ttsCacheRef.current.get(cacheKey);
-        if (!url) {
-          const res = await fetch(`/api/elevenlabs/v1/text-to-speech/${elVoiceId}`, {
-            method: "POST", headers: { "xi-api-key": elKey, "Content-Type": "application/json" },
-            body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", voice_settings: { stability: 0.55, similarity_boost: 0.7, style: 0.3 } })
-          });
-          if (!res.ok) throw new Error(res.status);
-          const blob = await res.blob();
-          url = URL.createObjectURL(blob);
-          ttsCacheRef.current.set(cacheKey, url);
-        }
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onended = () => setSpeaking(false);
-        audio.onerror = () => setSpeaking(false);
-        audio.play();
-      } catch { setSpeaking(false); }
-      return;
-    }
-    if (!window.speechSynthesis) return;
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = "ru-RU"; utt.rate = 0.88; utt.pitch = 1.05;
-    if (ttsVoice) utt.voice = ttsVoice;
-    utt.onstart = () => setSpeaking(true);
-    utt.onend = () => setSpeaking(false);
-    window.speechSynthesis.speak(utt);
-  }, [ttsVoice, elKey, elVoiceId]);
+    setSpeaking(true);
+    try {
+      const cacheKey = elVoiceId + ":" + text;
+      let url = ttsCacheRef.current.get(cacheKey);
+      if (!url) {
+        const res = await fetch(`/api/elevenlabs/v1/text-to-speech/${elVoiceId}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", voice_settings: { stability: 0.55, similarity_boost: 0.7, style: 0.3 } })
+        });
+        if (!res.ok) throw new Error(res.status);
+        const blob = await res.blob();
+        url = URL.createObjectURL(blob);
+        ttsCacheRef.current.set(cacheKey, url);
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setSpeaking(false);
+      audio.onerror = () => setSpeaking(false);
+      audio.play();
+    } catch { setSpeaking(false); }
+  }, [elVoiceId]);
 
   const stopSpeak = useCallback(() => {
     window.speechSynthesis?.cancel();
@@ -167,7 +158,6 @@ export function StoryProvider({ children }) {
   useEffect(() => {
     if (!curPage?.scene && !curPage?.illustration) return;
     setCurImg(null);
-    if (!geminiKey) return;
     setImgLoading(true);
     const mood = curPage.mood || "forest";
     const isFirst = portraitUrls.length === 0 && !refImgUrl;
@@ -181,17 +171,17 @@ export function StoryProvider({ children }) {
           const generatedPortraits = [];
           if (charParts.length > 0) {
             for (const partDesc of charParts) {
-              const portrait = await genCharPortrait(geminiKey, partDesc, curPage.scene, artStyle, imgOpts);
+              const portrait = await genCharPortrait(partDesc, curPage.scene, artStyle, imgOpts);
               if (portrait) generatedPortraits.push(portrait);
             }
           }
           if (generatedPortraits.length > 0) {
             setRefImgUrl(generatedPortraits[0]);
             setPortraitUrls(generatedPortraits);
-            const sceneUrl = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
+            const sceneUrl = await genNextImage(curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
           } else {
-            const sceneUrl = await genFirstImage(geminiKey, curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
+            const sceneUrl = await genFirstImage(curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
             if (sceneUrl) { setRefImgUrl(sceneUrl); setPortraitUrls([sceneUrl]); }
           }
@@ -202,7 +192,7 @@ export function StoryProvider({ children }) {
       (async () => {
         try {
           const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
-          const url = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", refs, mood, artStyle, imgOpts);
+          const url = await genNextImage(curPage.scene, charDesc || "the main character", refs, mood, artStyle, imgOpts);
           setCurImg(url);
           setImgLoading(false);
         } catch { setImgLoading(false); }
@@ -250,7 +240,6 @@ export function StoryProvider({ children }) {
 
   // ── Generate presets ──
   const generatePresets = useCallback(async (childName, childAge, chars) => {
-    if (!antKey) return;
     setPresetsLoading(true);
     const hasChars = chars && chars.length > 0;
     const charCtx = hasChars
@@ -264,7 +253,7 @@ export function StoryProvider({ children }) {
     try {
       const r = await fetch("/api/anthropic", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${antKey}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, messages: [{ role: "user", content: prompt }] })
       });
       const data = await r.json();
@@ -273,7 +262,7 @@ export function StoryProvider({ children }) {
       if (Array.isArray(arr) && arr.length > 0) setPresets(arr);
     } catch (e) { console.error("Presets error:", e); }
     setPresetsLoading(false);
-  }, [antKey, lang]);
+  }, [lang]);
 
   // ── Start session ──
   const startSession = useCallback(async (child, premise) => {
@@ -306,10 +295,6 @@ export function StoryProvider({ children }) {
       if (book) setBookId(book.id);
     }
 
-    if (!antKey) {
-      setError(lang === "ru" ? "Нужен Anthropic API ключ! Откройте настройки." : "Need Anthropic API key! Open settings.");
-      setLoading(false); return;
-    }
     try {
       const r = await genPage({
         name: child.name, age: child.age,
@@ -318,7 +303,7 @@ export function StoryProvider({ children }) {
         charDesc: reuse ? reuse.map(c => c.description).join(" | ") : null,
         backstory: premise || "", lang, identityTag: null,
         previousArc: reuse ? reuse.flatMap(c => c.story_arc || []) : null,
-      }, antKey);
+      });
 
       if (r.characterDesc && !reuse) setCharDesc(r.characterDesc);
       if (r.identityTag) setIdentityTag(r.identityTag);
@@ -335,7 +320,7 @@ export function StoryProvider({ children }) {
 
       setCurPage(r); setLoading(false);
     } catch { setError(lang === "ru" ? "Ошибка. Попробуйте ещё." : "Error. Try again."); setLoading(false); }
-  }, [antKey, artStyle, lang, selectedChars, setView, setSelectedChars]);
+  }, [artStyle, lang, selectedChars, setView, setSelectedChars]);
 
   // ── Pick choice ──
   const pickChoice = useCallback(async (ch) => {
@@ -368,13 +353,13 @@ export function StoryProvider({ children }) {
           choice: ch, charDesc, lang, identityTag,
           previousArc: selectedChars.length > 0 ? selectedChars.flatMap(c => c.story_arc || []) : null,
           prevIllustrationUrl: curImg || null, prevScene: curPage?.scene || null,
-        }, antKey);
+        });
 
-        if (r.newMainCharacter && geminiKey) {
+        if (r.newMainCharacter) {
           const updDesc = charDesc + ". Also present: " + r.newMainCharacter;
           setCharDesc(updDesc);
           const styleRefUrl = getStyleRef(curPage?.mood || "forest");
-          const newPortrait = await genNewCharPortrait(geminiKey, r.newMainCharacter, artStyle, { styleRefUrl });
+          const newPortrait = await genNewCharPortrait(r.newMainCharacter, artStyle, { styleRefUrl });
           if (newPortrait) {
             setPortraitUrls(prev => [...prev, newPortrait]);
             if (supabase && activeChild?.id) {
@@ -396,7 +381,7 @@ export function StoryProvider({ children }) {
         setCurPage(r); setLoading(false);
       } catch { setError(lang === "ru" ? "Ошибка." : "Error."); setLoading(false); }
     }, 600);
-  }, [loading, sel, curPage, curImg, pages, bookId, activeChild, theme, charDesc, lang, identityTag, selectedChars, antKey, geminiKey, artStyle]);
+  }, [loading, sel, curPage, curImg, pages, bookId, activeChild, theme, charDesc, lang, identityTag, selectedChars, artStyle]);
 
   const submitCustom = useCallback(() => {
     if (!customInput.trim() || loading || sel) return;

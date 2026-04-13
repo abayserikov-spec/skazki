@@ -1,19 +1,18 @@
 import { useState } from "react";
 import {
-  Settings, LogOut, Plus, Check, User, BookOpen, ChevronRight,
-  Globe, Wand2, BookMarked, Sparkles, Users, Palette,
+  LogOut, Plus, Check, BookOpen, ChevronRight,
+  Globe, Wand2, BookMarked, Sparkles, Users,
 } from "lucide-react";
 import { T, CSS, PillBtn, Avatar, IconCircle, AnimIn, SectionLabel } from "../components/UI.jsx";
 import { useApp } from "../context/AppContext.jsx";
 import { useStory } from "../context/StoryContext.jsx";
-import SettingsPanel from "../components/SettingsPanel.jsx";
 import GradientText from "../components/reactbits/GradientText.jsx";
 
 export default function DashboardView() {
   const app = useApp();
   const story = useStory();
   const {
-    user, lang, L, toggleLang, showSettings, setShowSettings,
+    user, lang, L, toggleLang,
     childrenList, activeChild, setActiveChild,
     characters, selectedChars, setSelectedChars,
     library, sessions, logout, addChild, setView,
@@ -34,7 +33,6 @@ export default function DashboardView() {
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body, position: "relative", overflow: "hidden" }}>
       <style>{CSS}</style>
-      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
       <div style={{ position: "absolute", width: 350, height: 350, borderRadius: "50%", background: "radial-gradient(circle,rgba(108,99,255,0.05),transparent 65%)", top: -80, right: -60, pointerEvents: "none" }} />
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: 540, margin: "0 auto", padding: "32px 20px" }}>
@@ -49,7 +47,6 @@ export default function DashboardView() {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <PillBtn variant="subtle" onClick={toggleLang} style={{ padding: "8px 12px", borderRadius: T.r }}><Globe size={14} /><span style={{ fontSize: 12 }}>{lang === "ru" ? "EN" : "RU"}</span></PillBtn>
-              <PillBtn variant="subtle" onClick={() => setShowSettings(true)} style={{ padding: "8px 12px", borderRadius: T.r }}><Settings size={14} /></PillBtn>
             </div>
           </div>
         </AnimIn>
