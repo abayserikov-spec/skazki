@@ -659,29 +659,27 @@ export default function App() {
           const updDesc = charDesc + ". Also present: " + r.newMainCharacter;
           setCharDesc(updDesc);
 
-          // Generate portrait in background — don't block page display
+          // Generate portrait BEFORE page displays — consistency over speed
           const styleRefUrl = getStyleRef(curPage?.mood || "forest");
-          (async () => {
-            const newPortrait = await genNewCharPortrait(geminiKey, r.newMainCharacter, artStyle, { styleRefUrl });
-            if (newPortrait) {
-              // Add to portraitUrls so future scenes include this character
-              setPortraitUrls(prev => [...prev, newPortrait]);
+          const newPortrait = await genNewCharPortrait(geminiKey, r.newMainCharacter, artStyle, { styleRefUrl });
+          if (newPortrait) {
+            // Add to portraitUrls so THIS scene and all future scenes include this character
+            setPortraitUrls(prev => [...prev, newPortrait]);
 
-              // Save to library
-              if (supabase && activeChild?.id) {
-                const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
-                const tempId = Date.now().toString();
-                const permPortraitUrl = await uploadPortrait(newPortrait, activeChild.id, tempId);
-                createCharacter({
-                  childId: activeChild.id,
-                  name: charName,
-                  description: r.newMainCharacter,
-                  portraitUrl: permPortraitUrl,
-                  artStyle,
-                });
-              }
+            // Save to library
+            if (supabase && activeChild?.id) {
+              const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
+              const tempId = Date.now().toString();
+              const permPortraitUrl = await uploadPortrait(newPortrait, activeChild.id, tempId);
+              createCharacter({
+                childId: activeChild.id,
+                name: charName,
+                description: r.newMainCharacter,
+                portraitUrl: permPortraitUrl,
+                artStyle,
+              });
             }
-          })();
+          }
         }
         setCurPage(r); setLoading(false);
       } catch { setError(lang === "ru" ? "Ошибка." : "Error."); setLoading(false); }
