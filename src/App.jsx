@@ -273,6 +273,7 @@ export default function App() {
   // Book
   const bookRef = useRef(null);
   const prevPageCountRef = useRef(0);
+  const pendingCharRef = useRef(null); // tracks newly created character for portrait upload
 
   const L = I18N[lang] || I18N.ru;
   const fmtT = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
@@ -419,16 +420,6 @@ export default function App() {
             setRefImgUrl(generatedPortraits[0]);
             setPortraitUrls(generatedPortraits);
 
-            // Upload first portrait to Supabase if we have a saved character
-            if (selectedChar?.id && supabase) {
-              (async () => {
-                const permUrl = await uploadPortrait(generatedPortraits[0], activeChild?.id || "unknown", selectedChar.id);
-                supabase.from("characters").update({ portrait_url: permUrl }).eq("id", selectedChar.id);
-                setRefImgUrl(permUrl);
-                setPortraitUrls(prev => [permUrl, ...prev.slice(1)]);
-              })();
-            }
-
             // Generate scene with ALL portraits
             const sceneUrl = await genNextImage(geminiKey, curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
@@ -463,6 +454,26 @@ export default function App() {
       if (last && !last.imgUrl) setPages(p => { const u = [...p]; u[u.length-1] = { ...u[u.length-1], imgUrl: curImg }; return u; });
     }
   }, [curImg, curPage, pages.length]);
+
+  // ── Retroactive portrait upload to character record ──
+  // Handles race condition: createCharacter resolves after portrait already generated
+  useEffect(() => {
+    const char = pendingCharRef.current || selectedChar;
+    if (!char?.id || !supabase || portraitUrls.length === 0) return;
+    if (char.portrait_url) return; // already has portrait
+    const portrait = portraitUrls[0];
+    if (!portrait) return;
+    pendingCharRef.current = null;
+    (async () => {
+      const permUrl = await uploadPortrait(portrait, activeChild?.id || "unknown", char.id);
+      if (permUrl) {
+        supabase.from("characters").update({ portrait_url: permUrl }).eq("id", char.id);
+        // Update local state so gallery shows portrait immediately
+        setSelectedChar(prev => prev?.id === char.id ? { ...prev, portrait_url: permUrl } : prev);
+        setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
+      }
+    })();
+  }, [selectedChar, portraitUrls]);
 
   // ── Auto-flip book to latest spread ──
   const allPagesLen = curPage ? pages.length + 1 : pages.length;
@@ -535,6 +546,7 @@ export default function App() {
     setActiveChild(child); setTheme(storyTheme); setPages([]); setCurPage(null); setCurImg(null);
     setPicks([]); setSel(null); setT0(Date.now()); setTimer(0); setError(null); setTextDone(false);
     setCustomInput(""); setIdentityTag(null); setCompanionDesc(null); setPortraitRegenDone(false);
+    pendingCharRef.current = null;
     ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url)); ttsCacheRef.current.clear();
     sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
 
@@ -584,10 +596,13 @@ export default function App() {
           childId: child.id,
           name: charName,
           description: r.characterDesc,
-          portraitUrl: null, // will be updated when portrait generates
+          portraitUrl: null, // portrait uploaded retroactively via pendingCharRef
           artStyle,
         }).then(c => {
-          if (c) setSelectedChar(c); // track for updating portrait later
+          if (c) {
+            setSelectedChar(c);
+            pendingCharRef.current = c;
+          }
         });
       }
 
@@ -651,11 +666,14 @@ export default function App() {
             // Save new character to library with individual portrait
             if (supabase && activeChild?.id) {
               const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
+              // Upload portrait to Storage first, then save character with permanent URL
+              const tempId = Date.now().toString();
+              const permPortraitUrl = await uploadPortrait(newPortrait, activeChild.id, tempId);
               createCharacter({
                 childId: activeChild.id,
                 name: charName,
                 description: r.newMainCharacter,
-                portraitUrl: newPortrait,
+                portraitUrl: permPortraitUrl,
                 artStyle,
               });
             }
