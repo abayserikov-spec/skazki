@@ -331,12 +331,14 @@ Respond ONLY valid JSON:
     ? `Create a new story for ${name}. Premise: ${backstory || "a surprise creative adventure"}. Exciting opening!`
     : `${hist}\n\nChild chose: "${choice?.label || ""}" (${choice?.value || "custom"}). Continue. Show consequences.`;
 
-  const res = await fetch("/api/anthropic", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
+  const headers = { "Content-Type": "application/json", "anthropic-version": "2023-06-01" };
+  if (apiKey) {
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-dangerous-direct-browser-access"] = "true";
+  }
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST", headers,
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, system: sys, messages: [{ role: "user", content: textMsg }] }),
   });
 
