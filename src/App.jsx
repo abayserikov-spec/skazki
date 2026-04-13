@@ -655,30 +655,33 @@ export default function App() {
           prevScene: curPage?.scene || null,
         }, antKey);
         if (r.newMainCharacter && geminiKey) {
-          // Generate individual portrait for the new character
-          const styleRefUrl = getStyleRef(curPage?.mood || "forest");
-          const updDesc = charDesc + ". Companion: " + r.newMainCharacter;
-          const newPortrait = await genNewCharPortrait(geminiKey, r.newMainCharacter, artStyle, { styleRefUrl });
-          if (newPortrait) {
-            // Add to portraitUrls so ALL future scenes include this character
-            setPortraitUrls(prev => [...prev, newPortrait]);
-
-            // Save new character to library with individual portrait
-            if (supabase && activeChild?.id) {
-              const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
-              // Upload portrait to Storage first, then save character with permanent URL
-              const tempId = Date.now().toString();
-              const permPortraitUrl = await uploadPortrait(newPortrait, activeChild.id, tempId);
-              createCharacter({
-                childId: activeChild.id,
-                name: charName,
-                description: r.newMainCharacter,
-                portraitUrl: permPortraitUrl,
-                artStyle,
-              });
-            }
-          }
+          // Update charDesc immediately so scene prompt includes new character
+          const updDesc = charDesc + ". Also present: " + r.newMainCharacter;
           setCharDesc(updDesc);
+
+          // Generate portrait in background — don't block page display
+          const styleRefUrl = getStyleRef(curPage?.mood || "forest");
+          (async () => {
+            const newPortrait = await genNewCharPortrait(geminiKey, r.newMainCharacter, artStyle, { styleRefUrl });
+            if (newPortrait) {
+              // Add to portraitUrls so future scenes include this character
+              setPortraitUrls(prev => [...prev, newPortrait]);
+
+              // Save to library
+              if (supabase && activeChild?.id) {
+                const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
+                const tempId = Date.now().toString();
+                const permPortraitUrl = await uploadPortrait(newPortrait, activeChild.id, tempId);
+                createCharacter({
+                  childId: activeChild.id,
+                  name: charName,
+                  description: r.newMainCharacter,
+                  portraitUrl: permPortraitUrl,
+                  artStyle,
+                });
+              }
+            }
+          })();
         }
         setCurPage(r); setLoading(false);
       } catch { setError(lang === "ru" ? "Ошибка." : "Error."); setLoading(false); }
