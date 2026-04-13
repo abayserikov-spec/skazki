@@ -19,7 +19,7 @@ import {
   ensureUser, getChildren as dbGetChildren, addChild as dbAddChild,
   createBook, savePage, finalizeBook, saveBookValues,
   getAllBooks, getBookWithPages, deleteBook,
-  createCharacter, getCharacters, updateCharacterAfterStory, deleteCharacter,
+  createCharacter, getCharacters, updateCharacterAfterStory, deleteCharacter, addCompanionLink,
 } from "./lib/db.js";
 import { uploadIllustration, uploadPortrait } from "./lib/storage-cloud.js";
 import BlurText from "./components/reactbits/BlurText.jsx";
@@ -675,13 +675,21 @@ export default function App() {
               const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
               const tempId = Date.now().toString();
               const permPortraitUrl = await uploadPortrait(newPortrait, activeChild.id, tempId);
-              createCharacter({
+              const currentCompanionIds = selectedChars.map(sc => sc.id);
+              const newChar = await createCharacter({
                 childId: activeChild.id,
                 name: charName,
                 description: r.newMainCharacter,
                 portraitUrl: permPortraitUrl,
                 artStyle,
+                companionIds: currentCompanionIds,
               });
+              // Link back: add new character as companion to existing selected chars
+              if (newChar) {
+                for (const sc of selectedChars) {
+                  addCompanionLink(sc.id, newChar.id);
+                }
+              }
             }
           }
         }
@@ -1301,6 +1309,44 @@ export default function App() {
                 );
               })}
             </div>
+            {/* Companion suggestions */}
+            {selectedChars.length > 0 && (() => {
+              const selectedIds = new Set(selectedChars.map(sc => sc.id));
+              const suggestedIds = new Set();
+              selectedChars.forEach(sc => {
+                (sc.companion_ids || []).forEach(cid => {
+                  if (!selectedIds.has(cid)) suggestedIds.add(cid);
+                });
+              });
+              const suggested = characters.filter(c => suggestedIds.has(c.id));
+              if (suggested.length === 0) return null;
+              return (
+                <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 12, background: T.bgMuted, border: `1px dashed ${T.borderMed}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.tx3, marginBottom: 8 }}>{lang === "ru" ? "Также участвовали:" : "Also appeared together:"}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {suggested.map(c => (
+                      <div
+                        key={c.id}
+                        onClick={() => setSelectedChars(prev => [...prev, c])}
+                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 10, cursor: "pointer", background: T.bgCard, border: `1.5px solid ${T.border}`, transition: "all .2s", fontSize: 12, fontWeight: 600, color: T.tx }}
+                        onMouseOver={e => { e.currentTarget.style.borderColor = T.teal; e.currentTarget.style.background = T.tealBg; }}
+                        onMouseOut={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = T.bgCard; }}
+                      >
+                        {c.portrait_url ? (
+                          <div style={{ width: 24, height: 24, borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
+                            <img src={c.portrait_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          </div>
+                        ) : (
+                          <Avatar name={c.name} size={24} />
+                        )}
+                        <span>{c.name}</span>
+                        <Plus size={12} color={T.teal} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </AnimIn>}
 

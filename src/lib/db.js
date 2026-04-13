@@ -224,7 +224,7 @@ export async function getCharacters(childId) {
 }
 
 /** Create a character after first story page */
-export async function createCharacter({ childId, name, description, portraitUrl, artStyle }) {
+export async function createCharacter({ childId, name, description, portraitUrl, artStyle, companionIds }) {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("characters")
@@ -234,11 +234,29 @@ export async function createCharacter({ childId, name, description, portraitUrl,
       description,
       portrait_url: portraitUrl,
       art_style: artStyle,
+      companion_ids: companionIds || [],
     })
     .select()
     .single();
   if (error) { console.error("createCharacter error:", error); return null; }
   return data;
+}
+
+/** Update companion_ids for characters that shared a story */
+export async function addCompanionLink(characterId, newCompanionId) {
+  if (!supabase) return;
+  const { data: char } = await supabase
+    .from("characters")
+    .select("companion_ids")
+    .eq("id", characterId)
+    .single();
+  if (!char) return;
+  const existing = char.companion_ids || [];
+  if (existing.includes(newCompanionId)) return;
+  await supabase
+    .from("characters")
+    .update({ companion_ids: [...existing, newCompanionId] })
+    .eq("id", characterId);
 }
 
 /** Delete a character */
