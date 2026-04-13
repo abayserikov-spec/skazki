@@ -254,7 +254,7 @@ export default function App() {
   const [library, setLibrary] = useState([]);       // saved books for library view
   const [readingBook, setReadingBook] = useState(null); // book being read from library
   const [characters, setCharacters] = useState([]); // saved characters for reuse (SKZ-5)
-  const [selectedChar, setSelectedChar] = useState(null); // character picked for new story
+  const [selectedChars, setSelectedChars] = useState([]); // characters picked for new story (multi-select)
   
   // TTS state
   const [speaking, setSpeaking] = useState(false);
@@ -321,7 +321,7 @@ export default function App() {
     } else {
       setCharacters([]);
     }
-    setSelectedChar(null);
+    setSelectedChars([]);
   }, [activeChild?.id]);
 
   // ── TTS voice ──
@@ -458,7 +458,7 @@ export default function App() {
   // ── Retroactive portrait upload to character record ──
   // Handles race condition: createCharacter resolves after portrait already generated
   useEffect(() => {
-    const char = pendingCharRef.current || selectedChar;
+    const char = pendingCharRef.current || (selectedChars.length === 1 ? selectedChars[0] : null);
     if (!char?.id || !supabase || portraitUrls.length === 0) return;
     if (char.portrait_url) return; // already has portrait
     const portrait = portraitUrls[0];
@@ -469,11 +469,11 @@ export default function App() {
       if (permUrl) {
         supabase.from("characters").update({ portrait_url: permUrl }).eq("id", char.id);
         // Update local state so gallery shows portrait immediately
-        setSelectedChar(prev => prev?.id === char.id ? { ...prev, portrait_url: permUrl } : prev);
+        setSelectedChars(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
         setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
       }
     })();
-  }, [selectedChar, portraitUrls]);
+  }, [selectedChars, portraitUrls]);
 
   // ── Auto-flip book to latest spread ──
   const allPagesLen = curPage ? pages.length + 1 : pages.length;
@@ -515,17 +515,18 @@ export default function App() {
   };
 
   // ── Generate presets ──
-  const generatePresets = async (childName, childAge, character) => {
+  const generatePresets = async (childName, childAge, characters_selected) => {
     if (!antKey) return;
     setPresetsLoading(true);
-    const charCtx = character
+    const hasChars = characters_selected && characters_selected.length > 0;
+    const charCtx = hasChars
       ? (lang === "en"
-        ? ` The main character is: ${character.name} (${character.description}). All premises must feature THIS character in new adventures.`
-        : ` Главный герой: ${character.name} (${character.description}). Все завязки должны быть про ЭТОГО персонажа в новых приключениях.`)
+        ? ` The main characters are: ${characters_selected.map(c => `${c.name} (${c.description})`).join("; ")}. All premises must feature THESE characters together in new adventures.`
+        : ` Главные герои: ${characters_selected.map(c => `${c.name} (${c.description})`).join("; ")}. Все завязки должны быть про ЭТИХ персонажей вместе в новых приключениях.`)
       : "";
     const prompt = lang === "en"
-      ? `Create 6 short story premises for illustrated children's storybooks (reader age ${childAge}).${charCtx}${!character ? " Each premise describes a FICTIONAL CHARACTER (not the reader) in an interesting situation." : ""} Mix: 2 realistic adventures, 2 fantasy quests, 2 unusual/funny scenarios. Each 1 sentence, 10-18 words. Do NOT use the child's name. Example: "A tiny dragon who is afraid of fire tries to pass the dragon school exam". Respond ONLY JSON: [{"text":"..."}]`
-      : `Придумай 6 коротких завязок для иллюстрированных детских сказок (возраст читателя ${childAge} лет).${charCtx}${!character ? " Каждая завязка описывает ВЫМЫШЛЕННОГО ПЕРСОНАЖА (не ребёнка-читателя) в интересной ситуации." : ""} Микс: 2 реалистичных приключения, 2 фэнтези, 2 необычных/смешных. Каждая — 1 предложение, 10-18 слов. НЕ используй имя ребёнка. Пример: "Маленький дракон, который боится огня, пытается сдать экзамен в школе драконов". Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
+      ? `Create 6 short story premises for illustrated children's storybooks (reader age ${childAge}).${charCtx}${!hasChars ? " Each premise describes a FICTIONAL CHARACTER (not the reader) in an interesting situation." : ""} Mix: 2 realistic adventures, 2 fantasy quests, 2 unusual/funny scenarios. Each 1 sentence, 10-18 words. Do NOT use the child's name. Example: "A tiny dragon who is afraid of fire tries to pass the dragon school exam". Respond ONLY JSON: [{"text":"..."}]`
+      : `Придумай 6 коротких завязок для иллюстрированных детских сказок (возраст читателя ${childAge} лет).${charCtx}${!hasChars ? " Каждая завязка описывает ВЫМЫШЛЕННОГО ПЕРСОНАЖА (не ребёнка-читателя) в интересной ситуации." : ""} Микс: 2 реалистичных приключения, 2 фэнтези, 2 необычных/смешных. Каждая — 1 предложение, 10-18 слов. НЕ используй имя ребёнка. Пример: "Маленький дракон, который боится огня, пытается сдать экзамен в школе драконов". Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -550,12 +551,14 @@ export default function App() {
     ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url)); ttsCacheRef.current.clear();
     sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
 
-    // SKZ-5: If reusing a saved character, restore charDesc + portrait
-    const reuse = selectedChar;
+    // SKZ-5: If reusing saved characters, restore charDesc + portraits
+    const reuse = selectedChars.length > 0 ? selectedChars : null;
     if (reuse) {
-      setCharDesc(reuse.description);
-      setRefImgUrl(reuse.portrait_url);
-      setPortraitUrls(reuse.portrait_url ? [reuse.portrait_url] : []);
+      const combinedDesc = reuse.map(c => c.description).join(" | ");
+      const portraits = reuse.map(c => c.portrait_url).filter(Boolean);
+      setCharDesc(combinedDesc);
+      setRefImgUrl(portraits[0] || null);
+      setPortraitUrls(portraits);
     } else {
       setCharDesc(null);
       setRefImgUrl(null);
@@ -568,7 +571,7 @@ export default function App() {
     if (supabase) {
       const book = await createBook({
         childId: child.id,
-        characterId: reuse?.id || null,
+        characterId: reuse?.[0]?.id || null,
         premise: premise || "surprise creative story",
         artStyle,
         lang,
@@ -582,7 +585,7 @@ export default function App() {
         name: child.name, age: child.age,
         theme: premise || "surprise creative story",
         history: [], choice: null,
-        charDesc: reuse?.description || null,
+        charDesc: reuse ? reuse.map(c => c.description).join(" | ") : null,
         backstory: premise || "", lang, identityTag: null,
       }, antKey);
 
@@ -600,7 +603,7 @@ export default function App() {
           artStyle,
         }).then(c => {
           if (c) {
-            setSelectedChar(c);
+            setSelectedChars([c]);
             pendingCharRef.current = c;
           }
         });
@@ -748,10 +751,12 @@ export default function App() {
       }
 
       // SKZ-5: Update character stats after story
-      if (selectedChar?.id) {
+      if (selectedChars.length > 0) {
         const choiceMap = {};
         picks.forEach(p => { if (p.value && p.value !== "custom") choiceMap[p.value] = (choiceMap[p.value] || 0) + 1; });
-        await updateCharacterAfterStory(selectedChar.id, choiceMap);
+        for (const sc of selectedChars) {
+          await updateCharacterAfterStory(sc.id, choiceMap);
+        }
         // Refresh characters list
         if (activeChild?.id) {
           const chars = await getCharacters(activeChild.id);
@@ -1008,7 +1013,7 @@ export default function App() {
                         <div style={{ display: "flex", gap: 6 }}>
                           <button
                             onClick={() => {
-                              setSelectedChar(c);
+                              setSelectedChars([c]);
                               setView("dashboard");
                             }}
                             style={{ padding: "6px 12px", borderRadius: T.rF, background: T.accentBg, color: T.accent, border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, fontFamily: T.body, display: "flex", alignItems: "center", gap: 4, transition: "all .2s" }}
@@ -1022,7 +1027,7 @@ export default function App() {
                               if (confirm(lang === "ru" ? `Удалить "${c.name}"?` : `Delete "${c.name}"?`)) {
                                 await deleteCharacter(c.id);
                                 setCharacters(prev => prev.filter(ch => ch.id !== c.id));
-                                if (selectedChar?.id === c.id) setSelectedChar(null);
+                                if (selectedChars.some(sc => sc.id === c.id)) setSelectedChars(prev => prev.filter(sc => sc.id !== c.id));
                               }
                             }}
                             style={{ padding: "6px 8px", borderRadius: T.rF, background: "transparent", color: T.tx3, border: `1px solid ${T.border}`, cursor: "pointer", display: "flex", alignItems: "center", transition: "all .2s" }}
@@ -1240,50 +1245,58 @@ export default function App() {
           </div>
         </AnimIn>
 
-        {/* SKZ-5: Saved characters for reuse */}
+        {/* SKZ-5: Saved characters for reuse (multi-select) */}
         {activeChild && characters.length > 0 && <AnimIn delay={0.10}>
           <div className="skazka-card" style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <SectionLabel>{lang === "ru" ? "Герои" : "Characters"}</SectionLabel>
-              <span style={{ fontSize: 11, color: T.tx3 }}>{lang === "ru" ? "выберите для продолжения" : "pick to continue"}</span>
+              <span style={{ fontSize: 11, color: T.tx3 }}>{selectedChars.length > 0 ? (lang === "ru" ? `выбрано: ${selectedChars.length}` : `selected: ${selectedChars.length}`) : (lang === "ru" ? "можно выбрать несколько" : "select one or more")}</span>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {/* "New character" option */}
               <div
-                onClick={() => setSelectedChar(null)}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, cursor: "pointer", transition: "all .25s", background: !selectedChar ? T.accentBg : T.bgMuted, border: `2px solid ${!selectedChar ? T.accent : "transparent"}` }}
+                onClick={() => setSelectedChars([])}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, cursor: "pointer", transition: "all .25s", background: selectedChars.length === 0 ? T.accentBg : T.bgMuted, border: `2px solid ${selectedChars.length === 0 ? T.accent : "transparent"}` }}
               >
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: T.accentBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Sparkles size={16} color={T.accent} />
                 </div>
                 <div><div style={{ fontWeight: 600, fontSize: 13, color: T.tx }}>{lang === "ru" ? "Новый герой" : "New character"}</div></div>
               </div>
-              {characters.map(c => (
-                <div
-                  key={c.id}
-                  onClick={() => setSelectedChar(selectedChar?.id === c.id ? null : c)}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, cursor: "pointer", transition: "all .25s", background: selectedChar?.id === c.id ? T.tealBg : T.bgMuted, border: `2px solid ${selectedChar?.id === c.id ? T.teal : "transparent"}` }}
-                >
-                  {c.portrait_url ? (
-                    <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
-                      <img src={c.portrait_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              {characters.map(c => {
+                const isSelected = selectedChars.some(sc => sc.id === c.id);
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => setSelectedChars(prev => isSelected ? prev.filter(sc => sc.id !== c.id) : [...prev, c])}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, cursor: "pointer", transition: "all .25s", background: isSelected ? T.tealBg : T.bgMuted, border: `2px solid ${isSelected ? T.teal : "transparent"}`, position: "relative" }}
+                  >
+                    {c.portrait_url ? (
+                      <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+                        <img src={c.portrait_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                    ) : (
+                      <Avatar name={c.name} size={36} />
+                    )}
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: T.tx }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: T.tx3 }}>{c.stories_count || 0} {lang === "ru" ? "историй" : "stories"}</div>
                     </div>
-                  ) : (
-                    <Avatar name={c.name} size={36} />
-                  )}
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: T.tx }}>{c.name}</div>
-                    <div style={{ fontSize: 10, color: T.tx3 }}>{c.stories_count || 0} {lang === "ru" ? "историй" : "stories"}</div>
+                    {isSelected && (
+                      <div style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: T.teal, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Check size={11} color="#fff" strokeWidth={3} />
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </AnimIn>}
 
         {/* New Session CTA */}
         {children.length > 0 && <AnimIn delay={0.12}>
-          <div onClick={activeChild ? () => { setBackstory(""); setPresets([]); setView("setup"); generatePresets(activeChild.name, activeChild.age, selectedChar); } : undefined}
+          <div onClick={activeChild ? () => { setBackstory(""); setPresets([]); setView("setup"); generatePresets(activeChild.name, activeChild.age, selectedChars); } : undefined}
             className="skazka-card" style={{ marginBottom: 16, cursor: activeChild ? "pointer" : "default", background: activeChild ? `linear-gradient(135deg,${T.accent},#7B68EE,${T.accentSoft})` : T.bgCard, border: "none", padding: "26px 24px", opacity: activeChild ? 1 : 0.6 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 44, height: 44, borderRadius: 14, background: activeChild ? "rgba(255,255,255,0.18)" : T.accentBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1388,7 +1401,7 @@ export default function App() {
           <div className="skazka-card" style={{ marginBottom: 14, padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <SectionLabel style={{ margin: 0 }}>{L.storyIdeas}</SectionLabel>
-              <PillBtn variant="ghost" onClick={() => { setPresets([]); generatePresets(activeChild.name, activeChild.age, selectedChar); }} disabled={presetsLoading} style={{ padding: "6px 14px", borderRadius: T.r, fontSize: 11 }}><RefreshCw size={12} />{L.more}</PillBtn>
+              <PillBtn variant="ghost" onClick={() => { setPresets([]); generatePresets(activeChild.name, activeChild.age, selectedChars); }} disabled={presetsLoading} style={{ padding: "6px 14px", borderRadius: T.r, fontSize: 11 }}><RefreshCw size={12} />{L.more}</PillBtn>
             </div>
             {presetsLoading && presets.length === 0 ? (
               <div style={{ textAlign: "center", padding: 24 }}><Loader2 size={20} color={T.accent} style={{ animation: "spin .8s linear infinite" }} /><p style={{ fontSize: 12, color: T.tx3, marginTop: 8 }}>{L.generating}</p></div>
