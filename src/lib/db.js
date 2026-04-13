@@ -248,11 +248,11 @@ export async function deleteCharacter(characterId) {
 }
 
 /** Increment story count and update choices */
-export async function updateCharacterAfterStory(characterId, newChoices) {
+export async function updateCharacterAfterStory(characterId, newChoices, arcAddition) {
   if (!supabase) return;
   const { data: char } = await supabase
     .from("characters")
-    .select("stories_count, total_choices")
+    .select("stories_count, total_choices, story_arc")
     .eq("id", characterId)
     .single();
   if (!char) return;
@@ -262,11 +262,18 @@ export async function updateCharacterAfterStory(characterId, newChoices) {
     merged[k] = (merged[k] || 0) + v;
   });
 
+  // Append to story arc (keep last 5 entries to avoid bloat)
+  const existingArc = char.story_arc || [];
+  const updatedArc = arcAddition
+    ? [...existingArc, arcAddition].slice(-5)
+    : existingArc;
+
   await supabase
     .from("characters")
     .update({
       stories_count: (char.stories_count || 0) + 1,
       total_choices: merged,
+      story_arc: updatedArc,
       last_used_at: new Date().toISOString(),
     })
     .eq("id", characterId);

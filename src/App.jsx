@@ -587,6 +587,7 @@ export default function App() {
         history: [], choice: null,
         charDesc: reuse ? reuse.map(c => c.description).join(" | ") : null,
         backstory: premise || "", lang, identityTag: null,
+        previousArc: reuse ? reuse.flatMap(c => c.story_arc || []) : null,
       }, antKey);
 
       if (r.characterDesc && !reuse) setCharDesc(r.characterDesc);
@@ -653,7 +654,7 @@ export default function App() {
           name: activeChild.name, age: activeChild.age, theme: theme.prompt,
           history: up.map(p => ({ text: p.text, choice: p.choice, mood: p.mood, sceneSummary: p.sceneSummary, actionSummary: p.actionSummary, illustration: p.illustration })),
           choice: ch, charDesc, lang, identityTag,
-          // Phase 2: pass previous illustration for quality check
+          previousArc: selectedChars.length > 0 ? selectedChars.flatMap(c => c.story_arc || []) : null,
           prevIllustrationUrl: curImg || null,
           prevScene: curPage?.scene || null,
         }, antKey);
@@ -754,8 +755,11 @@ export default function App() {
       if (selectedChars.length > 0) {
         const choiceMap = {};
         picks.forEach(p => { if (p.value && p.value !== "custom") choiceMap[p.value] = (choiceMap[p.value] || 0) + 1; });
+        // Get story summary from last page for arc
+        const lastPageData = allPages[allPages.length - 1];
+        const arcEntry = lastPageData?.storySummary || lastPageData?.title || null;
         for (const sc of selectedChars) {
-          await updateCharacterAfterStory(sc.id, choiceMap);
+          await updateCharacterAfterStory(sc.id, choiceMap, arcEntry);
         }
         // Refresh characters list
         if (activeChild?.id) {
@@ -991,9 +995,15 @@ export default function App() {
                     <div style={{ flex: 1, padding: "16px 18px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 140 }}>
                       <div>
                         <div style={{ fontFamily: T.display, fontWeight: 600, fontSize: 17, color: T.tx, marginBottom: 6, lineHeight: 1.2 }}>{c.name}</div>
-                        <div style={{ fontSize: 12, color: T.tx2, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        <div style={{ fontSize: 12, color: T.tx2, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                           {c.description}
                         </div>
+                        {c.story_arc && c.story_arc.length > 0 && (
+                          <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 8, background: T.bgMuted, fontSize: 11, color: T.tx3, lineHeight: 1.5 }}>
+                            <span style={{ fontWeight: 700, color: T.tx2 }}>{lang === "ru" ? "Путь: " : "Journey: "}</span>
+                            {c.story_arc.join(" → ")}
+                          </div>
+                        )}
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>

@@ -207,7 +207,7 @@ const CAMERA_SEQUENCE = [
 export async function genPage(ctx, apiKey) {
   const {
     name, age, theme, history, choice, charDesc, backstory,
-    lang: storyLang, identityTag,
+    lang: storyLang, identityTag, previousArc,
   } = ctx;
 
   const pn = history.length + 1;
@@ -254,6 +254,9 @@ export async function genPage(ctx, apiKey) {
     : "Give 2-3 choices. Include at least one POSITIVE and one NEGATIVE/TEMPTING choice. Negative should feel tempting. Natural consequences, not preachy.";
 
   const backstoryBlock = backstory ? `\n- STORY PREMISE: ${backstory}. Build around this.` : "";
+  const arcBlock = previousArc && previousArc.length > 0
+    ? `\n- CHARACTER HISTORY (previous adventures): ${previousArc.join(" → ")}. Reference past events naturally — the character remembers and has grown from these experiences. Don't retell old stories, but build on them.`
+    : "";
   const langInstr = storyLang === "en" ? "Write story text in ENGLISH." : "Write story text in RUSSIAN.";
 
   const copyrightInstr = "\n- COPYRIGHT CHARACTERS: If the child mentions a character from movies/cartoons/comics/games, create an ORIGINAL character INSPIRED by them. Give them a new name, keep iconic abilities. Describe with SPECIFIC visual details in the scene field. Use 'outfit', 'clothes', 'attire' instead of 'costume', 'suit', 'uniform'. Never use original character names in the scene field.";
@@ -312,7 +315,7 @@ FORBIDDEN in scene descriptions:
 
   const sys = `You are a master storyteller creating interactive stories for children. ${langInstr} This is a STORY WITH CONSEQUENCES — the child's choices DIRECTLY shape the outcome.
 Rules:
-- Child: ${name}, age ${age}${charBlock}${backstoryBlock}
+- Child: ${name}, age ${age}${charBlock}${backstoryBlock}${arcBlock}
 - Page ${pn}/${TOTAL_PAGES}. Write 2-3 vivid sentences in simple, engaging language appropriate for the child's age.${copyrightInstr}
 - TONE MATCHING: Determine the tone from the premise. If the premise is realistic — keep it grounded. NO magic unless the premise involves fantasy.
 - ${choicesInstruction}
@@ -320,9 +323,9 @@ Rules:
 - If the child made a positive choice, show warm rewards.
 ${sceneInstructions}
 - "mood": forest|ocean|space|castle|magic|city|school|sports|home
-
+${isEnd ? '- LAST PAGE: Include "storySummary" — a single English sentence (15-25 words) summarizing what happened to the main character in this story and how they changed. This is for the character\'s memory across stories.' : ""}
 Respond ONLY valid JSON:
-{"text":"...","mood":"...","scene":"...cinematic english scene description, 40-80 words...","cameraAngle":"...shot type used...","sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"}`;
+{"text":"...","mood":"...","scene":"...cinematic english scene description, 40-80 words...","cameraAngle":"...shot type used...","sceneSummary":"2-4 words","actionSummary":"2-4 words"${charDescJson},${choicesOrEnd},"title":"chapter title in ${storyLang === "en" ? "English" : "Russian"}","sfx":"ambient 5-10 words","tts_text":"text for TTS"${isEnd ? ',"storySummary":"...english summary of this story for character memory..."' : ""}}`;
 
   const textMsg = history.length === 0
     ? `Create a new story for ${name}. Premise: ${backstory || "a surprise creative adventure"}. Exciting opening!`
