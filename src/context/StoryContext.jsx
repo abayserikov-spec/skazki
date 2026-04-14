@@ -150,8 +150,20 @@ export function StoryProvider({ children }) {
     ORIGIN + "/style-refs/ref-06-fox.png",
   ];
   const getStyleRef = (mood) => {
-    const map = { home: 0, school: 0, forest: 1, city: 1, ocean: 1, sports: 1, magic: 4, castle: 4, space: 4 };
-    return STYLE_REFS[map[mood] ?? 1];
+    // Return 3 most relevant style refs per mood for better style consistency
+    const moodRefs = {
+      home:   [0, 2, 5], // interior, group, fox
+      school: [0, 2, 3], // interior, group, owl
+      forest: [1, 4, 5], // forest, hedgehog, fox
+      city:   [1, 2, 0], // forest, group, interior
+      ocean:  [1, 5, 4], // forest, fox, hedgehog
+      sports: [1, 2, 5], // forest, group, fox
+      magic:  [4, 3, 5], // hedgehog, owl, fox
+      castle: [3, 4, 0], // owl, hedgehog, interior
+      space:  [3, 4, 5], // owl, hedgehog, fox
+    };
+    const indices = moodRefs[mood] || [1, 4, 5];
+    return indices.map(i => STYLE_REFS[i]);
   };
 
   // ── Image generation ──

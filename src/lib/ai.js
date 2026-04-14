@@ -58,7 +58,8 @@ async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "16:9"
 export async function genCharPortrait(charDesc, scene, artStyleKey, opts = {}) {
 
   const styleRef = opts.styleRefUrl || null;
-  const hasRef = !!styleRef;
+  const styleRefs = Array.isArray(styleRef) ? styleRef : (styleRef ? [styleRef] : []);
+  const hasRef = styleRefs.length > 0;
   const styleText = hasRef ? STYLE_REF_INSTRUCTION : (STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book);
 
   const prompt = [
@@ -69,7 +70,7 @@ export async function genCharPortrait(charDesc, scene, artStyleKey, opts = {}) {
     `Clean image without any text, words, or writing.`,
   ].join(" ");
 
-  const refs = hasRef ? [styleRef] : [];
+  const refs = [...styleRefs];
 
   try {
     return await geminiGenerate(prompt, refs, "1:1");
@@ -87,7 +88,8 @@ export async function genCharPortrait(charDesc, scene, artStyleKey, opts = {}) {
 export async function genNewCharPortrait(newCharDesc, artStyleKey, opts = {}) {
 
   const styleRef = opts.styleRefUrl || null;
-  const hasRef = !!styleRef;
+  const styleRefs = Array.isArray(styleRef) ? styleRef : (styleRef ? [styleRef] : []);
+  const hasRef = styleRefs.length > 0;
   const styleText = hasRef ? STYLE_REF_INSTRUCTION : (STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book);
 
   const prompt = [
@@ -98,7 +100,7 @@ export async function genNewCharPortrait(newCharDesc, artStyleKey, opts = {}) {
     `Clean image without any text or writing.`,
   ].join(" ");
 
-  const refs = hasRef ? [styleRef] : [];
+  const refs = [...styleRefs];
 
   try {
     return await geminiGenerate(prompt, refs, "1:1");
@@ -119,7 +121,8 @@ export async function genNextImage(scene, charDesc, portraitUrls, mood, artStyle
   // portraitUrls can be a string (single) or array (multiple characters)
   const portraits = Array.isArray(portraitUrls) ? portraitUrls : (portraitUrls ? [portraitUrls] : []);
   const styleRef = opts.styleRefUrl || null;
-  const hasRef = !!styleRef;
+  const styleRefs = Array.isArray(styleRef) ? styleRef : (styleRef ? [styleRef] : []);
+  const hasRef = styleRefs.length > 0;
   const styleText = hasRef ? STYLE_REF_INSTRUCTION : (STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book);
 
   const charCount = portraits.length;
@@ -135,9 +138,8 @@ export async function genNextImage(scene, charDesc, portraitUrls, mood, artStyle
     `Clean image without any text, words, or writing.`,
   ].join(" ");
 
-  // Build reference array: style ref first, then portraits
-  const refs = [];
-  if (styleRef) refs.push(styleRef);
+  // Build reference array: style refs first, then portraits
+  const refs = [...styleRefs];
   portraits.forEach(p => { if (p) refs.push(p); });
 
   try {
@@ -156,7 +158,8 @@ export async function genNextImage(scene, charDesc, portraitUrls, mood, artStyle
 export async function genFirstImage(scene, charDesc, mood, artStyleKey, opts = {}) {
 
   const styleRef = opts.styleRefUrl || null;
-  const hasRef = !!styleRef;
+  const styleRefs = Array.isArray(styleRef) ? styleRef : (styleRef ? [styleRef] : []);
+  const hasRef = styleRefs.length > 0;
   const styleText = hasRef ? STYLE_REF_INSTRUCTION : (STYLE_ANCHORS[artStyleKey] || STYLE_ANCHORS.book);
 
   const prompt = [
@@ -167,7 +170,7 @@ export async function genFirstImage(scene, charDesc, mood, artStyleKey, opts = {
     `Clean image without any text, words, or writing.`,
   ].join(" ");
 
-  const refs = hasRef ? [styleRef] : [];
+  const refs = [...styleRefs];
 
   try {
     return await geminiGenerate(prompt, refs, "16:9");
