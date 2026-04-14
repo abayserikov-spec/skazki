@@ -132,6 +132,7 @@ export async function genNextImage(scene, charDesc, portraitUrls, mood, artStyle
     `Place the character${charCount > 1 ? "s" : ""} in this scene:`,
     scene,
     charInstruction,
+    `Create a completely NEW scene and background based on the description above. Do NOT reuse or copy any backgrounds, environments, or scene elements from the reference images — only copy the characters' appearance.`,
     `Clean image without any text, words, or writing.`,
   ].join(" ");
 
