@@ -22,11 +22,7 @@ export default function CharactersView() {
   const [creatorError, setCreatorError] = useState(null);
 
   const ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
-  const defaultStyleRefs = [
-    ORIGIN + "/style-refs/ref-02-forest.png",
-    ORIGIN + "/style-refs/ref-05-hedgehog.png",
-    ORIGIN + "/style-refs/ref-06-fox.png",
-  ];
+  const defaultStyleRef = ORIGIN + "/style-refs/ref-02-forest.png";
 
   // ── Generate portrait preview ──
   const handleGenerate = async () => {
@@ -36,7 +32,7 @@ export default function CharactersView() {
     setCreatorError(null);
     setPreviewUrl(null);
     try {
-      const portrait = await genCharPortrait(charDescription.trim(), null, artStyle, { styleRefUrl: defaultStyleRefs });
+      const portrait = await genCharPortrait(charDescription.trim(), null, artStyle, { styleRefUrl: defaultStyleRef });
       if (portrait) {
         setPreviewUrl(portrait);
       } else {

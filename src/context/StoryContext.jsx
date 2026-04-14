@@ -172,20 +172,11 @@ export function StoryProvider({ children }) {
   }, []);
 
   const getStyleRefsAsDataUri = useCallback(async (mood) => {
-    const moodRefs = {
-      home:   [0, 2, 5],
-      school: [0, 2, 3],
-      forest: [1, 4, 5],
-      city:   [1, 2, 0],
-      ocean:  [1, 5, 4],
-      sports: [1, 2, 5],
-      magic:  [4, 3, 5],
-      castle: [3, 4, 0],
-      space:  [3, 4, 5],
-    };
-    const indices = moodRefs[mood] || [1, 4, 5];
-    const urls = indices.map(i => STYLE_REFS[i]);
-    return Promise.all(urls.map(u => preloadStyleRef(u)));
+    // Single most relevant style ref per mood
+    const moodMap = { home: 0, school: 0, forest: 1, city: 1, ocean: 1, sports: 1, magic: 4, castle: 4, space: 4 };
+    const idx = moodMap[mood] ?? 1;
+    const dataUri = await preloadStyleRef(STYLE_REFS[idx]);
+    return [dataUri];
   }, [preloadStyleRef]);
 
   // Preload all style refs on mount
