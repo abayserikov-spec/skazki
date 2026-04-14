@@ -190,6 +190,25 @@ export function StoryProvider({ children }) {
           if (generatedPortraits.length > 0) {
             setRefImgUrl(generatedPortraits[0]);
             setPortraitUrls(generatedPortraits);
+
+            // Upload portrait immediately and update character record
+            if (supabase && activeChild?.id) {
+              const char = pendingCharRef.current || (selectedChars.length === 1 ? selectedChars[0] : null);
+              if (char?.id && !char.portrait_url) {
+                (async () => {
+                  try {
+                    const permUrl = await uploadPortrait(generatedPortraits[0], activeChild.id, char.id);
+                    if (permUrl) {
+                      await supabase.from("characters").update({ portrait_url: permUrl }).eq("id", char.id);
+                      setSelectedChars(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
+                      setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
+                      pendingCharRef.current = null;
+                    }
+                  } catch (e) { console.error("Portrait upload error:", e); }
+                })();
+              }
+            }
+
             const sceneUrl = await genNextImage(curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
             setCurImg(sceneUrl);
           } else {
@@ -220,7 +239,7 @@ export function StoryProvider({ children }) {
     }
   }, [curImg, curPage, pages.length]);
 
-  // ── Retroactive portrait upload ──
+  // ── Retroactive portrait upload (backup) ──
   useEffect(() => {
     const char = pendingCharRef.current || (selectedChars.length === 1 ? selectedChars[0] : null);
     if (!char?.id || !supabase || portraitUrls.length === 0) return;
@@ -229,12 +248,15 @@ export function StoryProvider({ children }) {
     if (!portrait) return;
     pendingCharRef.current = null;
     (async () => {
-      const permUrl = await uploadPortrait(portrait, activeChild?.id || "unknown", char.id);
-      if (permUrl) {
-        supabase.from("characters").update({ portrait_url: permUrl }).eq("id", char.id);
-        setSelectedChars(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
-        setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
-      }
+      try {
+        const permUrl = await uploadPortrait(portrait, activeChild?.id || "unknown", char.id);
+        if (permUrl) {
+          await supabase.from("characters").update({ portrait_url: permUrl }).eq("id", char.id);
+          setSelectedChars(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
+          setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
+        }
+      } catch (e) { console.error("Retroactive portrait upload error:", e); }
+    })();
     })();
   }, [selectedChars, portraitUrls]);
 
