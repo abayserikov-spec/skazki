@@ -257,7 +257,6 @@ export function StoryProvider({ children }) {
         }
       } catch (e) { console.error("Retroactive portrait upload error:", e); }
     })();
-    })();
   }, [selectedChars, portraitUrls]);
 
   // ── Auto-flip book ──
