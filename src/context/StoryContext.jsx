@@ -149,40 +149,23 @@ export function StoryProvider({ children }) {
     ORIGIN + "/style-refs/ref-05-hedgehog.png",
     ORIGIN + "/style-refs/ref-06-fox.png",
   ];
-  // ── Style ref cache (preload as base64 to avoid re-fetching) ──
   const styleRefCacheRef = useRef(new Map());
-
-  const preloadStyleRef = useCallback(async (url) => {
-    if (styleRefCacheRef.current.has(url)) return styleRefCacheRef.current.get(url);
-    try {
-      const res = await fetch(url);
-      if (!res.ok) return url;
-      const blob = await res.blob();
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUri = reader.result;
-          styleRefCacheRef.current.set(url, dataUri);
-          resolve(dataUri);
-        };
-        reader.onerror = () => resolve(url);
-        reader.readAsDataURL(blob);
-      });
-    } catch { return url; }
-  }, []);
-
-  const getStyleRefsAsDataUri = useCallback(async (mood) => {
-    // Single most relevant style ref per mood
-    const moodMap = { home: 0, school: 0, forest: 1, city: 1, ocean: 1, sports: 1, magic: 4, castle: 4, space: 4 };
-    const idx = moodMap[mood] ?? 1;
-    const dataUri = await preloadStyleRef(STYLE_REFS[idx]);
-    return [dataUri];
-  }, [preloadStyleRef]);
-
-  // Preload all style refs on mount
+  const getStyleRef = (mood) => {
+    const map = { home: 0, school: 0, forest: 1, city: 1, ocean: 1, sports: 1, magic: 4, castle: 4, space: 4 };
+    const url = STYLE_REFS[map[mood] ?? 1];
+    // Return cached base64 if available, otherwise URL
+    return styleRefCacheRef.current.get(url) || url;
+  };
+  // Preload style refs as base64 on mount
   useEffect(() => {
-    STYLE_REFS.forEach(url => preloadStyleRef(url));
-  }, [preloadStyleRef]);
+    STYLE_REFS.forEach(url => {
+      fetch(url).then(r => r.blob()).then(blob => {
+        const reader = new FileReader();
+        reader.onload = () => styleRefCacheRef.current.set(url, reader.result);
+        reader.readAsDataURL(blob);
+      }).catch(() => {});
+    });
+  }, []);
 
   // ── Image generation ──
   useEffect(() => {
@@ -191,61 +174,43 @@ export function StoryProvider({ children }) {
     setImgLoading(true);
     const mood = curPage.mood || "forest";
     const isFirst = portraitUrls.length === 0 && !refImgUrl;
-
-    (async () => {
-    const styleRefUrl = await getStyleRefsAsDataUri(mood);
+    const styleRefUrl = getStyleRef(mood);
     const imgOpts = { styleRefUrl };
 
     if (isFirst) {
-      try {
-        const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
-        const generatedPortraits = [];
-        if (charParts.length > 0) {
-          for (const partDesc of charParts) {
-            const portrait = await genCharPortrait(partDesc, curPage.scene, artStyle, imgOpts);
-            if (portrait) generatedPortraits.push(portrait);
-          }
-        }
-        if (generatedPortraits.length > 0) {
-          setRefImgUrl(generatedPortraits[0]);
-          setPortraitUrls(generatedPortraits);
-
-          // Upload portrait immediately and update character record
-          if (supabase && activeChild?.id) {
-            const char = pendingCharRef.current || (selectedChars.length === 1 ? selectedChars[0] : null);
-            if (char?.id && !char.portrait_url) {
-              (async () => {
-                try {
-                  const permUrl = await uploadPortrait(generatedPortraits[0], activeChild.id, char.id);
-                  if (permUrl) {
-                    await supabase.from("characters").update({ portrait_url: permUrl }).eq("id", char.id);
-                    setSelectedChars(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
-                    setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
-                    pendingCharRef.current = null;
-                  }
-                } catch (e) { console.error("Portrait upload error:", e); }
-              })();
+      (async () => {
+        try {
+          const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
+          const generatedPortraits = [];
+          if (charParts.length > 0) {
+            for (const partDesc of charParts) {
+              const portrait = await genCharPortrait(partDesc, curPage.scene, artStyle, imgOpts);
+              if (portrait) generatedPortraits.push(portrait);
             }
           }
-
-          const sceneUrl = await genNextImage(curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
-          setCurImg(sceneUrl);
-        } else {
-          const sceneUrl = await genFirstImage(curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
-          setCurImg(sceneUrl);
-          if (sceneUrl) { setRefImgUrl(sceneUrl); setPortraitUrls([sceneUrl]); }
-        }
-        setImgLoading(false);
-      } catch { setImgLoading(false); }
+          if (generatedPortraits.length > 0) {
+            setRefImgUrl(generatedPortraits[0]);
+            setPortraitUrls(generatedPortraits);
+            const sceneUrl = await genNextImage(curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
+            setCurImg(sceneUrl);
+          } else {
+            const sceneUrl = await genFirstImage(curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
+            setCurImg(sceneUrl);
+            if (sceneUrl) { setRefImgUrl(sceneUrl); setPortraitUrls([sceneUrl]); }
+          }
+          setImgLoading(false);
+        } catch { setImgLoading(false); }
+      })();
     } else {
-      try {
-        const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
-        const url = await genNextImage(curPage.scene, charDesc || "the main character", refs, mood, artStyle, imgOpts);
-        setCurImg(url);
-        setImgLoading(false);
-      } catch { setImgLoading(false); }
+      (async () => {
+        try {
+          const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
+          const url = await genNextImage(curPage.scene, charDesc || "the main character", refs, mood, artStyle, imgOpts);
+          setCurImg(url);
+          setImgLoading(false);
+        } catch { setImgLoading(false); }
+      })();
     }
-    })();
   }, [curPage?.scene, curPage?.illustration]);
 
   // ── Retroactive image fix ──
@@ -256,7 +221,7 @@ export function StoryProvider({ children }) {
     }
   }, [curImg, curPage, pages.length]);
 
-  // ── Retroactive portrait upload (backup) ──
+  // ── Retroactive portrait upload ──
   useEffect(() => {
     const char = pendingCharRef.current || (selectedChars.length === 1 ? selectedChars[0] : null);
     if (!char?.id || !supabase || portraitUrls.length === 0) return;
@@ -272,7 +237,7 @@ export function StoryProvider({ children }) {
           setSelectedChars(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
           setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
         }
-      } catch (e) { console.error("Retroactive portrait upload error:", e); }
+      } catch (e) { console.error("Portrait upload error:", e); }
     })();
   }, [selectedChars, portraitUrls]);
 
