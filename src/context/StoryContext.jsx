@@ -247,9 +247,16 @@ export function StoryProvider({ children }) {
         ? ` The main characters are: ${chars.map(c => `${c.name} (${c.description})`).join("; ")}. All premises must feature THESE characters together in new adventures.`
         : ` Главные герои: ${chars.map(c => `${c.name} (${c.description})`).join("; ")}. Все завязки должны быть про ЭТИХ персонажей вместе в новых приключениях.`)
       : "";
+    const nameRule = hasChars
+      ? (lang === "en"
+        ? ` ALWAYS use the character names (${chars.map(c => c.name).join(", ")}) in every premise. Do NOT use the child's name.`
+        : ` ОБЯЗАТЕЛЬНО используй имена персонажей (${chars.map(c => c.name).join(", ")}) в каждой завязке. НЕ используй имя ребёнка.`)
+      : (lang === "en"
+        ? " Each premise describes a FICTIONAL CHARACTER (not the reader) in an interesting situation. Do NOT use the child's name."
+        : " Каждая завязка описывает ВЫМЫШЛЕННОГО ПЕРСОНАЖА (не ребёнка-читателя) в интересной ситуации. НЕ используй имя ребёнка.");
     const prompt = lang === "en"
-      ? `Create 6 short story premises for illustrated children's storybooks (reader age ${childAge}).${charCtx}${!hasChars ? " Each premise describes a FICTIONAL CHARACTER (not the reader) in an interesting situation." : ""} Mix: 2 realistic adventures, 2 fantasy quests, 2 unusual/funny scenarios. Each 1 sentence, 10-18 words. Do NOT use the child's name. Example: "A tiny dragon who is afraid of fire tries to pass the dragon school exam". Respond ONLY JSON: [{"text":"..."}]`
-      : `Придумай 6 коротких завязок для иллюстрированных детских сказок (возраст читателя ${childAge} лет).${charCtx}${!hasChars ? " Каждая завязка описывает ВЫМЫШЛЕННОГО ПЕРСОНАЖА (не ребёнка-читателя) в интересной ситуации." : ""} Микс: 2 реалистичных приключения, 2 фэнтези, 2 необычных/смешных. Каждая — 1 предложение, 10-18 слов. НЕ используй имя ребёнка. Пример: "Маленький дракон, который боится огня, пытается сдать экзамен в школе драконов". Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
+      ? `Create 6 short story premises for illustrated children's storybooks (reader age ${childAge}).${charCtx}${nameRule} Mix: 2 realistic adventures, 2 fantasy quests, 2 unusual/funny scenarios. Each 1 sentence, 10-18 words. Example: "A tiny dragon who is afraid of fire tries to pass the dragon school exam". Respond ONLY JSON: [{"text":"..."}]`
+      : `Придумай 6 коротких завязок для иллюстрированных детских сказок (возраст читателя ${childAge} лет).${charCtx}${nameRule} Микс: 2 реалистичных приключения, 2 фэнтези, 2 необычных/смешных. Каждая — 1 предложение, 10-18 слов. Пример: "Маленький дракон, который боится огня, пытается сдать экзамен в школе драконов". Ответь ТОЛЬКО JSON: [{"text":"..."}]`;
     try {
       const r = await fetch("/api/anthropic", {
         method: "POST",
@@ -309,7 +316,7 @@ export function StoryProvider({ children }) {
       if (r.identityTag) setIdentityTag(r.identityTag);
 
       if (r.characterDesc && !reuse && supabase && child.id) {
-        const charName = r.title || (premise || "Hero").slice(0, 30);
+        const charName = r.characterName || r.title || (premise || "Hero").slice(0, 30);
         createCharacter({
           childId: child.id, name: charName,
           description: r.characterDesc, portraitUrl: null, artStyle,
