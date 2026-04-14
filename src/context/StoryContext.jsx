@@ -385,7 +385,7 @@ export function StoryProvider({ children }) {
           if (newPortrait) {
             setPortraitUrls(prev => [...prev, newPortrait]);
             if (supabase && activeChild?.id) {
-              const charName = r.newMainCharacter.split(",")[0].slice(0, 30);
+              const charName = r.newCharacterName || r.newMainCharacter.split(",")[0].slice(0, 30);
               const tempId = Date.now().toString();
               const permPortraitUrl = await uploadPortrait(newPortrait, activeChild.id, tempId);
               const currentCompanionIds = selectedChars.map(sc => sc.id);
