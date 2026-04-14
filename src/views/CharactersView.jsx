@@ -1,12 +1,112 @@
+import { useState } from "react";
 import {
   ArrowLeft, BookOpen, Palette, Play, Trash2, Users,
+  Plus, Loader2, RefreshCw, Sparkles, X,
 } from "lucide-react";
 import { T, CSS, PillBtn, Avatar, AnimIn } from "../components/UI.jsx";
 import { useApp } from "../context/AppContext.jsx";
-import { deleteCharacter } from "../lib/db.js";
+import { deleteCharacter, createCharacter } from "../lib/db.js";
+import { genCharPortrait } from "../lib/ai.js";
+import { uploadPortrait } from "../lib/storage-cloud.js";
 
 export default function CharactersView() {
-  const { lang, L, setView, characters, setCharacters, selectedChars, setSelectedChars } = useApp();
+  const { lang, L, setView, activeChild, artStyle, characters, setCharacters, selectedChars, setSelectedChars, refreshCharacters } = useApp();
+
+  // ── Creator state ──
+  const [showCreator, setShowCreator] = useState(false);
+  const [charName, setCharName] = useState("");
+  const [charDescription, setCharDescription] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [genStep, setGenStep] = useState(null); // "portrait" | "saving"
+  const [creatorError, setCreatorError] = useState(null);
+
+  const ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
+  const defaultStyleRef = ORIGIN + "/style-refs/ref-02-forest.png";
+
+  // ── Generate portrait preview ──
+  const handleGenerate = async () => {
+    if (!charDescription.trim()) return;
+    setGenerating(true);
+    setGenStep("portrait");
+    setCreatorError(null);
+    setPreviewUrl(null);
+    try {
+      const portrait = await genCharPortrait(charDescription.trim(), null, artStyle, { styleRefUrl: defaultStyleRef });
+      if (portrait) {
+        setPreviewUrl(portrait);
+      } else {
+        setCreatorError(lang === "ru" ? "Не удалось сгенерировать. Попробуйте ещё." : "Generation failed. Try again.");
+      }
+    } catch (err) {
+      console.error("Character gen error:", err);
+      setCreatorError(lang === "ru" ? "Ошибка генерации." : "Generation error.");
+    }
+    setGenerating(false);
+    setGenStep(null);
+  };
+
+  // ── Save character ──
+  const handleSave = async () => {
+    if (!charName.trim() || !previewUrl || !activeChild?.id) return;
+    setGenerating(true);
+    setGenStep("saving");
+    try {
+      const tempId = Date.now().toString();
+      const permUrl = await uploadPortrait(previewUrl, activeChild.id, tempId);
+      const newChar = await createCharacter({
+        childId: activeChild.id,
+        name: charName.trim(),
+        description: charDescription.trim(),
+        portraitUrl: permUrl || previewUrl,
+        artStyle,
+      });
+      if (newChar) {
+        setCharacters(prev => [newChar, ...prev]);
+        resetCreator();
+      } else {
+        setCreatorError(lang === "ru" ? "Ошибка сохранения." : "Save error.");
+      }
+    } catch (err) {
+      console.error("Save character error:", err);
+      setCreatorError(lang === "ru" ? "Ошибка сохранения." : "Save error.");
+    }
+    setGenerating(false);
+    setGenStep(null);
+  };
+
+  // ── Suggest description via Sonnet ──
+  const [suggesting, setSuggesting] = useState(false);
+  const handleSuggest = async () => {
+    if (!charName.trim()) return;
+    setSuggesting(true);
+    try {
+      const prompt = lang === "ru"
+        ? `Опиши внешность детского книжного персонажа по имени "${charName.trim()}" для иллюстрации. Одно предложение на английском. Включи: вид (животное/человек/существо), цвет шерсти/волос, цвет глаз, одежду, аксессуары, телосложение. Формат: "A small red fox cub with bright green eyes, wearing a blue scarf and brown leather satchel, fluffy tail with white tip". Ответь ТОЛЬКО описанием, без кавычек.`
+        : `Describe the appearance of a children's book character named "${charName.trim()}" for illustration. One sentence in English. Include: species (animal/human/creature), fur/hair color, eye color, clothing, accessories, body build. Format: "A small red fox cub with bright green eyes, wearing a blue scarf and brown leather satchel, fluffy tail with white tip". Reply ONLY with the description, no quotes.`;
+      const r = await fetch("/api/anthropic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 200, messages: [{ role: "user", content: prompt }] }),
+      });
+      const data = await r.json();
+      const txt = data?.content?.[0]?.text?.trim();
+      if (txt) setCharDescription(txt);
+    } catch (err) {
+      console.error("Suggest error:", err);
+    }
+    setSuggesting(false);
+  };
+
+  const resetCreator = () => {
+    setShowCreator(false);
+    setCharName("");
+    setCharDescription("");
+    setPreviewUrl(null);
+    setGenStep(null);
+    setCreatorError(null);
+    setGenerating(false);
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body }}>
@@ -16,16 +116,149 @@ export default function CharactersView() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
             <PillBtn variant="subtle" onClick={() => setView("dashboard")} style={{ padding: "8px 16px", fontSize: 12 }}><ArrowLeft size={14} />{L.back}</PillBtn>
             <h2 style={{ fontFamily: T.display, fontSize: 22, fontWeight: 600, color: T.tx }}>{lang === "ru" ? "Персонажи" : "Characters"}</h2>
-            <div style={{ width: 80 }} />
+            {activeChild && !showCreator ? (
+              <PillBtn variant="ghost" onClick={() => setShowCreator(true)} style={{ padding: "8px 14px", fontSize: 12 }}>
+                <Plus size={14} />{lang === "ru" ? "Создать" : "Create"}
+              </PillBtn>
+            ) : <div style={{ width: 80 }} />}
           </div>
         </AnimIn>
 
-        {characters.length === 0 ? (
+        {/* ── Character Creator ── */}
+        {showCreator && (
+          <AnimIn delay={0}>
+            <div className="skazka-card" style={{ marginBottom: 20, padding: 20, border: `2px solid ${T.accent}` }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Sparkles size={16} color={T.accent} />
+                  <span style={{ fontFamily: T.display, fontWeight: 600, fontSize: 16, color: T.tx }}>
+                    {lang === "ru" ? "Новый персонаж" : "New Character"}
+                  </span>
+                </div>
+                <button onClick={resetCreator} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+                  <X size={16} color={T.tx3} />
+                </button>
+              </div>
+
+              {/* Name */}
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.tx3, textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>
+                  {lang === "ru" ? "Имя" : "Name"}
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="skazka-input"
+                    value={charName}
+                    onChange={e => setCharName(e.target.value)}
+                    placeholder={lang === "ru" ? "Лисёнок Рыжик" : "Rusty the Fox"}
+                    style={{ flex: 1 }}
+                  />
+                  <PillBtn
+                    variant="ghost"
+                    onClick={handleSuggest}
+                    disabled={!charName.trim() || suggesting}
+                    style={{ padding: "10px 14px", fontSize: 11, whiteSpace: "nowrap" }}
+                  >
+                    {suggesting ? <Loader2 size={12} style={{ animation: "spin .8s linear infinite" }} /> : <Sparkles size={12} />}
+                    {lang === "ru" ? "Придумать" : "Suggest"}
+                  </PillBtn>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: T.tx3, textTransform: "uppercase", letterSpacing: "0.1em", display: "block", marginBottom: 6 }}>
+                  {lang === "ru" ? "Описание внешности (англ.)" : "Visual description (English)"}
+                </label>
+                <textarea
+                  className="skazka-input"
+                  value={charDescription}
+                  onChange={e => setCharDescription(e.target.value)}
+                  placeholder="A small red fox cub with bright green eyes, wearing a blue scarf and brown leather satchel, fluffy tail with white tip"
+                  rows={3}
+                  style={{ resize: "vertical", minHeight: 68, lineHeight: 1.5 }}
+                />
+                <p style={{ fontSize: 10, color: T.tx3, marginTop: 4 }}>
+                  {lang === "ru" ? "Детальное описание на английском для генерации портрета" : "Detailed English description for portrait generation"}
+                </p>
+              </div>
+
+              {/* Preview + Actions */}
+              <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                {/* Portrait preview */}
+                <div style={{
+                  width: 140, height: 140, borderRadius: 16, background: T.bgMuted,
+                  border: `2px dashed ${previewUrl ? T.teal : T.borderMed}`,
+                  overflow: "hidden", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : generating && genStep === "portrait" ? (
+                    <div style={{ textAlign: "center" }}>
+                      <Loader2 size={24} color={T.accent} style={{ animation: "spin .8s linear infinite" }} />
+                      <p style={{ fontSize: 10, color: T.tx3, marginTop: 8 }}>{lang === "ru" ? "Рисуем..." : "Drawing..."}</p>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: 12 }}>
+                      <Users size={28} color={T.tx3} style={{ opacity: 0.3 }} />
+                      <p style={{ fontSize: 10, color: T.tx3, marginTop: 4 }}>{lang === "ru" ? "Портрет" : "Portrait"}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Buttons */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <PillBtn
+                    onClick={handleGenerate}
+                    disabled={!charDescription.trim() || generating}
+                    style={{ width: "100%", padding: "12px 16px", fontSize: 13 }}
+                  >
+                    {generating && genStep === "portrait"
+                      ? <><Loader2 size={14} style={{ animation: "spin .8s linear infinite" }} />{lang === "ru" ? "Генерируем..." : "Generating..."}</>
+                      : previewUrl
+                        ? <><RefreshCw size={14} />{lang === "ru" ? "Перегенерировать" : "Regenerate"}</>
+                        : <><Sparkles size={14} />{lang === "ru" ? "Сгенерировать портрет" : "Generate Portrait"}</>
+                    }
+                  </PillBtn>
+
+                  {previewUrl && (
+                    <PillBtn
+                      variant="coral"
+                      onClick={handleSave}
+                      disabled={!charName.trim() || generating}
+                      style={{ width: "100%", padding: "12px 16px", fontSize: 13 }}
+                    >
+                      {generating && genStep === "saving"
+                        ? <><Loader2 size={14} style={{ animation: "spin .8s linear infinite" }} />{lang === "ru" ? "Сохраняем..." : "Saving..."}</>
+                        : <><Plus size={14} />{lang === "ru" ? "Сохранить персонажа" : "Save Character"}</>
+                      }
+                    </PillBtn>
+                  )}
+
+                  {creatorError && (
+                    <div style={{ padding: "8px 12px", borderRadius: 10, background: T.coralBg, fontSize: 11, color: T.coral, fontWeight: 600 }}>
+                      {creatorError}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </AnimIn>
+        )}
+
+        {/* ── Character List ── */}
+        {characters.length === 0 && !showCreator ? (
           <AnimIn delay={0.1}>
             <div style={{ textAlign: "center", padding: "60px 20px" }}>
               <Users size={48} color={T.tx3} style={{ opacity: 0.3, marginBottom: 16 }} />
               <p style={{ fontSize: 15, color: T.tx3, marginBottom: 4 }}>{lang === "ru" ? "Пока нет персонажей" : "No characters yet"}</p>
-              <p style={{ fontSize: 12, color: T.tx3 }}>{lang === "ru" ? "Персонажи появятся после первой истории" : "Characters appear after your first story"}</p>
+              <p style={{ fontSize: 12, color: T.tx3, marginBottom: 16 }}>{lang === "ru" ? "Создайте персонажа или начните историю" : "Create a character or start a story"}</p>
+              {activeChild && (
+                <PillBtn onClick={() => setShowCreator(true)} style={{ fontSize: 13 }}>
+                  <Plus size={14} />{lang === "ru" ? "Создать первого персонажа" : "Create your first character"}
+                </PillBtn>
+              )}
             </div>
           </AnimIn>
         ) : (
