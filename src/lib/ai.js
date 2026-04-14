@@ -15,7 +15,7 @@ const STYLE_ANCHORS = {
 };
 
 // Style instruction when reference image IS provided
-const STYLE_REF_INSTRUCTION = `Replicate the exact art style from the reference images. Characters must have simple small dot eyes and minimal facial features. The generated image must look like it belongs in the same book as the references.`;
+const STYLE_REF_INSTRUCTION = `Replicate ONLY the art style, color palette, and rendering technique from the reference images. Do NOT copy or include any characters, animals, or creatures from the reference images — only match their visual style. The generated image must look like it belongs in the same book as the references in terms of art style only.`;
 
 // ═══════════════════════════════════════════════════════════
 // GEMINI NB2 — Core image generation
