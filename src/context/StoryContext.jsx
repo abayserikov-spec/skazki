@@ -149,22 +149,49 @@ export function StoryProvider({ children }) {
     ORIGIN + "/style-refs/ref-05-hedgehog.png",
     ORIGIN + "/style-refs/ref-06-fox.png",
   ];
-  const getStyleRef = (mood) => {
-    // Return 3 most relevant style refs per mood for better style consistency
+  // ── Style ref cache (preload as base64 to avoid re-fetching) ──
+  const styleRefCacheRef = useRef(new Map());
+
+  const preloadStyleRef = useCallback(async (url) => {
+    if (styleRefCacheRef.current.has(url)) return styleRefCacheRef.current.get(url);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return url;
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUri = reader.result;
+          styleRefCacheRef.current.set(url, dataUri);
+          resolve(dataUri);
+        };
+        reader.onerror = () => resolve(url);
+        reader.readAsDataURL(blob);
+      });
+    } catch { return url; }
+  }, []);
+
+  const getStyleRefsAsDataUri = useCallback(async (mood) => {
     const moodRefs = {
-      home:   [0, 2, 5], // interior, group, fox
-      school: [0, 2, 3], // interior, group, owl
-      forest: [1, 4, 5], // forest, hedgehog, fox
-      city:   [1, 2, 0], // forest, group, interior
-      ocean:  [1, 5, 4], // forest, fox, hedgehog
-      sports: [1, 2, 5], // forest, group, fox
-      magic:  [4, 3, 5], // hedgehog, owl, fox
-      castle: [3, 4, 0], // owl, hedgehog, interior
-      space:  [3, 4, 5], // owl, hedgehog, fox
+      home:   [0, 2, 5],
+      school: [0, 2, 3],
+      forest: [1, 4, 5],
+      city:   [1, 2, 0],
+      ocean:  [1, 5, 4],
+      sports: [1, 2, 5],
+      magic:  [4, 3, 5],
+      castle: [3, 4, 0],
+      space:  [3, 4, 5],
     };
     const indices = moodRefs[mood] || [1, 4, 5];
-    return indices.map(i => STYLE_REFS[i]);
-  };
+    const urls = indices.map(i => STYLE_REFS[i]);
+    return Promise.all(urls.map(u => preloadStyleRef(u)));
+  }, [preloadStyleRef]);
+
+  // Preload all style refs on mount
+  useEffect(() => {
+    STYLE_REFS.forEach(url => preloadStyleRef(url));
+  }, [preloadStyleRef]);
 
   // ── Image generation ──
   useEffect(() => {
@@ -173,62 +200,61 @@ export function StoryProvider({ children }) {
     setImgLoading(true);
     const mood = curPage.mood || "forest";
     const isFirst = portraitUrls.length === 0 && !refImgUrl;
-    const styleRefUrl = getStyleRef(mood);
+
+    (async () => {
+    const styleRefUrl = await getStyleRefsAsDataUri(mood);
     const imgOpts = { styleRefUrl };
 
     if (isFirst) {
-      (async () => {
-        try {
-          const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
-          const generatedPortraits = [];
-          if (charParts.length > 0) {
-            for (const partDesc of charParts) {
-              const portrait = await genCharPortrait(partDesc, curPage.scene, artStyle, imgOpts);
-              if (portrait) generatedPortraits.push(portrait);
+      try {
+        const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
+        const generatedPortraits = [];
+        if (charParts.length > 0) {
+          for (const partDesc of charParts) {
+            const portrait = await genCharPortrait(partDesc, curPage.scene, artStyle, imgOpts);
+            if (portrait) generatedPortraits.push(portrait);
+          }
+        }
+        if (generatedPortraits.length > 0) {
+          setRefImgUrl(generatedPortraits[0]);
+          setPortraitUrls(generatedPortraits);
+
+          // Upload portrait immediately and update character record
+          if (supabase && activeChild?.id) {
+            const char = pendingCharRef.current || (selectedChars.length === 1 ? selectedChars[0] : null);
+            if (char?.id && !char.portrait_url) {
+              (async () => {
+                try {
+                  const permUrl = await uploadPortrait(generatedPortraits[0], activeChild.id, char.id);
+                  if (permUrl) {
+                    await supabase.from("characters").update({ portrait_url: permUrl }).eq("id", char.id);
+                    setSelectedChars(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
+                    setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
+                    pendingCharRef.current = null;
+                  }
+                } catch (e) { console.error("Portrait upload error:", e); }
+              })();
             }
           }
-          if (generatedPortraits.length > 0) {
-            setRefImgUrl(generatedPortraits[0]);
-            setPortraitUrls(generatedPortraits);
 
-            // Upload portrait immediately and update character record
-            if (supabase && activeChild?.id) {
-              const char = pendingCharRef.current || (selectedChars.length === 1 ? selectedChars[0] : null);
-              if (char?.id && !char.portrait_url) {
-                (async () => {
-                  try {
-                    const permUrl = await uploadPortrait(generatedPortraits[0], activeChild.id, char.id);
-                    if (permUrl) {
-                      await supabase.from("characters").update({ portrait_url: permUrl }).eq("id", char.id);
-                      setSelectedChars(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
-                      setCharacters(prev => prev.map(c => c.id === char.id ? { ...c, portrait_url: permUrl } : c));
-                      pendingCharRef.current = null;
-                    }
-                  } catch (e) { console.error("Portrait upload error:", e); }
-                })();
-              }
-            }
-
-            const sceneUrl = await genNextImage(curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
-            setCurImg(sceneUrl);
-          } else {
-            const sceneUrl = await genFirstImage(curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
-            setCurImg(sceneUrl);
-            if (sceneUrl) { setRefImgUrl(sceneUrl); setPortraitUrls([sceneUrl]); }
-          }
-          setImgLoading(false);
-        } catch { setImgLoading(false); }
-      })();
+          const sceneUrl = await genNextImage(curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
+          setCurImg(sceneUrl);
+        } else {
+          const sceneUrl = await genFirstImage(curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
+          setCurImg(sceneUrl);
+          if (sceneUrl) { setRefImgUrl(sceneUrl); setPortraitUrls([sceneUrl]); }
+        }
+        setImgLoading(false);
+      } catch { setImgLoading(false); }
     } else {
-      (async () => {
-        try {
-          const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
-          const url = await genNextImage(curPage.scene, charDesc || "the main character", refs, mood, artStyle, imgOpts);
-          setCurImg(url);
-          setImgLoading(false);
-        } catch { setImgLoading(false); }
-      })();
+      try {
+        const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
+        const url = await genNextImage(curPage.scene, charDesc || "the main character", refs, mood, artStyle, imgOpts);
+        setCurImg(url);
+        setImgLoading(false);
+      } catch { setImgLoading(false); }
     }
+    })();
   }, [curPage?.scene, curPage?.illustration]);
 
   // ── Retroactive image fix ──
