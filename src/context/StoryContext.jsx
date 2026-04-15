@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { TOTAL_PAGES, VALS } from "../lib/constants.js";
-import { genPage, genFirstImage, genCharPortrait, genNextImage, genNewCharPortrait } from "../lib/ai.js";
+import { genPage, genFirstImage, genCharPortrait, genNextImage, genNewCharPortrait, genBookPage, genFirstBookPage } from "../lib/ai.js";
 import { supabase } from "../lib/supabase.js";
 import {
   createBook, savePage, finalizeBook, saveBookValues,
@@ -167,7 +167,7 @@ export function StoryProvider({ children }) {
     });
   }, []);
 
-  // ── Image generation ──
+  // ── Book page generation (text embedded in illustration) ──
   useEffect(() => {
     if (!curPage?.scene && !curPage?.illustration) return;
     setCurImg(null);
@@ -176,10 +176,14 @@ export function StoryProvider({ children }) {
     const isFirst = portraitUrls.length === 0 && !refImgUrl;
     const styleRefUrl = getStyleRef(mood);
     const imgOpts = { styleRefUrl };
+    const pageText = curPage.text || "";
+    const textZone = curPage.textZone || "bottom-center";
+    const intensity = curPage.intensity || 50;
 
     if (isFirst) {
       (async () => {
         try {
+          // Generate character portraits first
           const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
           const generatedPortraits = [];
           if (charParts.length > 0) {
@@ -191,12 +195,14 @@ export function StoryProvider({ children }) {
           if (generatedPortraits.length > 0) {
             setRefImgUrl(generatedPortraits[0]);
             setPortraitUrls(generatedPortraits);
-            const sceneUrl = await genNextImage(curPage.scene, charDesc || "the main character", generatedPortraits, mood, artStyle, imgOpts);
-            setCurImg(sceneUrl);
+            // Generate full book page with text embedded
+            const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", generatedPortraits, artStyle, pageText, textZone, intensity, imgOpts);
+            setCurImg(pageUrl);
           } else {
-            const sceneUrl = await genFirstImage(curPage.scene, charDesc || "a friendly character", mood, artStyle, imgOpts);
-            setCurImg(sceneUrl);
-            if (sceneUrl) { setRefImgUrl(sceneUrl); setPortraitUrls([sceneUrl]); }
+            // No portraits yet — generate first book page
+            const pageUrl = await genFirstBookPage(curPage.scene, charDesc || "a friendly character", artStyle, pageText, textZone, intensity, imgOpts);
+            setCurImg(pageUrl);
+            if (pageUrl) { setRefImgUrl(pageUrl); setPortraitUrls([pageUrl]); }
           }
           setImgLoading(false);
         } catch { setImgLoading(false); }
@@ -205,8 +211,9 @@ export function StoryProvider({ children }) {
       (async () => {
         try {
           const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
-          const url = await genNextImage(curPage.scene, charDesc || "the main character", refs, mood, artStyle, imgOpts);
-          setCurImg(url);
+          // Generate full book page with text embedded
+          const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", refs, artStyle, pageText, textZone, intensity, imgOpts);
+          setCurImg(pageUrl);
           setImgLoading(false);
         } catch { setImgLoading(false); }
       })();
