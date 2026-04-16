@@ -1,4 +1,4 @@
-import { TOTAL_PAGES } from "./constants.js";
+import { TOTAL_PAGES, CLAUDE_MODEL } from "./constants.js";
 
 // ═══════════════════════════════════════════════════════════
 // ANYTURN — AI Module v10
@@ -340,7 +340,7 @@ Respond ONLY valid JSON:
   const res = await fetch("/api/anthropic", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, system: sys, messages: [{ role: "user", content: textMsg }] }),
+    body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1500, system: sys, messages: [{ role: "user", content: textMsg }] }),
   });
 
   const data = await res.json();

@@ -8,6 +8,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { deleteCharacter, createCharacter } from "../lib/db.js";
 import { genCharPortrait } from "../lib/ai.js";
 import { uploadPortrait } from "../lib/storage-cloud.js";
+import { CLAUDE_MODEL } from "../lib/constants.js";
 
 export default function CharactersView() {
   const { lang, L, setView, activeChild, artStyle, characters, setCharacters, selectedChars, setSelectedChars, refreshCharacters } = useApp();
@@ -87,7 +88,7 @@ export default function CharactersView() {
       const r = await fetch("/api/anthropic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 200, messages: [{ role: "user", content: prompt }] }),
+        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 200, messages: [{ role: "user", content: prompt }] }),
       });
       const data = await r.json();
       const txt = data?.content?.[0]?.text?.trim();

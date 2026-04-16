@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
-import { TOTAL_PAGES, VALS } from "../lib/constants.js";
+import { TOTAL_PAGES, VALS, CLAUDE_MODEL } from "../lib/constants.js";
 import { genPage, genFirstImage, genCharPortrait, genNextImage, genNewCharPortrait, genBookPage, genFirstBookPage } from "../lib/ai.js";
 import { supabase } from "../lib/supabase.js";
 import {
@@ -283,7 +283,7 @@ export function StoryProvider({ children }) {
       const r = await fetch("/api/anthropic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, messages: [{ role: "user", content: prompt }] })
+        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 600, messages: [{ role: "user", content: prompt }] })
       });
       const data = await r.json();
       const txt = data?.content?.[0]?.text || "";

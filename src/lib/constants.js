@@ -1,3 +1,6 @@
+// ── AI CONFIG ──
+export const CLAUDE_MODEL = "claude-sonnet-4-6";
+
 // ── STORY CONFIG ──
 export const TOTAL_PAGES = 6;
 
