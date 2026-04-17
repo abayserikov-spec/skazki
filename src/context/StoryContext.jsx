@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { TOTAL_PAGES, VALS, CLAUDE_MODEL } from "../lib/constants.js";
-import { genPage, genFirstImage, genCharPortrait, genNextImage, genNewCharPortrait, genBookPage, genFirstBookPage } from "../lib/ai.js";
+import { genPage, genCharPortrait, genNewCharPortrait, genBookPage, genFirstBookPage } from "../lib/ai.js";
 import { supabase } from "../lib/supabase.js";
 import {
   createBook, savePage, finalizeBook, saveBookValues,
@@ -9,6 +9,9 @@ import {
 import { uploadIllustration, uploadPortrait } from "../lib/storage-cloud.js";
 import ST from "../lib/storage.js";
 import { useApp } from "./AppContext.jsx";
+import { useTTS } from "../hooks/useTTS.js";
+import { useStyleRefs } from "../hooks/useStyleRefs.js";
+import { useBookFlip } from "../hooks/useBookFlip.js";
 
 const StoryContext = createContext(null);
 
@@ -26,7 +29,9 @@ export function StoryProvider({ children }) {
     characters, setCharacters, refreshLibrary, refreshCharacters,
   } = app;
 
-  const elVoiceId = "EXAVITQu4vr4xnSDxMaL";
+  // ── Composed hooks ──
+  const tts = useTTS();
+  const { getStyleRef } = useStyleRefs();
 
   // ── Story state ──
   const [theme, setTheme] = useState(null);
@@ -52,19 +57,8 @@ export function StoryProvider({ children }) {
   const [backstory, setBackstory] = useState("");
   const [presets, setPresets] = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
-
-  // ── Generation progress ──
-  const [genStep, setGenStep] = useState(null); // null | "story" | "portrait-1" | "portrait-2" | "page" | "next-page"
-
-  // ── Supabase ──
+  const [genStep, setGenStep] = useState(null);
   const [bookId, setBookId] = useState(null);
-
-  // ── TTS ──
-  const [speaking, setSpeaking] = useState(false);
-  const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [ttsVoice, setTtsVoice] = useState(null);
-  const audioRef = useRef(null);
-  const ttsCacheRef = useRef(new Map());
 
   // ── SFX ──
   const [sfxEnabled, setSfxEnabled] = useState(true);
@@ -72,9 +66,9 @@ export function StoryProvider({ children }) {
   const sfxCacheRef = useRef(new Map());
 
   // ── Book ──
-  const bookRef = useRef(null);
-  const prevPageCountRef = useRef(0);
   const pendingCharRef = useRef(null);
+  const allPagesLen = curPage ? pages.length + 1 : pages.length;
+  const { bookRef } = useBookFlip(allPagesLen, app.view);
 
   const fmtT = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
@@ -86,19 +80,6 @@ export function StoryProvider({ children }) {
     }
   }, [app.view, t0]);
 
-  // ── TTS voice init ──
-  useEffect(() => {
-    const pick = () => {
-      const voices = window.speechSynthesis?.getVoices() || [];
-      const ru = voices.filter(v => v.lang.startsWith("ru"));
-      const best = ru.find(v => /milena|alena|yandex/i.test(v.name)) || ru[0];
-      if (best) setTtsVoice(best);
-    };
-    pick();
-    window.speechSynthesis?.addEventListener("voiceschanged", pick);
-    return () => window.speechSynthesis?.removeEventListener("voiceschanged", pick);
-  }, []);
-
   // ── Text done trigger ──
   useEffect(() => {
     if (!curPage?.text) return;
@@ -106,69 +87,9 @@ export function StoryProvider({ children }) {
     return () => clearTimeout(d);
   }, [curPage?.text]);
 
-  // ── TTS ──
-  const speakText = useCallback(async (text) => {
-    if (!text) return;
-    window.speechSynthesis?.cancel();
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    setSpeaking(true);
-    try {
-      const cacheKey = elVoiceId + ":" + text;
-      let url = ttsCacheRef.current.get(cacheKey);
-      if (!url) {
-        const res = await fetch(`/api/elevenlabs/v1/text-to-speech/${elVoiceId}`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", voice_settings: { stability: 0.55, similarity_boost: 0.7, style: 0.3 } })
-        });
-        if (!res.ok) throw new Error(res.status);
-        const blob = await res.blob();
-        url = URL.createObjectURL(blob);
-        ttsCacheRef.current.set(cacheKey, url);
-      }
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => setSpeaking(false);
-      audio.onerror = () => setSpeaking(false);
-      audio.play();
-    } catch { setSpeaking(false); }
-  }, [elVoiceId]);
-
-  const stopSpeak = useCallback(() => {
-    window.speechSynthesis?.cancel();
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    setSpeaking(false);
-  }, []);
-
-  useEffect(() => { if (textDone && ttsEnabled && curPage?.text) speakText(curPage.tts_text || curPage.text); }, [textDone, ttsEnabled]);
-  useEffect(() => { stopSpeak(); }, [curPage]);
-
-  // ── Style refs ──
-  const ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
-  const STYLE_REFS = [
-    ORIGIN + "/style-refs/ref-01-interior.png",
-    ORIGIN + "/style-refs/ref-02-forest.png",
-    ORIGIN + "/style-refs/ref-03-group.png",
-    ORIGIN + "/style-refs/ref-04-owl.png",
-    ORIGIN + "/style-refs/ref-05-hedgehog.png",
-    ORIGIN + "/style-refs/ref-06-fox.png",
-  ];
-  const styleRefCacheRef = useRef(new Map());
-  const getStyleRef = (mood) => {
-    const map = { home: 0, school: 0, forest: 1, city: 1, ocean: 1, sports: 1, magic: 4, castle: 4, space: 4 };
-    const url = STYLE_REFS[map[mood] ?? 1];
-    // Return cached base64 if available, otherwise URL
-    return styleRefCacheRef.current.get(url) || url;
-  };
-  // Preload style refs as base64 on mount
-  useEffect(() => {
-    STYLE_REFS.forEach(url => {
-      fetch(url).then(r => r.blob()).then(blob => {
-        const reader = new FileReader();
-        reader.onload = () => styleRefCacheRef.current.set(url, reader.result);
-        reader.readAsDataURL(blob);
-      }).catch(() => {});
-    });
-  }, []);
+  // ── Auto-TTS when text done ──
+  useEffect(() => { if (textDone && tts.ttsEnabled && curPage?.text) tts.speakText(curPage.tts_text || curPage.text); }, [textDone, tts.ttsEnabled]);
+  useEffect(() => { tts.stopSpeak(); }, [curPage]);
 
   // ── Book page generation (text embedded in illustration) ──
   useEffect(() => {
@@ -186,7 +107,6 @@ export function StoryProvider({ children }) {
     if (isFirst) {
       (async () => {
         try {
-          // Generate character portraits first
           const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
           const generatedPortraits = [];
           if (charParts.length > 0) {
@@ -200,11 +120,9 @@ export function StoryProvider({ children }) {
           if (generatedPortraits.length > 0) {
             setRefImgUrl(generatedPortraits[0]);
             setPortraitUrls(generatedPortraits);
-            // Generate full book page with text embedded
             const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", generatedPortraits, artStyle, pageText, textZone, intensity, imgOpts);
             setCurImg(pageUrl);
           } else {
-            // No portraits yet — generate first book page
             const pageUrl = await genFirstBookPage(curPage.scene, charDesc || "a friendly character", artStyle, pageText, textZone, intensity, imgOpts);
             setCurImg(pageUrl);
             if (pageUrl) { setRefImgUrl(pageUrl); setPortraitUrls([pageUrl]); }
@@ -217,7 +135,6 @@ export function StoryProvider({ children }) {
         try {
           setGenStep("next-page");
           const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
-          // Generate full book page with text embedded
           const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", refs, artStyle, pageText, textZone, intensity, imgOpts);
           setCurImg(pageUrl);
           setImgLoading(false); setGenStep(null);
@@ -253,18 +170,6 @@ export function StoryProvider({ children }) {
       } catch (e) { console.error("Portrait upload error:", e); }
     })();
   }, [selectedChars, portraitUrls]);
-
-  // ── Auto-flip book ──
-  const allPagesLen = curPage ? pages.length + 1 : pages.length;
-  useEffect(() => {
-    if (app.view !== "session") return;
-    if (allPagesLen > prevPageCountRef.current && allPagesLen > 1 && bookRef.current) {
-      const target = allPagesLen - 1;
-      const spreadPage = target % 2 === 0 ? target : target - 1;
-      setTimeout(() => { try { bookRef.current?.flip(spreadPage); } catch {} }, 300);
-    }
-    prevPageCountRef.current = allPagesLen;
-  }, [allPagesLen, app.view]);
 
   // ── Generate presets ──
   const generatePresets = useCallback(async (childName, childAge, chars) => {
@@ -306,7 +211,7 @@ export function StoryProvider({ children }) {
     setPicks([]); setSel(null); setT0(Date.now()); setTimer(0); setError(null); setTextDone(false);
     setCustomInput(""); setIdentityTag(null); setCompanionDesc(null); setPortraitRegenDone(false);
     pendingCharRef.current = null;
-    ttsCacheRef.current.forEach(url => URL.revokeObjectURL(url)); ttsCacheRef.current.clear();
+    tts.clearCache();
     sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
 
     const reuse = selectedChars.length > 0 ? selectedChars : null;
@@ -355,7 +260,7 @@ export function StoryProvider({ children }) {
 
       setCurPage(r); setLoading(false); setGenStep(null);
     } catch { setError(lang === "ru" ? "Ошибка. Попробуйте ещё." : "Error. Try again."); setLoading(false); setGenStep(null); }
-  }, [artStyle, lang, selectedChars, setView, setSelectedChars]);
+  }, [artStyle, lang, selectedChars, setView, setSelectedChars, tts]);
 
   // ── Pick choice ──
   const pickChoice = useCallback(async (ch) => {
@@ -416,7 +321,7 @@ export function StoryProvider({ children }) {
         setCurPage(r); setLoading(false); setGenStep(null);
       } catch { setError(lang === "ru" ? "Ошибка." : "Error."); setLoading(false); setGenStep(null); }
     }, 600);
-  }, [loading, sel, curPage, curImg, pages, bookId, activeChild, theme, charDesc, lang, identityTag, selectedChars, artStyle]);
+  }, [loading, sel, curPage, curImg, pages, bookId, activeChild, theme, charDesc, lang, identityTag, selectedChars, artStyle, getStyleRef]);
 
   const submitCustom = useCallback(() => {
     if (!customInput.trim() || loading || sel) return;
@@ -425,7 +330,7 @@ export function StoryProvider({ children }) {
 
   // ── Finish session ──
   const finishSession = useCallback(async () => {
-    stopSpeak();
+    tts.stopSpeak();
     clearInterval(timerRef.current);
     const allPages = [...pages, { ...curPage, imgUrl: curImg }];
     const s = { id: Date.now().toString(), child: activeChild, theme, pages: allPages, picks, duration: Math.floor((Date.now() - t0) / 1000), date: Date.now(), charDesc, backstory };
@@ -475,7 +380,7 @@ export function StoryProvider({ children }) {
     }
 
     setView("report");
-  }, [stopSpeak, pages, curPage, curImg, activeChild, theme, picks, t0, sessions, charDesc, backstory, bookId, selectedChars, refreshLibrary, refreshCharacters, setView, setSessions]);
+  }, [tts, pages, curPage, curImg, activeChild, theme, picks, t0, sessions, charDesc, backstory, bookId, selectedChars, refreshLibrary, refreshCharacters, setView, setSessions]);
 
   // ── Values helper ──
   const getVals = useCallback(() => {
@@ -490,8 +395,9 @@ export function StoryProvider({ children }) {
     theme, pages, curPage, curImg, imgLoading, loading, picks, sel, t0, error,
     timer, customInput, setCustomInput, textDone, charDesc, backstory, setBackstory,
     presets, presetsLoading, bookId, genStep,
-    // TTS
-    speaking, ttsEnabled, setTtsEnabled, speakText, stopSpeak,
+    // TTS (forwarded from hook)
+    speaking: tts.speaking, ttsEnabled: tts.ttsEnabled, setTtsEnabled: tts.setTtsEnabled,
+    speakText: tts.speakText, stopSpeak: tts.stopSpeak,
     // Book ref
     bookRef, allPagesLen,
     // Actions
