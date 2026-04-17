@@ -299,6 +299,48 @@ export async function genPage(ctx) {
   const langInstr = storyLang === "en" ? "Write story text in ENGLISH." : "Write story text in RUSSIAN.";
   const copyrightInstr = "\n- COPYRIGHT: If child mentions a movie/cartoon character, create an ORIGINAL character INSPIRED by them. New name, keep abilities. Use 'outfit', 'clothes', 'attire' not 'costume', 'suit', 'uniform'.";
 
+  // ── Age-adaptive writing style ──
+  const ageNum = parseInt(age) || 6;
+  let ageWritingStyle;
+  if (ageNum <= 4) {
+    ageWritingStyle = `AGE ${ageNum} WRITING RULES:
+- Write 1-2 SHORT sentences per page (max 15 words each).
+- Use ONLY simple everyday words a 3-4 year old knows.
+- Add sound effects and onomatopoeia (Splash! Whoosh! Roar!).
+- Strong emotions: "very very happy", "so so scared".
+- Simple repetition for rhythm: "He ran and ran and ran."
+- No complex sentences. No subordinate clauses. No metaphors.
+- Choices must be VERY simple: 2 choices max, 3-5 words each.
+- TTS text should be extra expressive with pauses.`;
+  } else if (ageNum <= 5) {
+    ageWritingStyle = `AGE ${ageNum} WRITING RULES:
+- Write 1-2 sentences per page (max 20 words each).
+- Simple vocabulary — words a 5 year old uses daily.
+- Sound effects welcome (Crack! Whoooosh!).
+- Short dialogue OK: "Help me!" said the fox.
+- Emotions named directly: "felt brave", "got worried".
+- No metaphors, no idioms, no abstract concepts.
+- Choices: 2-3 options, 4-6 words each, very concrete actions.`;
+  } else if (ageNum <= 7) {
+    ageWritingStyle = `AGE ${ageNum} WRITING RULES:
+- Write 2-3 sentences per page.
+- Richer vocabulary OK but explain unusual words through context.
+- Simple cause-and-effect: "Because he shared, they became friends."
+- Dialogue encouraged — brings characters to life.
+- Can hint at emotions without naming: "Her paws trembled."
+- Simple similes OK: "fast as the wind".
+- Choices: 2-3 options, can include emotional nuance.`;
+  } else {
+    ageWritingStyle = `AGE ${ageNum} WRITING RULES:
+- Write 3-4 sentences per page. Richer descriptions and inner thoughts.
+- Advanced vocabulary welcome — trust the reader.
+- Metaphors, humor, wordplay, irony all OK.
+- Internal monologue: "Maybe this wasn't such a great idea after all."
+- Show-don't-tell emotions through body language and environment.
+- Moral complexity: not everything is black and white.
+- Choices: 2-3 options with real trade-offs and consequences.`;
+  }
+
   const sceneInstructions = `
 - "scene": CINEMATIC English description for illustration (40-80 words).
 - "cameraAngle": shot type used.
@@ -326,9 +368,12 @@ FORBIDDEN: Characters just "standing", same angle as previous page, "costume"/"s
   const sys = `You are a master storyteller creating interactive stories for children. ${langInstr} STORY WITH CONSEQUENCES — choices shape the outcome.
 Rules:
 - Child: ${name}, age ${age}${charBlock}${backstoryBlock}${arcBlock}
-- Page ${pn}/${TOTAL_PAGES}. Write 2-3 vivid sentences.${copyrightInstr}
+- Page ${pn}/${TOTAL_PAGES}.${copyrightInstr}
 - ${choicesInstruction}
 - If negative choice → show consequences. If positive → show rewards.
+
+${ageWritingStyle}
+
 ${sceneInstructions}
 - "mood": forest|ocean|space|castle|magic|city|school|sports|home
 ${isEnd ? '- LAST PAGE: Include "storySummary" (15-25 words English).' : ""}
