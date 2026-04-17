@@ -76,7 +76,7 @@ export default function SessionView() {
               </div>}
             </div>
           ) : (
-            <div style={{ position: "relative" }}>
+            <div style={{ position: "relative", background: "#FFFFFF", borderRadius: 4 }}>
               <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.05), transparent 70%)", borderRadius: "50%", zIndex: 0 }}/>
               <ReactFlipBook
                 key={`book-${allPages.map((p,i) => `${p?.text?.length||0}${p?.imgUrl?'I':'_'}${(i===totalReady-1 && curImg)?'C':''}`).join('-')}`}

@@ -1,12 +1,65 @@
+import { useRef } from "react";
+import { ReactFlipBook } from "@vuvandinh203/react-flipbook";
 import {
-  ArrowLeft, Star, CircleDot, Heart, BookOpen, TrendingUp, TrendingDown, Sparkles, Palette,
+  ArrowLeft, ArrowRight, Star, CircleDot, Heart, BookOpen,
+  TrendingUp, TrendingDown, Sparkles,
 } from "lucide-react";
 import { VALS } from "../lib/constants.js";
-import { T, CSS, PillBtn, AnimIn, SectionLabel, AnimBar } from "../components/UI.jsx";
+import { T, CSS, PillBtn } from "../components/UI.jsx";
 import { useApp } from "../context/AppContext.jsx";
+import { forwardRef } from "react";
+
+// ─── Simple page component for reading mode ───
+const ReadPage = forwardRef(({ imageUrl, pageNum, side }, ref) => {
+  return (
+    <div ref={ref} style={{
+      width: "100%", height: "100%", background: "#FFFFFF",
+      position: "relative", overflow: "hidden", boxSizing: "border-box",
+    }}>
+      {side === "left" && (
+        <div style={{
+          position: "absolute", top: 0, right: 0, width: 20, height: "100%",
+          background: "linear-gradient(to left, rgba(0,0,0,0.04), transparent)",
+          pointerEvents: "none", zIndex: 2,
+        }}/>
+      )}
+      {side === "right" && (
+        <div style={{
+          position: "absolute", top: 0, left: 0, width: 20, height: "100%",
+          background: "linear-gradient(to right, rgba(0,0,0,0.05), transparent)",
+          pointerEvents: "none", zIndex: 2,
+        }}/>
+      )}
+
+      {imageUrl ? (
+        <img src={imageUrl} alt="" style={{
+          width: "100%", height: "100%", objectFit: "cover", display: "block",
+        }} loading="lazy" />
+      ) : (
+        <div style={{
+          width: "100%", height: "100%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <BookOpen size={22} color={T.tx3} style={{ opacity: 0.12 }} />
+        </div>
+      )}
+
+      <div style={{
+        position: "absolute", bottom: 6,
+        [side === "left" ? "left" : "right"]: 10,
+        fontSize: 9, color: "rgba(255,255,255,0.5)",
+        fontFamily: "'Sassoon Primary', 'Nunito', sans-serif",
+        zIndex: 3, textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+      }}>
+        {pageNum}
+      </div>
+    </div>
+  );
+});
 
 export default function ReadingView({ book, onBack }) {
   const { lang, L, setView } = useApp();
+  const bookRef = useRef(null);
   const rb = book;
   const rbPages = rb.pages || [];
   const rbVals = (rb.values || []).map(v => {
@@ -18,96 +71,112 @@ export default function ReadingView({ book, onBack }) {
   const endColors = { good: T.teal, mixed: T.amber, sad: T.coral };
   const endBgs = { good: T.tealBg, mixed: T.amberBg, sad: T.coralBg };
 
-  return (
-    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: T.body }}>
-      <style>{CSS}</style>
-      <div style={{ maxWidth: 540, margin: "0 auto", padding: "28px 20px" }}>
-        <AnimIn>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-            <PillBtn variant="subtle" onClick={onBack} style={{ padding: "8px 16px", fontSize: 12 }}><ArrowLeft size={14} />{L.back}</PillBtn>
-            <span style={{ fontFamily: T.display, fontSize: 16, fontWeight: 600, color: T.tx, flex: 1 }}>{rb.title}</span>
-            {rb.ending_type && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 12px", borderRadius: 12, background: endBgs[rb.ending_type], color: endColors[rb.ending_type], fontSize: 11, fontWeight: 700 }}>
-                {rb.ending_type === "good" ? <Star size={12} /> : rb.ending_type === "mixed" ? <CircleDot size={12} /> : <Heart size={12} />}
-                {L.ending[rb.ending_type]}
-              </span>
-            )}
-          </div>
-        </AnimIn>
+  const flipNext = () => { try { bookRef.current?.flipNext(); } catch {} };
+  const flipPrev = () => { try { bookRef.current?.flipPrev(); } catch {} };
 
-        <AnimIn delay={0.05}>
-          <div className="skazka-card" style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
-            {rb.cover_image_url && (
-              <div style={{ width: 80, height: 80, borderRadius: T.r2, overflow: "hidden", flexShrink: 0, border: `1px solid ${T.border}` }}>
-                <img src={rb.cover_image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              </div>
-            )}
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: T.tx, marginBottom: 4 }}>{rb.child?.name}, {rb.child?.age} {L.years}</div>
-              {rb.premise && <p style={{ fontSize: 12, color: T.tx3, lineHeight: 1.5 }}>{rb.premise}</p>}
-              <div style={{ fontSize: 11, color: T.tx3, marginTop: 4 }}>
-                {rbPages.length} {L.pages} · {rb.duration_seconds ? Math.ceil(rb.duration_seconds / 60) : "?"} {L.min} · {new Date(rb.created_at).toLocaleDateString()}
-              </div>
+  return (
+    <div style={{ height: "100vh", background: T.bg, fontFamily: T.body, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <style>{CSS}</style>
+
+      {/* Top bar */}
+      <div style={{ padding: "8px 16px", background: "rgba(248,247,252,0.95)", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <PillBtn variant="subtle" onClick={onBack} style={{ padding: "6px 14px", fontSize: 12 }}><ArrowLeft size={14} />{L.back}</PillBtn>
+        </div>
+        <span style={{ fontFamily: T.display, fontSize: 14, fontWeight: 600, color: T.tx, fontStyle: "italic", flex: 1, textAlign: "center" }}>{rb.title}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {rb.ending_type && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 10, background: endBgs[rb.ending_type], color: endColors[rb.ending_type], fontSize: 10, fontWeight: 700 }}>
+              {rb.ending_type === "good" ? <Star size={10} /> : rb.ending_type === "mixed" ? <CircleDot size={10} /> : <Heart size={10} />}
+              {L.ending[rb.ending_type]}
+            </span>
+          )}
+          <span style={{ fontSize: 11, color: T.tx3 }}>{rbPages.length} {L.pages}</span>
+        </div>
+      </div>
+
+      {/* Main area */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
+        {/* Left nav */}
+        <div style={{ width: 60, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, flexShrink: 0 }}>
+          <button onClick={flipPrev} style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.bgCard, color: T.tx3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowLeft size={16} /></button>
+        </div>
+
+        {/* Center: Flipbook */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 0" }}>
+          {rbPages.length > 0 ? (
+            <div style={{ position: "relative", background: "#FFFFFF", borderRadius: 4 }}>
+              <div style={{ position: "absolute", bottom: -6, left: "6%", right: "6%", height: 12, background: "radial-gradient(ellipse, rgba(0,0,0,0.05), transparent 70%)", borderRadius: "50%", zIndex: 0 }} />
+              <ReactFlipBook
+                ref={bookRef}
+                width={420} height={580} size="stretch"
+                minWidth={300} maxWidth={500} minHeight={400} maxHeight={680}
+                drawShadow={true} flippingTime={1200} usePortrait={false} showCover={false}
+                maxShadowOpacity={0.3} mobileScrollSupport={true}
+                startPage={0}
+                style={{ boxShadow: T.shadowMd }}
+              >
+                {rbPages.map((pg, i) => (
+                  <ReadPage
+                    key={pg.id || i}
+                    imageUrl={pg.image_url}
+                    pageNum={i + 1}
+                    side={i % 2 === 0 ? "left" : "right"}
+                  />
+                ))}
+              </ReactFlipBook>
+            </div>
+          ) : (
+            <div style={{ textAlign: "center" }}>
+              <BookOpen size={32} color={T.tx3} style={{ opacity: 0.2, marginBottom: 12 }} />
+              <p style={{ fontSize: 13, color: T.tx3 }}>{lang === "ru" ? "Нет страниц" : "No pages"}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Right side: nav + info */}
+        <div style={{ width: 200, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 14px 12px 4px", flexShrink: 0, gap: 10, overflowY: "auto" }}>
+          <button onClick={flipNext} style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${T.border}`, background: T.bgCard, color: T.tx3, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px" }}><ArrowRight size={16} /></button>
+
+          {/* Book info */}
+          <div style={{ padding: "10px 12px", background: T.bgCard, borderRadius: T.r, border: `1px solid ${T.border}`, fontSize: 12 }}>
+            <div style={{ fontWeight: 700, color: T.tx, marginBottom: 4 }}>{rb.child?.name}, {rb.child?.age} {L.years}</div>
+            {rb.premise && <p style={{ fontSize: 11, color: T.tx3, lineHeight: 1.4, marginBottom: 4 }}>{rb.premise}</p>}
+            <div style={{ fontSize: 10, color: T.tx3 }}>
+              {rb.duration_seconds ? Math.ceil(rb.duration_seconds / 60) : "?"} {L.min} · {new Date(rb.created_at).toLocaleDateString()}
             </div>
           </div>
-        </AnimIn>
 
-        {rbPages.map((pg, i) => (
-          <AnimIn key={pg.id} delay={0.08 + i * 0.04}>
-            <div className="skazka-card" style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <div style={{ width: 24, height: 24, borderRadius: "50%", background: T.accentBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: T.accent, flexShrink: 0 }}>{i + 1}</div>
-                {pg.title && <span style={{ fontFamily: T.display, fontSize: 13, fontWeight: 600, color: T.accent, fontStyle: "italic" }}>{pg.title}</span>}
+          {/* Values summary */}
+          {rbVals.length > 0 && (
+            <div style={{ padding: "10px 12px", background: T.bgCard, borderRadius: T.r, border: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: T.tx3, marginBottom: 8 }}>
+                {lang === "ru" ? "Ценности" : "Values"}
               </div>
-              {pg.image_url && (
-                <div style={{ marginBottom: 10, borderRadius: T.r2, overflow: "hidden", border: `1px solid ${T.border}`, maxHeight: 220 }}>
-                  <img src={pg.image_url} alt="" style={{ width: "100%", display: "block", objectFit: "cover" }} loading="lazy" />
-                </div>
-              )}
-              <p style={{ fontFamily: T.story, fontSize: 15, fontStyle: "italic", lineHeight: 1.8, color: T.tx2 }}>{pg.text}</p>
-              {pg.choice_label && (() => {
-                const isPos = VALS[pg.choice_value]?.pos !== false;
+              {rbVals.slice(0, 5).map(v => {
+                const isPos = VALS[v.k]?.pos;
                 return (
-                  <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 10, background: isPos ? T.tealBg : T.coralBg, fontSize: 12, color: isPos ? T.teal : T.coral, fontWeight: 600 }}>
-                    {isPos ? <TrendingUp size={11} /> : <TrendingDown size={11} />} {pg.choice_label}
+                  <div key={v.k} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                    {isPos ? <TrendingUp size={10} color={T.teal} /> : <TrendingDown size={10} color={T.coral} />}
+                    <span style={{ fontSize: 11, color: T.tx, flex: 1 }}>{lang === "ru" ? v.n : (v.nEn || v.k)}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: v.c }}>{v.pct}%</span>
                   </div>
                 );
-              })()}
+              })}
             </div>
-          </AnimIn>
-        ))}
+          )}
 
-        {rbVals.length > 0 && (
-          <AnimIn delay={0.15}>
-            <div className="skazka-card" style={{ marginBottom: 16 }}>
-              <SectionLabel>{L.choicesOf} {rb.child?.name}</SectionLabel>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {rbVals.map((v, i) => {
-                  const isPos = VALS[v.k]?.pos;
-                  return (
-                    <div key={v.k}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          {isPos ? <TrendingUp size={13} color={T.teal} /> : <TrendingDown size={13} color={T.coral} />}
-                          <span style={{ fontWeight: 700, fontSize: 13, color: T.tx }}>{lang === "ru" ? v.n : (v.nEn || v.k)}</span>
-                        </div>
-                        <span style={{ fontWeight: 800, fontSize: 13, color: v.c }}>{v.pct}%</span>
-                      </div>
-                      <AnimBar color={`linear-gradient(90deg,${v.c},${v.c}88)`} pct={v.pct} delay={i * 100} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </AnimIn>
-        )}
-
-        <AnimIn delay={0.2}>
-          <div style={{ display: "flex", gap: 10 }}>
-            <PillBtn variant="ghost" onClick={onBack} style={{ flex: 1 }}><ArrowLeft size={14} />{lang === "ru" ? "Библиотека" : "Library"}</PillBtn>
-            <PillBtn variant="coral" onClick={() => setView("dashboard")} style={{ flex: 1 }}><Sparkles size={16} />{L.newSessionBtn}</PillBtn>
+          {/* Actions */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+            <PillBtn variant="ghost" onClick={onBack} style={{ width: "100%", padding: "8px 14px", fontSize: 11 }}>
+              <ArrowLeft size={12} />{lang === "ru" ? "Библиотека" : "Library"}
+            </PillBtn>
+            <PillBtn variant="coral" onClick={() => setView("dashboard")} style={{ width: "100%", padding: "8px 14px", fontSize: 11 }}>
+              <Sparkles size={12} />{L.newSessionBtn}
+            </PillBtn>
           </div>
-        </AnimIn>
+        </div>
       </div>
     </div>
   );

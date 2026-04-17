@@ -18,7 +18,7 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
     <div ref={ref} style={{
       width: "100%",
       height: "100%",
-      background: "#FFFFF8",
+      background: "#FFFFFF",
       position: "relative",
       overflow: "hidden",
       boxSizing: "border-box",
@@ -86,7 +86,7 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
               padding: "24px 20px",
-              background: "#FFFFF8",
+              background: "#FFFFFF",
             }}>
               <p style={{
                 fontSize: 14,

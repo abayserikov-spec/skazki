@@ -35,7 +35,8 @@ export const CSS = `
 .skazka-input::placeholder{color:${T.tx3};font-weight:400}
 .skazka-input:focus{border-color:${T.accent};box-shadow:0 0 0 3px ${T.borderFocus}}
 .skazka-card{background:${T.bgCard};border-radius:${T.r3}px;border:1px solid ${T.border};box-shadow:${T.shadowSm};padding:24px;transition:box-shadow .3s}
-.stf__parent{background:transparent !important}
+.stf__parent{background:#FFFFFF !important}
+.stf__block{background:#FFFFFF !important}
 `;
 
 export function SectionLabel({ children }) {
