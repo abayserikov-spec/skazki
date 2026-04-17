@@ -53,6 +53,9 @@ export function StoryProvider({ children }) {
   const [presets, setPresets] = useState([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
 
+  // ── Generation progress ──
+  const [genStep, setGenStep] = useState(null); // null | "story" | "portrait-1" | "portrait-2" | "page" | "next-page"
+
   // ── Supabase ──
   const [bookId, setBookId] = useState(null);
 
@@ -187,11 +190,13 @@ export function StoryProvider({ children }) {
           const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
           const generatedPortraits = [];
           if (charParts.length > 0) {
-            for (const partDesc of charParts) {
-              const portrait = await genCharPortrait(partDesc, curPage.scene, artStyle, imgOpts);
+            for (let idx = 0; idx < charParts.length; idx++) {
+              setGenStep(charParts.length > 1 ? `portrait-${idx + 1}` : "portrait");
+              const portrait = await genCharPortrait(charParts[idx], curPage.scene, artStyle, imgOpts);
               if (portrait) generatedPortraits.push(portrait);
             }
           }
+          setGenStep("page");
           if (generatedPortraits.length > 0) {
             setRefImgUrl(generatedPortraits[0]);
             setPortraitUrls(generatedPortraits);
@@ -204,18 +209,19 @@ export function StoryProvider({ children }) {
             setCurImg(pageUrl);
             if (pageUrl) { setRefImgUrl(pageUrl); setPortraitUrls([pageUrl]); }
           }
-          setImgLoading(false);
-        } catch { setImgLoading(false); }
+          setImgLoading(false); setGenStep(null);
+        } catch { setImgLoading(false); setGenStep(null); }
       })();
     } else {
       (async () => {
         try {
+          setGenStep("next-page");
           const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
           // Generate full book page with text embedded
           const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", refs, artStyle, pageText, textZone, intensity, imgOpts);
           setCurImg(pageUrl);
-          setImgLoading(false);
-        } catch { setImgLoading(false); }
+          setImgLoading(false); setGenStep(null);
+        } catch { setImgLoading(false); setGenStep(null); }
       })();
     }
   }, [curPage?.scene, curPage?.illustration]);
@@ -314,7 +320,7 @@ export function StoryProvider({ children }) {
       setCharDesc(null); setRefImgUrl(null); setPortraitUrls([]);
     }
 
-    setView("session"); setLoading(true);
+    setView("session"); setLoading(true); setGenStep("story");
 
     if (supabase) {
       const book = await createBook({
@@ -347,8 +353,8 @@ export function StoryProvider({ children }) {
         });
       }
 
-      setCurPage(r); setLoading(false);
-    } catch { setError(lang === "ru" ? "Ошибка. Попробуйте ещё." : "Error. Try again."); setLoading(false); }
+      setCurPage(r); setLoading(false); setGenStep(null);
+    } catch { setError(lang === "ru" ? "Ошибка. Попробуйте ещё." : "Error. Try again."); setLoading(false); setGenStep(null); }
   }, [artStyle, lang, selectedChars, setView, setSelectedChars]);
 
   // ── Pick choice ──
@@ -359,7 +365,7 @@ export function StoryProvider({ children }) {
     setTimeout(async () => {
       const pageData = { ...curPage, imgUrl: curImg, choice: ch, illustration: curPage.illustration };
       const up = [...pages, pageData];
-      setPages(up); setCurPage(null); setCurImg(null); setSel(null); setLoading(true);
+      setPages(up); setCurPage(null); setCurImg(null); setSel(null); setLoading(true); setGenStep("story");
 
       if (supabase && bookId) {
         (async () => {
@@ -407,8 +413,8 @@ export function StoryProvider({ children }) {
             }
           }
         }
-        setCurPage(r); setLoading(false);
-      } catch { setError(lang === "ru" ? "Ошибка." : "Error."); setLoading(false); }
+        setCurPage(r); setLoading(false); setGenStep(null);
+      } catch { setError(lang === "ru" ? "Ошибка." : "Error."); setLoading(false); setGenStep(null); }
     }, 600);
   }, [loading, sel, curPage, curImg, pages, bookId, activeChild, theme, charDesc, lang, identityTag, selectedChars, artStyle]);
 
@@ -483,7 +489,7 @@ export function StoryProvider({ children }) {
     // Story state
     theme, pages, curPage, curImg, imgLoading, loading, picks, sel, t0, error,
     timer, customInput, setCustomInput, textDone, charDesc, backstory, setBackstory,
-    presets, presetsLoading, bookId,
+    presets, presetsLoading, bookId, genStep,
     // TTS
     speaking, ttsEnabled, setTtsEnabled, speakText, stopSpeak,
     // Book ref

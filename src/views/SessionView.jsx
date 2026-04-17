@@ -18,7 +18,7 @@ export default function SessionView() {
     theme, pages, curPage, curImg, imgLoading, loading, sel, error,
     timer, customInput, setCustomInput, textDone, picks,
     speaking, speakText, stopSpeak,
-    bookRef, fmtT,
+    bookRef, fmtT, genStep,
     pickChoice, submitCustom, finishSession,
     setError, setLoading, setCurPage,
   } = story;
@@ -60,11 +60,56 @@ export default function SessionView() {
         {/* CENTER: Book */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 0" }}>
           {loading && totalReady === 0 ? (
-            <div style={{ textAlign: "center" }}>
-              <Loader2 size={28} color={T.accent} style={{ animation: "spin .8s linear infinite", margin: "0 auto 14px" }}/>
-              <p style={{ fontFamily: T.display, fontSize: 14, color: T.tx3, fontStyle: "italic" }}>
-                {L.creatingStory} {childName}...
-              </p>
+            <div style={{ textAlign: "center", maxWidth: 320 }}>
+              {/* Step-by-step generation progress */}
+              <div style={{ marginBottom: 20 }}>
+                {[
+                  { key: "story", labelRu: "Придумываем историю", labelEn: "Writing the story", icon: "✍️" },
+                  { key: "portrait", labelRu: "Создаём персонажа", labelEn: "Creating character", icon: "🎨" },
+                  { key: "portrait-1", labelRu: "Создаём первого персонажа", labelEn: "Creating first character", icon: "🎨" },
+                  { key: "portrait-2", labelRu: "Создаём второго персонажа", labelEn: "Creating second character", icon: "🎨" },
+                  { key: "page", labelRu: "Рисуем первую страницу", labelEn: "Painting the first page", icon: "📖" },
+                ].map(step => {
+                  const isActive = genStep === step.key;
+                  const isDone = !isActive && (
+                    (step.key === "story" && genStep !== "story" && genStep !== null) ||
+                    (step.key === "portrait" && ["page", "next-page"].includes(genStep)) ||
+                    (step.key === "portrait-1" && ["portrait-2", "page", "next-page"].includes(genStep)) ||
+                    (step.key === "portrait-2" && ["page", "next-page"].includes(genStep)) ||
+                    (step.key === "page" && genStep === null && !loading)
+                  );
+                  const isVisible = isActive || isDone;
+                  if (!isVisible) return null;
+                  return (
+                    <div key={step.key} style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
+                      opacity: isActive ? 1 : 0.5,
+                      transition: "opacity 0.3s",
+                    }}>
+                      {isActive ? (
+                        <Loader2 size={16} color={T.accent} style={{ animation: "spin .8s linear infinite", flexShrink: 0 }} />
+                      ) : (
+                        <span style={{ fontSize: 14, flexShrink: 0 }}>✓</span>
+                      )}
+                      <span style={{
+                        fontFamily: T.display, fontSize: 13, color: isActive ? T.tx : T.tx3,
+                        fontStyle: "italic", fontWeight: isActive ? 600 : 400,
+                      }}>
+                        {step.icon} {lang === "ru" ? step.labelRu : step.labelEn}
+                        {isActive && <span style={{ animation: "pulse 1.5s ease-in-out infinite" }}>...</span>}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {!genStep && loading && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <Loader2 size={20} color={T.accent} style={{ animation: "spin .8s linear infinite" }}/>
+                  <p style={{ fontFamily: T.display, fontSize: 14, color: T.tx3, fontStyle: "italic" }}>
+                    {L.creatingStory} {childName}...
+                  </p>
+                </div>
+              )}
               {error && <div style={{ marginTop: 12, padding: "10px 14px", background: T.coralBg, borderRadius: T.r, border: `1px solid rgba(255,107,138,0.15)`, fontSize: 12, color: T.coral }}>
                 {error}
                 <PillBtn variant="coral" onClick={() => {
