@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/**": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/api/replicate/:path*", "destination": "https://api.replicate.com/:path*" },
     { "source": "/api/elevenlabs/:path*", "destination": "https://api.elevenlabs.io/:path*" }

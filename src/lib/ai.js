@@ -117,7 +117,9 @@ function getTextColor(intensity, textZone) {
 async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "3:4") {
   const body = { prompt, referenceImages: referenceImages.filter(Boolean), aspectRatio, imageSize: "1K" };
   const res = await fetch("/api/gemini", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const data = await res.json();
+  if (!res.ok) { console.error("Gemini HTTP error:", res.status, res.statusText); return null; }
+  let data;
+  try { data = await res.json(); } catch (e) { console.error("Gemini JSON parse error:", e); return null; }
   if (data.error) { console.error("Gemini NB2 error:", data.error); return null; }
   if (data.imageBase64) return `data:${data.mimeType || "image/png"};base64,${data.imageBase64}`;
   return null;
