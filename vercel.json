@@ -1,7 +1,8 @@
 {
   "functions": {
     "api/**": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "regions": ["iad1"]
     }
   },
   "rewrites": [

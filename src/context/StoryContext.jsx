@@ -92,8 +92,15 @@ export function StoryProvider({ children }) {
   useEffect(() => { tts.stopSpeak(); }, [curPage]);
 
   // ── Book page generation (text embedded in illustration) ──
+  // Optimized: parallel portraits, timing logs, cancellation guard.
   useEffect(() => {
     if (!curPage?.scene && !curPage?.illustration) return;
+
+    let cancelled = false;
+    const tStart = performance.now();
+    const pageLabel = `page-${pages.length + 1}`;
+    console.log(`[STORY-GEN] ${pageLabel} start`);
+
     setCurImg(null);
     setImgLoading(true);
     const mood = curPage.mood || "forest";
@@ -108,39 +115,63 @@ export function StoryProvider({ children }) {
       (async () => {
         try {
           const charParts = charDesc ? charDesc.split(/\s*\|\s*/).filter(Boolean) : [];
-          const generatedPortraits = [];
+          let generatedPortraits = [];
+
           if (charParts.length > 0) {
-            for (let idx = 0; idx < charParts.length; idx++) {
-              setGenStep(charParts.length > 1 ? `portrait-${idx + 1}` : "portrait");
-              const portrait = await genCharPortrait(charParts[idx], curPage.scene, artStyle, imgOpts);
-              if (portrait) generatedPortraits.push(portrait);
-            }
+            // ⚡ PARALLEL portrait generation (was sequential for-loop)
+            setGenStep(charParts.length > 1 ? `portraits-${charParts.length}` : "portrait");
+            const tPortraits = performance.now();
+            const results = await Promise.all(
+              charParts.map(part => genCharPortrait(part, curPage.scene, artStyle, imgOpts))
+            );
+            if (cancelled) return;
+            generatedPortraits = results.filter(Boolean);
+            console.log(`[STORY-GEN] ${pageLabel} portraits (${charParts.length} parallel) in ${(performance.now() - tPortraits).toFixed(0)}ms`);
           }
+
           setGenStep("page");
+          const tPage = performance.now();
           if (generatedPortraits.length > 0) {
             setRefImgUrl(generatedPortraits[0]);
             setPortraitUrls(generatedPortraits);
             const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", generatedPortraits, artStyle, pageText, textZone, intensity, imgOpts);
+            if (cancelled) return;
             setCurImg(pageUrl);
           } else {
             const pageUrl = await genFirstBookPage(curPage.scene, charDesc || "a friendly character", artStyle, pageText, textZone, intensity, imgOpts);
+            if (cancelled) return;
             setCurImg(pageUrl);
             if (pageUrl) { setRefImgUrl(pageUrl); setPortraitUrls([pageUrl]); }
           }
-          setImgLoading(false); setGenStep(null);
-        } catch { setImgLoading(false); setGenStep(null); }
+          console.log(`[STORY-GEN] ${pageLabel} bookPage in ${(performance.now() - tPage).toFixed(0)}ms`);
+          console.log(`[STORY-GEN] ${pageLabel} TOTAL ${(performance.now() - tStart).toFixed(0)}ms`);
+
+          if (!cancelled) { setImgLoading(false); setGenStep(null); }
+        } catch (e) {
+          console.error(`[STORY-GEN] ${pageLabel} failed:`, e);
+          if (!cancelled) { setImgLoading(false); setGenStep(null); }
+        }
       })();
     } else {
       (async () => {
         try {
           setGenStep("next-page");
+          const tPage = performance.now();
           const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
           const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", refs, artStyle, pageText, textZone, intensity, imgOpts);
+          if (cancelled) return;
           setCurImg(pageUrl);
-          setImgLoading(false); setGenStep(null);
-        } catch { setImgLoading(false); setGenStep(null); }
+          console.log(`[STORY-GEN] ${pageLabel} bookPage in ${(performance.now() - tPage).toFixed(0)}ms`);
+          console.log(`[STORY-GEN] ${pageLabel} TOTAL ${(performance.now() - tStart).toFixed(0)}ms`);
+          if (!cancelled) { setImgLoading(false); setGenStep(null); }
+        } catch (e) {
+          console.error(`[STORY-GEN] ${pageLabel} failed:`, e);
+          if (!cancelled) { setImgLoading(false); setGenStep(null); }
+        }
       })();
     }
+
+    return () => { cancelled = true; };
   }, [curPage?.scene, curPage?.illustration]);
 
   // ── Retroactive image fix ──

@@ -13,3 +13,4 @@ test_results/
 training/
 text_refs/
 *.log
+*.zip
