@@ -1,12 +1,13 @@
 import { useState } from "react";
 import {
   LogOut, Plus, Check, BookOpen, ChevronRight,
-  Globe, Wand2, BookMarked, Sparkles, Users,
+  Globe, Wand2, BookMarked, Sparkles, Users, Settings,
 } from "lucide-react";
 import { T, CSS, PillBtn, Avatar, IconCircle, AnimIn, SectionLabel } from "../components/UI.jsx";
 import { useApp } from "../context/AppContext.jsx";
 import { useStory } from "../context/StoryContext.jsx";
 import GradientText from "../components/reactbits/GradientText.jsx";
+import SettingsPanel from "../components/SettingsPanel.jsx";
 
 export default function DashboardView() {
   const app = useApp();
@@ -20,6 +21,7 @@ export default function DashboardView() {
   const { generatePresets, setBackstory } = story;
 
   const [showAdd, setShowAdd] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [newChild, setNewChild] = useState("");
   const [newAge, setNewAge] = useState("5");
 
@@ -47,6 +49,7 @@ export default function DashboardView() {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <PillBtn variant="subtle" onClick={toggleLang} style={{ padding: "8px 12px", borderRadius: T.r }}><Globe size={14} /><span style={{ fontSize: 12 }}>{lang === "ru" ? "EN" : "RU"}</span></PillBtn>
+              <PillBtn variant="subtle" onClick={() => setShowSettings(true)} style={{ padding: "8px 10px", borderRadius: T.r }} title="Settings"><Settings size={14} /></PillBtn>
             </div>
           </div>
         </AnimIn>
@@ -227,6 +230,7 @@ export default function DashboardView() {
           </div>
         </AnimIn>
       </div>
+      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
     </div>
   );
 }
