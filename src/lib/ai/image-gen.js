@@ -43,10 +43,19 @@ async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "3:4",
   const t0 = performance.now();
 
   const body = { prompt, referenceImages: refs, aspectRatio, imageSize: "1K" };
+
+  // Read selected model from localStorage (set by Settings panel).
+  // Falls back to server env/default if not present.
+  const headers = { "Content-Type": "application/json" };
+  try {
+    const selectedModel = typeof window !== "undefined" ? window.localStorage?.getItem("geminiModel") : null;
+    if (selectedModel) headers["x-gemini-model"] = selectedModel;
+  } catch {}
+
   try {
     const res = await fetch("/api/gemini", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
     if (!res.ok) {
@@ -58,7 +67,8 @@ async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "3:4",
       console.error(`[IMG-GEN] ${label} error:`, data.error);
       return null;
     }
-    console.log(`[IMG-GEN] ${label} done in ${(performance.now() - t0).toFixed(0)}ms`);
+    const presetInfo = data.presetUsed ? ` preset=${data.presetUsed}` : "";
+    console.log(`[IMG-GEN] ${label} done in ${(performance.now() - t0).toFixed(0)}ms${presetInfo}`);
     if (data.imageBase64) return `data:${data.mimeType || "image/png"};base64,${data.imageBase64}`;
     return null;
   } catch (e) {

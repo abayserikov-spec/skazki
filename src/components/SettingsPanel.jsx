@@ -4,7 +4,13 @@ import { T, PillBtn } from "./UI.jsx";
 import { useApp } from "../context/AppContext.jsx";
 
 export default function SettingsPanel({ onClose }) {
-  const { antKey, saveAntKey, geminiKey, saveGeminiKey, elKey, saveElKey, elVoiceName, L } = useApp();
+  const { antKey, saveAntKey, geminiKey, saveGeminiKey, elKey, saveElKey, elVoiceName, geminiModel, saveGeminiModel, L } = useApp();
+
+  const MODEL_OPTIONS = [
+    { key: "nb2-default", label: "Nano Banana 2 (default)", hint: "Gemini 3.1, текущая" },
+    { key: "nb2-minimal", label: "NB2 + minimal thinking", hint: "NB2 с явным thinkingLevel=minimal" },
+    { key: "nb1", label: "Nano Banana 1", hint: "Gemini 2.5, старая но может быть быстрее" },
+  ];
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(30,27,46,0.3)", backdropFilter: "blur(6px)" }} onClick={onClose}>
@@ -38,6 +44,44 @@ export default function SettingsPanel({ onClose }) {
             </p>
           </div>
         ))}
+
+        {/* ─── Image Model Selector (A/B testing) ─── */}
+        <div style={{ marginBottom: 20, padding: 16, borderRadius: T.r2, background: T.bgMuted }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: T.tx2, marginBottom: 10, display: "block" }}>
+            Image model (A/B test)
+          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {MODEL_OPTIONS.map(opt => {
+              const selected = geminiModel === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => saveGeminiModel(opt.key)}
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "flex-start",
+                    padding: "10px 12px",
+                    borderRadius: T.r1,
+                    border: `1.5px solid ${selected ? T.accent : "transparent"}`,
+                    background: selected ? `${T.accent}14` : T.bgCard,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: selected ? 600 : 500, color: selected ? T.accent : T.tx }}>
+                    {opt.label}
+                  </span>
+                  <span style={{ fontSize: 11, color: T.tx3, marginTop: 2 }}>
+                    {opt.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: 11, color: T.tx3, marginTop: 8, lineHeight: 1.4 }}>
+            Переключение действует сразу. Проверь в консоли: <code style={{ fontFamily: "monospace", background: T.bgCard, padding: "1px 4px", borderRadius: 3 }}>[IMG-GEN] … preset=…</code>
+          </p>
+        </div>
 
         {/* Status indicators */}
         <div style={{ padding: 16, borderRadius: T.r2, background: T.bgMuted, marginBottom: 20 }}>

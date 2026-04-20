@@ -21,6 +21,7 @@ export function AppProvider({ children: childrenProp }) {
   const [dbUser, setDbUser] = useState(null);
   const [lang, setLang] = useState("ru");
   const [artStyle, setArtStyle] = useState("book");
+  const [geminiModel, setGeminiModel] = useState("nb2-default");
   const [childrenList, setChildrenList] = useState([]);
   const [activeChild, setActiveChild] = useState(null);
   const [characters, setCharacters] = useState([]);
@@ -35,8 +36,16 @@ export function AppProvider({ children: childrenProp }) {
       const u = await ST.get("user");
       const sl = await ST.get("lang");
       const ss = await ST.get("artStyle");
+      const gm = await ST.get("geminiModel");
       if (sl) setLang(sl);
       if (ss) setArtStyle(ss);
+      if (gm) {
+        setGeminiModel(gm);
+        try { window.localStorage?.setItem("geminiModel", gm); } catch {}
+      } else {
+        // Mirror default to localStorage so image-gen.js can read it synchronously
+        try { window.localStorage?.setItem("geminiModel", "nb2-default"); } catch {}
+      }
       if (u) {
         setUser(u);
         setSessions(await ST.get("sessions") || []);
@@ -76,6 +85,13 @@ export function AppProvider({ children: childrenProp }) {
   const saveArtStyle = useCallback(async (v) => {
     setArtStyle(v);
     await ST.set("artStyle", v);
+  }, []);
+
+  const saveGeminiModel = useCallback(async (v) => {
+    setGeminiModel(v);
+    await ST.set("geminiModel", v);
+    // Mirror to localStorage for synchronous read in image-gen.js
+    try { window.localStorage?.setItem("geminiModel", v); } catch {}
   }, []);
 
   const register = useCallback(async (name, email) => {
@@ -126,6 +142,7 @@ export function AppProvider({ children: childrenProp }) {
     <AppContext.Provider value={{
       view, setView, user, dbUser,
       lang, toggleLang, artStyle, saveArtStyle,
+      geminiModel, saveGeminiModel,
       childrenList, setChildrenList, activeChild, setActiveChild,
       characters, setCharacters, selectedChars, setSelectedChars,
       library, setLibrary, sessions, setSessions,
