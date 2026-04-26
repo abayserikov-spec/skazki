@@ -60,25 +60,32 @@ export default function SetupView() {
           </div>
         </AnimIn>
 
-        {/* Art style */}
-        <AnimIn delay={0.18}>
-          <div className="skazka-card" style={{ marginBottom: 20, padding: 20 }}>
-            <SectionLabel>{L.artStyle}</SectionLabel>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              {[
-                { key: "book", icon: BookImage, label: L.styleBook, desc: L.styleBookDesc },
-                { key: "anime", icon: Brush, label: L.styleAnime, desc: L.styleAnimeDesc },
-                { key: "realistic", icon: Camera, label: L.styleRealistic, desc: L.styleRealisticDesc },
-              ].map(({ key, icon: I, label, desc }) => (
-                <div key={key} onClick={() => saveArtStyle(key)} style={{ textAlign: "center", padding: "14px 8px", borderRadius: 16, border: `2px solid ${artStyle === key ? T.accent : T.border}`, background: artStyle === key ? T.accentBg : T.bgCard, cursor: "pointer", transition: "all .25s" }}>
-                  <I size={24} color={artStyle === key ? T.accent : T.tx3} style={{ marginBottom: 6 }} />
-                  <div style={{ fontSize: 12, fontWeight: 700, color: artStyle === key ? T.accent : T.tx2 }}>{label}</div>
-                  <div style={{ fontSize: 10, color: T.tx3, marginTop: 2 }}>{desc}</div>
+        {/* Art style — список стилей. Сейчас только один (book).
+            Когда добавишь второй стиль (book2): подними количество элементов в массиве STYLES,
+            переключи gridTemplateColumns на "1fr 1fr", и блок снова покажется. */}
+        {(() => {
+          const STYLES = [
+            { key: "book", icon: BookImage, label: L.styleBook, desc: L.styleBookDesc },
+            // { key: "book2", icon: Brush, label: L.styleBook2, desc: L.styleBook2Desc },
+          ];
+          if (STYLES.length < 2) return null; // hide picker when only one style
+          return (
+            <AnimIn delay={0.18}>
+              <div className="skazka-card" style={{ marginBottom: 20, padding: 20 }}>
+                <SectionLabel>{L.artStyle}</SectionLabel>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${STYLES.length}, 1fr)`, gap: 10 }}>
+                  {STYLES.map(({ key, icon: I, label, desc }) => (
+                    <div key={key} onClick={() => saveArtStyle(key)} style={{ textAlign: "center", padding: "14px 8px", borderRadius: 16, border: `2px solid ${artStyle === key ? T.accent : T.border}`, background: artStyle === key ? T.accentBg : T.bgCard, cursor: "pointer", transition: "all .25s" }}>
+                      <I size={24} color={artStyle === key ? T.accent : T.tx3} style={{ marginBottom: 6 }} />
+                      <div style={{ fontSize: 12, fontWeight: 700, color: artStyle === key ? T.accent : T.tx2 }}>{label}</div>
+                      <div style={{ fontSize: 10, color: T.tx3, marginTop: 2 }}>{desc}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </AnimIn>
+              </div>
+            </AnimIn>
+          );
+        })()}
 
         <AnimIn delay={0.22}>
           <PillBtn onClick={() => startSession(activeChild, backstory)} disabled={!backstory.trim()} style={{ width: "100%" }}><Sparkles size={16} />{L.startStory}</PillBtn>

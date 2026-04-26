@@ -359,6 +359,126 @@ export function StoryProvider({ children }) {
     pickChoice({ label: customInput.trim(), value: "custom" });
   }, [customInput, loading, sel, pickChoice]);
 
+  // ── Continue an existing book ──
+  // Loads book pages + character into story state, opens SessionView and immediately
+  // generates the NEXT page so the user gets a fresh set of choices to keep going.
+  // Works for both unfinished books and already-completed ones (new plot twist).
+  const continueSession = useCallback(async (book) => {
+    if (!book || !book.pages || book.pages.length === 0) return;
+
+    // Stop any TTS / clear caches
+    tts.stopSpeak();
+    tts.clearCache();
+    sfxCacheRef.current.forEach(url => URL.revokeObjectURL(url)); sfxCacheRef.current.clear();
+    pendingCharRef.current = null;
+
+    // Restore theme from book record
+    const restoredTheme = {
+      id: "continue",
+      name: (book.title || book.premise || "").slice(0, 30),
+      prompt: book.premise || "surprise creative story",
+    };
+
+    // Convert DB pages -> in-memory page shape used by SessionView / pickChoice / finishSession
+    const mapped = book.pages.map(p => ({
+      title: p.title,
+      text: p.text,
+      tts_text: p.tts_text,
+      scene: p.scene,
+      sceneSummary: p.scene_summary,
+      actionSummary: p.action_summary,
+      mood: p.mood,
+      imgUrl: p.image_url,
+      sfx: p.sfx,
+      isEnd: p.is_end,
+      choice: p.choice_label ? { label: p.choice_label, value: p.choice_value || "custom" } : null,
+    }));
+
+    // Reconstruct picks history so the report / values still tally correctly later
+    const restoredPicks = mapped
+      .filter(p => p.choice)
+      .map((p, i) => ({ label: p.choice.label, value: p.choice.value, page: i + 1 }));
+
+    const lastPage = mapped[mapped.length - 1];
+
+    // Character context: prefer book.character (joined from DB)
+    const ch = book.character;
+    let restoredCharDesc = null;
+    let restoredPortraits = [];
+    if (ch) {
+      restoredCharDesc = ch.description || null;
+      if (ch.portrait_url) restoredPortraits = [ch.portrait_url];
+      else if (lastPage.imgUrl) restoredPortraits = [lastPage.imgUrl];
+
+      // Make this character the "selected" one so further story-arc updates land on it
+      if (ch.id) {
+        const fullChar = characters.find(c => c.id === ch.id);
+        setSelectedChars(fullChar ? [fullChar] : [{ id: ch.id, name: ch.name, description: ch.description, portrait_url: ch.portrait_url, story_arc: ch.story_arc }]);
+      }
+    } else if (lastPage.imgUrl) {
+      restoredPortraits = [lastPage.imgUrl];
+    }
+
+    // Hydrate state — full book becomes the history we send to Claude
+    setTheme(restoredTheme);
+    setPages(mapped);
+    setCurPage(null);
+    setCurImg(null);
+    setPicks(restoredPicks);
+    setSel(null);
+    setError(null);
+    setTextDone(false);
+    setCustomInput("");
+    setIdentityTag(null);
+    setCompanionDesc(null);
+    setPortraitRegenDone(true);
+    setCharDesc(restoredCharDesc);
+    setRefImgUrl(restoredPortraits[0] || null);
+    setPortraitUrls(restoredPortraits);
+    setBookId(book.id);
+    setBackstory(book.premise || "");
+    setT0(Date.now());
+    setTimer(0);
+    setLoading(true);
+    setGenStep("story");
+    setView("session");
+
+    // For completed books, we treat "continue" as a soft choice that asks Claude
+    // to extend the story past its previous ending. For unfinished books we just
+    // ask for the next page after the last action.
+    const wasCompleted = !!book.ending_type;
+    const continuationChoice = wasCompleted
+      ? { label: lang === "ru" ? "Что было дальше" : "What happened next", value: "custom" }
+      : { label: lang === "ru" ? "Продолжить" : "Continue", value: "custom" };
+
+    try {
+      const r = await genPage({
+        name: activeChild?.name || book.child?.name,
+        age: activeChild?.age || book.child?.age,
+        theme: book.premise || "surprise creative story",
+        history: mapped.map(p => ({
+          text: p.text, choice: p.choice, mood: p.mood,
+          sceneSummary: p.sceneSummary, actionSummary: p.actionSummary,
+          illustration: p.scene,
+        })),
+        choice: continuationChoice,
+        charDesc: restoredCharDesc,
+        lang, identityTag: null,
+        previousArc: ch?.story_arc || null,
+        prevIllustrationUrl: lastPage.imgUrl || null,
+        prevScene: lastPage.scene || null,
+      });
+      setCurPage(r);
+      setLoading(false);
+      setGenStep(null);
+    } catch (e) {
+      console.error("continueSession genPage error:", e);
+      setError(lang === "ru" ? "Ошибка. Попробуйте ещё." : "Error. Try again.");
+      setLoading(false);
+      setGenStep(null);
+    }
+  }, [tts, characters, setSelectedChars, setView, activeChild, lang]);
+
   // ── Finish session ──
   const finishSession = useCallback(async () => {
     tts.stopSpeak();
@@ -432,7 +552,7 @@ export function StoryProvider({ children }) {
     // Book ref
     bookRef, allPagesLen,
     // Actions
-    generatePresets, startSession, pickChoice, submitCustom, finishSession, getVals,
+    generatePresets, startSession, continueSession, pickChoice, submitCustom, finishSession, getVals,
     fmtT,
     // Setters needed by session view
     setError, setLoading, setCurPage,

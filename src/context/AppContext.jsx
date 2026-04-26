@@ -38,7 +38,10 @@ export function AppProvider({ children: childrenProp }) {
       const ss = await ST.get("artStyle");
       const gm = await ST.get("geminiModel");
       if (sl) setLang(sl);
-      if (ss) setArtStyle(ss);
+      // Only accept known styles; fallback to "book" so old anime/realistic users get the default.
+      const KNOWN_STYLES = ["book"]; // add "book2" here when second style ships
+      if (ss && KNOWN_STYLES.includes(ss)) setArtStyle(ss);
+      else if (ss) await ST.set("artStyle", "book");
       if (gm) {
         setGeminiModel(gm);
         try { window.localStorage?.setItem("geminiModel", gm); } catch {}

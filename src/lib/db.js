@@ -169,7 +169,7 @@ export async function getAllBooks(userId) {
     .from("books")
     .select("*, child:children(name, age), character:characters(name, portrait_url)")
     .in("child_id", childIds)
-    .not("ending_type", "is", null) // only completed books
+    // Show all books (finished + in-progress) so user can continue unfinished ones from the library
     .order("created_at", { ascending: false });
   if (error) { console.error("getAllBooks error:", error); return []; }
   return data;
@@ -180,7 +180,7 @@ export async function getBookWithPages(bookId) {
   if (!supabase) return null;
   const { data: book, error: bErr } = await supabase
     .from("books")
-    .select("*, child:children(name, age), character:characters(name, portrait_url)")
+    .select("*, child:children(name, age), character:characters(id, name, description, portrait_url, story_arc)")
     .eq("id", bookId)
     .single();
   if (bErr) { console.error("getBook error:", bErr); return null; }

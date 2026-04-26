@@ -27,19 +27,22 @@ export const VALS = {
 };
 
 // ── ART STYLES ──
+// Сейчас активен один стиль "book" (наивный детский крайон / акварель).
+// Чтобы добавить второй стиль:
+//   1. Раскомментируй блок book2 ниже и замени промпты на нужные
+//   2. Положи новый набор реф-картинок в /public/style-refs/book2/
+//   3. Раскомментируй STYLE_REF_SETS.book2 в src/hooks/useStyleRefs.js
+//   4. Раскомментируй второй item в массиве STYLES в src/views/SetupView.jsx
+//   5. Раскомментируй L.styleBook2 / L.styleBook2Desc в i18n ниже
 export const ART_STYLES = {
   book: {
     fantasy: "A scanned page from a vintage 1980s hand-painted children's book. Thick gouache and watercolor on grainy cream paper, rough visible brushstrokes, paint bleeding at edges, slightly uneven color fills, paper texture showing through thin washes. Warm muted earthy palette like ochre, burnt sienna, sage green, dusty blue. Soft imperfect hand-drawn outlines. Style of classic European picture book illustrators. Analog traditional media artwork scan, NOT digital, NOT CGI, NOT 3D, NOT vector, NOT clean lines",
     realistic: "A scanned watercolor illustration from a handmade children's picture book. Wet-on-wet watercolor technique on cold-pressed paper, visible paper grain and paint puddles, soft color bleeding between areas, pencil sketch lines visible underneath paint. Muted natural palette. Traditional analog artwork scan, NOT digital rendering"
   },
-  anime: {
-    fantasy: "Anime-inspired digital illustration, vibrant colors, expressive characters with large eyes. Style like Studio Ghibli or Makoto Shinkai. Cinematic lighting, magical atmosphere. Professional animation quality",
-    realistic: "Anime-inspired semi-realistic illustration, similar to Makoto Shinkai. Rich real-world environment, warm natural lighting. Expressive character faces. Professional quality"
-  },
-  realistic: {
-    fantasy: "Photorealistic fantasy illustration, cinematic lighting and composition. Detailed magical environment with realistic textures. Characters with realistic proportions and expressions. High quality digital art",
-    realistic: "Photorealistic illustration, cinematic composition with depth of field. Detailed real-world environment. Natural lighting with warm tones. Characters with realistic proportions. High quality"
-  }
+  // book2: {
+  //   fantasy: "<TODO: prompt for second style fantasy mood>",
+  //   realistic: "<TODO: prompt for second style realistic mood>"
+  // },
 };
 
 // ── i18n ──

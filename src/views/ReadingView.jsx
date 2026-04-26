@@ -2,11 +2,12 @@ import { useRef } from "react";
 import { ReactFlipBook } from "@vuvandinh203/react-flipbook";
 import {
   ArrowLeft, ArrowRight, Star, CircleDot, Heart, BookOpen,
-  TrendingUp, TrendingDown, Sparkles,
+  TrendingUp, TrendingDown, Sparkles, Play,
 } from "lucide-react";
 import { VALS } from "../lib/constants.js";
 import { T, CSS, PillBtn } from "../components/UI.jsx";
 import { useApp } from "../context/AppContext.jsx";
+import { useStory } from "../context/StoryContext.jsx";
 import { forwardRef } from "react";
 
 // ─── Simple page component for reading mode ───
@@ -58,7 +59,8 @@ const ReadPage = forwardRef(({ imageUrl, pageNum, side }, ref) => {
 });
 
 export default function ReadingView({ book, onBack }) {
-  const { lang, L, setView } = useApp();
+  const { lang, L, setView, activeChild, setActiveChild } = useApp();
+  const { continueSession } = useStory();
   const bookRef = useRef(null);
   const rb = book;
   const rbPages = rb.pages || [];
@@ -67,6 +69,14 @@ export default function ReadingView({ book, onBack }) {
     const total = rb.values.reduce((s, x) => s + x.count, 0) || 1;
     return { k: v.value_key, ...vi, count: v.count, pct: Math.round((v.count / total) * 100) };
   }).sort((a, b) => b.count - a.count);
+
+  const handleContinue = async () => {
+    // Make sure activeChild matches the book's child so SessionView has the right context
+    if (rb.child && activeChild?.id !== rb.child_id) {
+      setActiveChild({ id: rb.child_id, name: rb.child.name, age: rb.child.age });
+    }
+    await continueSession(rb);
+  };
 
   const endColors = { good: T.teal, mixed: T.amber, sad: T.coral };
   const endBgs = { good: T.tealBg, mixed: T.amberBg, sad: T.coralBg };
@@ -169,6 +179,9 @@ export default function ReadingView({ book, onBack }) {
 
           {/* Actions */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+            <PillBtn variant="primary" onClick={handleContinue} style={{ width: "100%", padding: "8px 14px", fontSize: 11 }}>
+              <Play size={12} />{lang === "ru" ? "Продолжить" : "Continue"}
+            </PillBtn>
             <PillBtn variant="ghost" onClick={onBack} style={{ width: "100%", padding: "8px 14px", fontSize: 11 }}>
               <ArrowLeft size={12} />{lang === "ru" ? "Библиотека" : "Library"}
             </PillBtn>
