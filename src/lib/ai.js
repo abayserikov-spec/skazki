@@ -9,5 +9,5 @@
 
 // Re-export everything for backward compatibility
 export { renderTextRef, getTextColor } from "./ai/text-render.js";
-export { genCharPortrait, genNewCharPortrait, genBookPage, genFirstBookPage, genNextImage, genFirstImage, addCharToPortrait, STYLE_ANCHORS, STYLE_REF_INSTRUCTION } from "./ai/image-gen.js";
+export { genCharPortrait, genNewCharPortrait, genBookPage, genFirstBookPage, genBookSpread, genFirstBookSpread, genNextImage, genFirstImage, addCharToPortrait, STYLE_ANCHORS, STYLE_REF_INSTRUCTION } from "./ai/image-gen.js";
 export { genPage } from "./ai/story-gen.js";

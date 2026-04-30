@@ -130,14 +130,18 @@ export default function SessionView() {
                 minWidth={300} maxWidth={500} minHeight={400} maxHeight={680}
                 drawShadow={true} flippingTime={1200} usePortrait={false} showCover={false}
                 maxShadowOpacity={0.3} mobileScrollSupport={true}
-                startPage={Math.max(0, (totalReady > 1 ? (totalReady % 2 === 0 ? totalReady - 2 : totalReady - 1) : 0))}
+                startPage={Math.max(0, (totalReady > 1 ? ((totalReady - 1) * 2) : 0))}
                 style={{ boxShadow: T.shadowMd }}
               >
-                {[0,1,2,3,4,5].map(i => {
-                  const pg = allPages[i] || null;
+                {/* Each story-page = ONE spread = TWO flipbook pages (left+right halves
+                    of a single 3:2 image). Slot count = TOTAL_PAGES * 2. */}
+                {Array.from({ length: TOTAL_PAGES * 2 }, (_, i) => {
+                  const storyIdx = Math.floor(i / 2);
+                  const half = i % 2 === 0 ? "left" : "right";
+                  const pg = allPages[storyIdx] || null;
                   const isCur = pg?._isCurrent || false;
-                  const isBlur = !pg && i > 0 && allPages[i-1] && i === totalReady;
-                  return <BookPage key={i} page={pg} pageNum={i + 1} isCurrent={isCur} isBlurred={isBlur} curImg={curImg} imgLoading={imgLoading} lang={lang} />;
+                  const isBlur = !pg && storyIdx > 0 && allPages[storyIdx - 1] && storyIdx === totalReady;
+                  return <BookPage key={i} page={pg} pageNum={i + 1} isCurrent={isCur} isBlurred={isBlur} curImg={curImg} imgLoading={imgLoading} lang={lang} spreadSide={half} />;
                 })}
               </ReactFlipBook>
             </div>

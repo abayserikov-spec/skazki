@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { TOTAL_PAGES, VALS, CLAUDE_MODEL } from "../lib/constants.js";
-import { genPage, genCharPortrait, genNewCharPortrait, genBookPage, genFirstBookPage } from "../lib/ai.js";
+import { genPage, genCharPortrait, genNewCharPortrait, genBookSpread, genFirstBookSpread } from "../lib/ai.js";
 import { supabase } from "../lib/supabase.js";
 import {
   createBook, savePage, finalizeBook, saveBookValues,
@@ -134,11 +134,11 @@ export function StoryProvider({ children }) {
           if (generatedPortraits.length > 0) {
             setRefImgUrl(generatedPortraits[0]);
             setPortraitUrls(generatedPortraits);
-            const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", generatedPortraits, artStyle, pageText, textZone, intensity, imgOpts);
+            const pageUrl = await genBookSpread(curPage.scene, charDesc || "the main character", generatedPortraits, artStyle, pageText, textZone, intensity, imgOpts);
             if (cancelled) return;
             setCurImg(pageUrl);
           } else {
-            const pageUrl = await genFirstBookPage(curPage.scene, charDesc || "a friendly character", artStyle, pageText, textZone, intensity, imgOpts);
+            const pageUrl = await genFirstBookSpread(curPage.scene, charDesc || "a friendly character", artStyle, pageText, textZone, intensity, imgOpts);
             if (cancelled) return;
             setCurImg(pageUrl);
             if (pageUrl) { setRefImgUrl(pageUrl); setPortraitUrls([pageUrl]); }
@@ -158,7 +158,7 @@ export function StoryProvider({ children }) {
           setGenStep("next-page");
           const tPage = performance.now();
           const refs = portraitUrls.length > 0 ? portraitUrls : refImgUrl;
-          const pageUrl = await genBookPage(curPage.scene, charDesc || "the main character", refs, artStyle, pageText, textZone, intensity, imgOpts);
+          const pageUrl = await genBookSpread(curPage.scene, charDesc || "the main character", refs, artStyle, pageText, textZone, intensity, imgOpts);
           if (cancelled) return;
           setCurImg(pageUrl);
           console.log(`[STORY-GEN] ${pageLabel} bookPage in ${(performance.now() - tPage).toFixed(0)}ms`);

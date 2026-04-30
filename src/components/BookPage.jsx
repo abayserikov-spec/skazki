@@ -9,10 +9,13 @@ import { T } from "./UI.jsx";
 // with Sassoon Primary font reference)
 // ═══════════════════════════════════════════════════════════
 
-const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgLoading, lang }, ref) => {
+const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgLoading, lang, spreadSide }, ref) => {
   const side = pageNum % 2 === 1 ? "left" : "right";
   const imgUrl = isCurrent ? (curImg || page?.imgUrl) : page?.imgUrl;
   const isImgLoading = isCurrent && imgLoading && !imgUrl;
+  // If spreadSide is provided, this page renders one half of a 3:2 spread image.
+  // We do this by sizing the image to 200% width and shifting it left or right.
+  const isSpread = spreadSide === "left" || spreadSide === "right";
 
   return (
     <div ref={ref} style={{
@@ -67,18 +70,47 @@ const BookPage = forwardRef(({ page, pageNum, isCurrent, isBlurred, curImg, imgL
               </span>
             </div>
           ) : imgUrl ? (
-            /* Full bleed illustration — the entire page IS the image */
-            <img
-              src={imgUrl}
-              alt=""
-              style={{
+            isSpread ? (
+              /* Spread: 3:2 image split between two pages.
+                 Each page is a viewport showing only its half of the source. */
+              <div style={{
                 width: "100%",
                 height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
-              loading="lazy"
-            />
+                overflow: "hidden",
+                position: "relative",
+              }}>
+                <img
+                  src={imgUrl}
+                  alt=""
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    /* Image is 200% of page width; shift left side so its right
+                       edge meets the page's right edge, and vice versa. */
+                    left: spreadSide === "left" ? 0 : "-100%",
+                    width: "200%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "center",
+                    display: "block",
+                  }}
+                  loading="lazy"
+                />
+              </div>
+            ) : (
+              /* Legacy single-page image — full bleed */
+              <img
+                src={imgUrl}
+                alt=""
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+                loading="lazy"
+              />
+            )
           ) : (
             /* Fallback: text only (if image generation failed) */
             <div style={{

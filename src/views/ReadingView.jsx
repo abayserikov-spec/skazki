@@ -11,7 +11,10 @@ import { useStory } from "../context/StoryContext.jsx";
 import { forwardRef } from "react";
 
 // ─── Simple page component for reading mode ───
-const ReadPage = forwardRef(({ imageUrl, pageNum, side }, ref) => {
+// Supports spread mode: a single 3:2 image is split between two facing pages.
+// `spreadSide` = "left" | "right" — which half of the image to show.
+const ReadPage = forwardRef(({ imageUrl, pageNum, side, spreadSide }, ref) => {
+  const isSpread = spreadSide === "left" || spreadSide === "right";
   return (
     <div ref={ref} style={{
       width: "100%", height: "100%", background: "#FFFFFF",
@@ -33,9 +36,20 @@ const ReadPage = forwardRef(({ imageUrl, pageNum, side }, ref) => {
       )}
 
       {imageUrl ? (
-        <img src={imageUrl} alt="" style={{
-          width: "100%", height: "100%", objectFit: "cover", display: "block",
-        }} loading="lazy" />
+        isSpread ? (
+          <div style={{ width: "100%", height: "100%", overflow: "hidden", position: "relative" }}>
+            <img src={imageUrl} alt="" style={{
+              position: "absolute", top: 0,
+              left: spreadSide === "left" ? 0 : "-100%",
+              width: "200%", height: "100%",
+              objectFit: "cover", objectPosition: "center", display: "block",
+            }} loading="lazy" />
+          </div>
+        ) : (
+          <img src={imageUrl} alt="" style={{
+            width: "100%", height: "100%", objectFit: "cover", display: "block",
+          }} loading="lazy" />
+        )
       ) : (
         <div style={{
           width: "100%", height: "100%",
@@ -127,14 +141,24 @@ export default function ReadingView({ book, onBack }) {
                 startPage={0}
                 style={{ boxShadow: T.shadowMd }}
               >
-                {rbPages.map((pg, i) => (
+                {/* Each saved page = ONE spread = TWO flipbook pages
+                    (left half + right half of the same 3:2 image). */}
+                {rbPages.flatMap((pg, i) => [
                   <ReadPage
-                    key={pg.id || i}
+                    key={`${pg.id || i}-L`}
                     imageUrl={pg.image_url}
-                    pageNum={i + 1}
-                    side={i % 2 === 0 ? "left" : "right"}
-                  />
-                ))}
+                    pageNum={i * 2 + 1}
+                    side="left"
+                    spreadSide="left"
+                  />,
+                  <ReadPage
+                    key={`${pg.id || i}-R`}
+                    imageUrl={pg.image_url}
+                    pageNum={i * 2 + 2}
+                    side="right"
+                    spreadSide="right"
+                  />,
+                ])}
               </ReactFlipBook>
             </div>
           ) : (
