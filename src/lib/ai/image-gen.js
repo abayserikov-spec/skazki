@@ -48,6 +48,20 @@ const TEXT_ZONE_INSTRUCTIONS = {
 };
 
 // ─── CORE GEMINI CALL ───
+// Retries on 5xx / network errors. Each individual attempt has its own AbortController
+// timed to 55s — we kill the request just before Vercel's 60s function timeout
+// to free the client to retry instead of getting a 504 from the proxy.
+//
+// Backoff schedule: 0ms, 1500ms, 4000ms (total worst case ~3 min, but most retries
+// succeed on attempt 2 because Gemini queue clears fast).
+const RETRY_DELAYS_MS = [0, 1500, 4000];
+const PER_ATTEMPT_TIMEOUT_MS = 55_000;
+
+function isRetryable(status) {
+  // 5xx server errors and 429 (rate limit) are retryable. Everything else (4xx) is not.
+  return status >= 500 || status === 429;
+}
+
 async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "3:4", label = "unknown") {
   const refs = referenceImages.filter(Boolean);
   const payloadKb = Math.round(
@@ -66,29 +80,68 @@ async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "3:4",
     if (selectedModel) headers["x-gemini-model"] = selectedModel;
   } catch {}
 
-  try {
-    const res = await fetch("/api/gemini", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      console.error(`[IMG-GEN] ${label} HTTP ${res.status} after ${(performance.now() - t0).toFixed(0)}ms`);
-      return null;
+  const bodyStr = JSON.stringify(body);
+  let lastError = null;
+
+  for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) {
+      const delay = RETRY_DELAYS_MS[attempt];
+      console.log(`[IMG-GEN] ${label} retry ${attempt} after ${delay}ms (last: ${lastError})`);
+      await new Promise(r => setTimeout(r, delay));
     }
-    const data = await res.json();
-    if (data.error) {
-      console.error(`[IMG-GEN] ${label} error:`, data.error);
-      return null;
+
+    const tAttempt = performance.now();
+    const ctrl = new AbortController();
+    const abortTimer = setTimeout(() => ctrl.abort(), PER_ATTEMPT_TIMEOUT_MS);
+
+    try {
+      const res = await fetch("/api/gemini", {
+        method: "POST",
+        headers,
+        body: bodyStr,
+        signal: ctrl.signal,
+      });
+      clearTimeout(abortTimer);
+
+      if (!res.ok) {
+        const elapsed = (performance.now() - tAttempt).toFixed(0);
+        lastError = `HTTP ${res.status}`;
+        console.warn(`[IMG-GEN] ${label} attempt ${attempt + 1} HTTP ${res.status} after ${elapsed}ms`);
+        if (!isRetryable(res.status)) {
+          console.error(`[IMG-GEN] ${label} non-retryable status, giving up`);
+          return null;
+        }
+        continue; // retry
+      }
+
+      const data = await res.json();
+      if (data.error) {
+        lastError = `api-error: ${data.error}`;
+        console.warn(`[IMG-GEN] ${label} attempt ${attempt + 1} api error:`, data.error);
+        // API-level error in 200 response — usually means model rejected; don't retry blindly
+        if (attempt === RETRY_DELAYS_MS.length - 1) return null;
+        continue;
+      }
+      const presetInfo = data.presetUsed ? ` preset=${data.presetUsed}` : "";
+      const totalMs = (performance.now() - t0).toFixed(0);
+      const attemptMs = (performance.now() - tAttempt).toFixed(0);
+      console.log(`[IMG-GEN] ${label} done in ${totalMs}ms (attempt ${attempt + 1}, took ${attemptMs}ms)${presetInfo}`);
+      if (data.imageBase64) return `data:${data.mimeType || "image/png"};base64,${data.imageBase64}`;
+      lastError = "empty-response";
+      console.warn(`[IMG-GEN] ${label} attempt ${attempt + 1} empty image response`);
+      continue;
+    } catch (e) {
+      clearTimeout(abortTimer);
+      const elapsed = (performance.now() - tAttempt).toFixed(0);
+      lastError = e.name === "AbortError" ? "client-timeout-55s" : (e.message || "fetch-error");
+      console.warn(`[IMG-GEN] ${label} attempt ${attempt + 1} exception after ${elapsed}ms:`, lastError);
+      // network errors and timeouts are retryable
+      continue;
     }
-    const presetInfo = data.presetUsed ? ` preset=${data.presetUsed}` : "";
-    console.log(`[IMG-GEN] ${label} done in ${(performance.now() - t0).toFixed(0)}ms${presetInfo}`);
-    if (data.imageBase64) return `data:${data.mimeType || "image/png"};base64,${data.imageBase64}`;
-    return null;
-  } catch (e) {
-    console.error(`[IMG-GEN] ${label} exception:`, e);
-    return null;
   }
+
+  console.error(`[IMG-GEN] ${label} FAILED after ${RETRY_DELAYS_MS.length} attempts in ${(performance.now() - t0).toFixed(0)}ms (last: ${lastError})`);
+  return null;
 }
 
 // ─── CHARACTER PORTRAITS ───
