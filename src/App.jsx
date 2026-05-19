@@ -9,6 +9,7 @@ import SessionView from "./views/SessionView.jsx";
 import ReportView from "./views/ReportView.jsx";
 import LibraryView from "./views/LibraryView.jsx";
 import CharactersView from "./views/CharactersView.jsx";
+import Landing from "./Landing.jsx";
 
 function ViewRouter() {
   const { view } = useApp();
@@ -43,6 +44,10 @@ function StoryViewRouter({ view }) {
 }
 
 export default function App() {
+  const isProductRoute = window.location.pathname.toLowerCase().endsWith("/app.html");
+
+  if (!isProductRoute) return <Landing />;
+
   return (
     <AppProvider>
       <ViewRouter />
