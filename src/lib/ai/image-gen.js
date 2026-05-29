@@ -74,10 +74,23 @@ async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "3:4",
 
   // Read selected model from localStorage (set by Settings panel).
   // Falls back to server env/default if not present.
+  // Provider routing: "openai*" presets go to the OpenAI proxy, everything
+  // else (Nano Banana presets) goes to the Gemini proxy. Both proxies accept
+  // the same request/response shape, so only the endpoint + header differ.
+  let endpoint = "/api/gemini";
   const headers = { "Content-Type": "application/json" };
   try {
     const selectedModel = typeof window !== "undefined" ? window.localStorage?.getItem("geminiModel") : null;
-    if (selectedModel) headers["x-gemini-model"] = selectedModel;
+    if (selectedModel) {
+      if (selectedModel.startsWith("openai")) {
+        endpoint = "/api/openai-image";
+        // A specific OpenAI model id is forwarded as-is; the bare "openai-image"
+        // preset lets the server pick its default (OPENAI_IMAGE_MODEL / gpt-image-1).
+        if (selectedModel !== "openai-image") headers["x-openai-model"] = selectedModel;
+      } else {
+        headers["x-gemini-model"] = selectedModel;
+      }
+    }
   } catch {}
 
   const bodyStr = JSON.stringify(body);
@@ -95,7 +108,7 @@ async function geminiGenerate(prompt, referenceImages = [], aspectRatio = "3:4",
     const abortTimer = setTimeout(() => ctrl.abort(), PER_ATTEMPT_TIMEOUT_MS);
 
     try {
-      const res = await fetch("/api/gemini", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers,
         body: bodyStr,

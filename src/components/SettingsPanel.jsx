@@ -7,6 +7,7 @@ const MODEL_OPTIONS = [
   { key: "nb2-default", label: "Nano Banana 2 (default)", hint: "Gemini 3.1, текущая" },
   { key: "nb2-minimal", label: "NB2 + minimal thinking", hint: "NB2 с явным thinkingLevel=minimal" },
   { key: "nb1", label: "Nano Banana 1", hint: "Gemini 2.5, старая но может быть быстрее" },
+  { key: "openai-image", label: "Images 2.0 (ChatGPT)", hint: "OpenAI gpt-image-2" },
 ];
 
 export default function SettingsPanel({ onClose }) {
