@@ -9,15 +9,24 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/figtree": "^5.2.10",
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/work-sans": "^5.2.8",
     "@supabase/supabase-js": "^2.102.1",
+    "@tailwindcss/vite": "^4.3.0",
     "@vuvandinh203/react-flipbook": "^1.0.2",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
     "motion": "^12.0.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.0"
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "vite": "^8.0.14",
+    "vite-plugin-svgr": "^5.2.0"
   }
 }

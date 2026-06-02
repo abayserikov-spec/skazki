@@ -1,0 +1,30 @@
+@import "tailwindcss";
+@import "@fontsource-variable/work-sans";
+@import "@fontsource-variable/figtree";
+@import "@fontsource-variable/fraunces";
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@theme {
+  --font-sans: "Work Sans", sans-serif;
+  --font-figtree: "Figtree Variable", sans-serif;
+  --font-fraunces: "Fraunces Variable", serif;
+
+  --text-h1: 2.125rem;
+  --text-button: 1.125rem;
+
+  --color-cream: #fdfaf4;
+  --color-midnight: #0c1c31;
+  --color-black-secondary: #2b3b51;
+  --color-grey-medium: #e3e3e3;
+
+  --shadow-card:
+    0 20px 30px color-mix(in srgb, var(--color-midnight) 5%, transparent),
+    0 10px 30px color-mix(in srgb, var(--color-midnight) 5%, transparent),
+    0 5px 15px color-mix(in srgb, var(--color-midnight) 5%, transparent);
+}
