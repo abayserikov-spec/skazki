@@ -18,6 +18,14 @@ const ST = {
       localStorage.removeItem("skazka_" + k);
     } catch {}
   },
+  clear(opts?: { preserve?: string[] }): void {
+    try {
+      const skip = (opts?.preserve ?? []).map((k) => "skazka_" + k);
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("skazka_") && !skip.includes(k))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {}
+  },
 };
 
 export default ST;

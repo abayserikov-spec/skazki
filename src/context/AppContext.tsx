@@ -194,7 +194,8 @@ export function AppProvider({
   }, []);
 
   const logout = useCallback(async () => {
-    await ST.del("user");
+    ST.clear({ preserve: ["lang"] });
+    if (supabase) await supabase.auth.signOut();
     window.location.href = "/";
   }, []);
 
