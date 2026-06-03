@@ -2,6 +2,7 @@ import { AppleIcon, EmailIcon, GoogleIcon } from "assets/svg";
 import { clsx } from "clsx";
 import { AnimIn } from "components/AnimIn";
 import AuthButton from "components/AuthButton";
+import AuthError from "components/AuthError";
 import AuthLayout from "components/AuthLayout";
 import { useState } from "react";
 import { resetPassword, signInWithApple, signInWithGoogle, signInWithPassword } from "lib/auth";
@@ -91,7 +92,7 @@ export default function Login() {
           <AuthButton icon={EmailIcon} delay={0.14} onClick={() => reset("email")}>
             Continue with Email
           </AuthButton>
-          {error && <p className="text-sm text-center text-red-500 mt-1">{error}</p>}
+          <AuthError message={error} />
         </div>
       )}
 
@@ -128,7 +129,7 @@ export default function Login() {
                 Forgot password?
               </button>
             </div>
-            {error && <p className="text-sm text-center text-red-500">{error}</p>}
+            <AuthError message={error} />
             <button
               type="submit"
               disabled={loading}
@@ -169,7 +170,7 @@ export default function Login() {
               autoComplete="email"
               className={inputClass}
             />
-            {error && <p className="text-sm text-center text-red-500">{error}</p>}
+            <AuthError message={error} />
             <button
               type="submit"
               disabled={loading}

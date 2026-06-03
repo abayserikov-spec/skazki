@@ -2,6 +2,7 @@ import { AppleIcon, EmailIcon, GoogleIcon } from "assets/svg";
 import { clsx } from "clsx";
 import { AnimIn } from "components/AnimIn";
 import AuthButton from "components/AuthButton";
+import AuthError from "components/AuthError";
 import AuthLayout from "components/AuthLayout";
 import { useState } from "react";
 import { signInWithApple, signInWithGoogle, signUpWithEmail } from "lib/auth";
@@ -84,9 +85,7 @@ export default function Register() {
           >
             Continue with Email
           </AuthButton>
-          {error && (
-            <p className="text-sm text-center text-red-500 mt-1">{error}</p>
-          )}
+          <AuthError message={error} />
         </div>
       ) : sent ? (
         <AnimIn>
@@ -133,9 +132,7 @@ export default function Register() {
               autoComplete="new-password"
               className={inputClass}
             />
-            {error && (
-              <p className="text-sm text-center text-red-500">{error}</p>
-            )}
+            <AuthError message={error} />
             <button
               type="submit"
               disabled={loading}
