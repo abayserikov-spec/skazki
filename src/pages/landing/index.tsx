@@ -9,11 +9,6 @@ const REGISTER_URL = "/app/register";
 const LOGIN_URL = "/app/login";
 const LIBRARY_URL = "/library";
 
-// Enable reveal animations as early as the module loads (mirrors the design's
-// inline <script> in <head>) so there is no first-paint flash.
-if (typeof document !== "undefined") {
-  document.documentElement.classList.add("ranim");
-}
 
 const MARKUP = `
 <!-- ============ STICKY HEADER ============ -->
@@ -324,8 +319,6 @@ export default function Landing() {
     const timers: number[] = [];
     const cleanups: Array<() => void> = [];
 
-    document.documentElement.classList.add("ranim");
-
     /* ---- scroll reveal ---- */
     const io = new IntersectionObserver(
       (entries) => {
@@ -622,5 +615,5 @@ export default function Landing() {
     };
   }, []);
 
-  return <div ref={ref} dangerouslySetInnerHTML={{ __html: MARKUP }} />;
+  return <div ref={ref} className="landing-page" dangerouslySetInnerHTML={{ __html: MARKUP }} />;
 }

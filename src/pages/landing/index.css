@@ -4,16 +4,15 @@
   src:url('/assets/fonts/sassoon-primary.otf') format('opentype');
   font-weight:400;font-style:normal;font-display:swap;
 }
-:root{
-  --ink:#2B3B51;           /* grey/dark — primary text */
-  --ink-deep:#0C1C31;      /* darkest navy */
-  --paper:#FFFFFE;         /* white */
-  --accent:#FFBA53;        /* accent orange */
-  --accent-edge:#e9a23c;   /* 3d button bottom edge */
-  --dark-1:#092A52;        /* dark band — top */
-  --dark-2:#4B3861;        /* dark band — bottom */
+.landing-page{
+  --ink:#2B3B51;
+  --ink-deep:#0C1C31;
+  --paper:#FFFFFE;
+  --accent:#FFBA53;
+  --accent-edge:#e9a23c;
+  --dark-1:#092A52;
+  --dark-2:#4B3861;
 
-  /* legacy aliases kept so later sections still resolve */
   --navy:#2B3B51;--navy-ink:#2B3B51;--navy-deep:#0C1C31;
   --purple-band-1:#4B3861;--purple-band-2:#211d44;--purple-deep:#1c1840;--purple-drop:#5b4a87;
   --amber:#FFBA53;--amber-2:#FFBA53;--amber-ink:#2B3B51;
@@ -28,10 +27,7 @@
   --maxw:1180px;
   --pad-x:40px;
   --radius:22px;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{
+
   font-family:var(--font-sans);
   color:var(--body);
   background:var(--paper);
@@ -39,7 +35,8 @@ body{
   text-rendering:optimizeLegibility;
   overflow-x:hidden;
 }
-img{display:block;max-width:100%;}
+.landing-page *{box-sizing:border-box;margin:0;padding:0;}
+.landing-page img{display:block;max-width:100%;}
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 var(--pad-x);}
 .wrap-wide{max-width:1320px;margin:0 auto;padding:0 var(--pad-x);}
 
@@ -81,13 +78,13 @@ img{display:block;max-width:100%;}
 .dots-dark{background-image:radial-gradient(circle, rgba(255,255,255,.10) 1px, transparent 1.2px);background-size:26px 26px;}
 
 /* ---------- reveal animation ---------- */
-html.ranim .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .75s cubic-bezier(.34,1.56,.64,1);}
-html.ranim .reveal.in{opacity:1;transform:none;}
-html.ranim .reveal.pop{transform:translateY(30px) scale(.8);}
-html.ranim .reveal.pop.in{transform:none;}
-html.ranim .reveal.fromL{transform:translateX(-70px);}
-html.ranim .reveal.fromR{transform:translateX(70px);}
-html.ranim .reveal.fromL.in,html.ranim .reveal.fromR.in{transform:none;}
+.landing-page .reveal{opacity:0;transform:translateY(40px);transition:opacity .7s ease,transform .75s cubic-bezier(.34,1.56,.64,1);}
+.landing-page .reveal.in{opacity:1;transform:none;}
+.landing-page .reveal.pop{transform:translateY(30px) scale(.8);}
+.landing-page .reveal.pop.in{transform:none;}
+.landing-page .reveal.fromL{transform:translateX(-70px);}
+.landing-page .reveal.fromR{transform:translateX(70px);}
+.landing-page .reveal.fromL.in,.landing-page .reveal.fromR.in{transform:none;}
 /* idle float (Duolingo character bob) */
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 .bob{animation:bob 4.5s ease-in-out infinite;}
