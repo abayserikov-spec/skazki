@@ -2,11 +2,27 @@
   "functions": {
     "api/**": {
       "maxDuration": 60,
-      "regions": ["iad1"]
+      "regions": [
+        "iad1"
+      ]
     }
   },
   "rewrites": [
-    { "source": "/api/replicate/:path*", "destination": "https://api.replicate.com/:path*" },
-    { "source": "/api/elevenlabs/:path*", "destination": "https://api.elevenlabs.io/:path*" }
+    {
+      "source": "/api/replicate/:path*",
+      "destination": "https://api.replicate.com/:path*"
+    },
+    {
+      "source": "/api/elevenlabs/:path*",
+      "destination": "https://api.elevenlabs.io/:path*"
+    },
+    {
+      "source": "/app",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/app/:path*",
+      "destination": "/app/index.html"
+    }
   ]
 }
