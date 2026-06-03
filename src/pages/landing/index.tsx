@@ -7,6 +7,7 @@ import "./index.css";
 //   primary "start" CTAs -> /app/register, "I already have an account" -> /app/login
 const REGISTER_URL = "/app/register";
 const LOGIN_URL = "/app/login";
+const LIBRARY_URL = "/library";
 
 // Enable reveal animations as early as the module loads (mirrors the design's
 // inline <script> in <head>) so there is no first-paint flash.
@@ -183,7 +184,7 @@ const MARKUP = `
       <div class="ci"><img src="/assets/img/book-blue.png" alt=""></div>
     </div>
     <div class="stories-cta">
-      <a href="${REGISTER_URL}" class="btn btn-primary">Check Out Other Books <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a href="${LIBRARY_URL}" class="btn btn-primary">Check Out Other Books <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     </div>
   </div>
   <div class="video reveal">

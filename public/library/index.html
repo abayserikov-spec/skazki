@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anyturn — The Library</title>
+<meta name="description" content="Browse the storybooks families have made together with Anyturn — then go and write one that's entirely your own.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,500;1,9..144,600;1,9..144,700&family=Figtree:wght@400;500;600;700;800&family=EB+Garamond:wght@400;500;600;700;800&family=Andika:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/anyturn.css">
+<link rel="stylesheet" href="/library.css">
+</head>
+<body>
+
+<!-- ============ STICKY HEADER ============ -->
+<header class="nav show" id="nav">
+  <div class="nav-inner">
+    <a href="/" class="logo nav-logo">
+      <img class="logo-mark" src="/assets/img/logo.png" alt="">
+      <span>anyturn</span>
+    </a>
+    <a href="/app/register" class="btn nav-cta">Get Started</a>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ============ LIBRARY HERO ============ -->
+  <section class="lib-hero" data-screen-label="Library hero">
+    <img class="lib-hero-cloud" src="/assets/img/cloud.png" alt="">
+    <div class="lib-eyebrow">the library</div>
+    <h1>Every Story, Made<br>By a Real Child</h1>
+    <p>Browse the books families have dreamed up together. Get inspired — then go and write one that's entirely your own.</p>
+  </section>
+
+  <!-- ============ CONTROLS ============ -->
+  <section class="lib-controls" data-screen-label="Library controls">
+    <div class="lib-controls-inner">
+      <div class="lib-search">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="lib-search-input" type="text" placeholder="Search by title or storyteller…" aria-label="Search books">
+      </div>
+      <div class="lib-chips" id="lib-chips"></div>
+    </div>
+  </section>
+
+  <!-- ============ GRID ============ -->
+  <section class="lib-grid-wrap" data-screen-label="Library grid">
+    <div class="lib-count" id="lib-count"></div>
+    <div class="lib-grid" id="lib-grid"></div>
+    <div class="lib-empty" id="lib-empty">No stories match that yet — try another search.</div>
+    <div class="lib-more">
+      <a href="/app/register" class="btn btn-primary">Load More Stories <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M6 13l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </section>
+
+  <!-- ============ FINAL CTA + FOOTER ============ -->
+  <section class="final" data-screen-label="Final CTA">
+    <div class="final-band">
+      <div class="valley"></div>
+      <div class="sparkle-layer" data-sparkles="24"></div>
+      <img class="final-crow bob" src="/assets/img/crow-mascot.png" alt="A little crow in star pyjamas holding a glowing storybook">
+      <div class="final-inner">
+        <h2>Your Story Belongs<br>Here Too</h2>
+        <p>Start your first story in under a minute.<br>No card, no pressure — just a chance to see what your child does with it.</p>
+        <a href="/app/register" class="btn btn-primary">Start Your First Story For Free <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      </div>
+      <footer class="site-footer">
+        <div class="sparkle-layer" data-sparkles="10"></div>
+        <a href="/" class="foot-logo">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M25 6C16 8 9 15 7 25c6-1 11-4 14-9" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><path d="M25 6c1 7-2 14-8 18M16 16l6-1M13 21l6-1" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><path d="M7 25l-2 2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span>anyturn</span>
+        </a>
+        <nav class="foot-nav">
+          <a href="#">Terms of service</a>
+          <a href="#">Privacy policy</a>
+          <a href="#">Safety</a>
+          <a href="#">Contact</a>
+        </nav>
+        <div class="foot-copy">© 2026 Anyturn Ltd. Made with <span class="heart">♥</span> in London.</div>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<script src="/library.js"></script>
+</body>
+</html>
