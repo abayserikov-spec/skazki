@@ -4,20 +4,27 @@ import { AnimIn } from "components/AnimIn";
 import AuthButton from "components/AuthButton";
 import AuthError from "components/AuthError";
 import AuthLayout from "components/AuthLayout";
+import {
+  resetPassword,
+  signInWithApple,
+  signInWithGoogle,
+  signInWithPassword,
+} from "lib/auth";
 import { useState } from "react";
-import { resetPassword, signInWithApple, signInWithGoogle, signInWithPassword } from "lib/auth";
+import { Link, useNavigate } from "react-router-dom";
 
 const inputClass = clsx(
   "w-full h-14 px-5 rounded-full",
   "border-2 border-grey-medium",
   "text-black-secondary placeholder:text-black-secondary/30",
-  "font-figtree text-button-sm sm:text-button",
+  "font-sans text-button-sm sm:text-button",
   "outline-none focus:border-black-secondary/40 transition-colors duration-200",
 );
 
 type View = "oauth" | "email" | "forgot" | "forgot-sent";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [view, setView] = useState<View>("oauth");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -44,7 +51,7 @@ export default function Login() {
     setError(null);
     try {
       await signInWithPassword(email.trim(), password);
-      window.location.replace("/app");
+      navigate("/app", { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -77,19 +84,33 @@ export default function Login() {
             "grow",
           )}
         >
-          {view === "forgot" || view === "forgot-sent" ? "Reset password" : "Login"}
+          {view === "forgot" || view === "forgot-sent"
+            ? "Reset password"
+            : "Login"}
         </h1>
       </AnimIn>
 
       {view === "oauth" && (
         <div className={clsx("flex flex-col", "gap-4 mt-10", "w-full")}>
-          <AuthButton icon={GoogleIcon} delay={0.08} onClick={() => handleOAuth(signInWithGoogle)}>
+          <AuthButton
+            icon={GoogleIcon}
+            delay={0.08}
+            onClick={() => handleOAuth(signInWithGoogle)}
+          >
             Continue with Google
           </AuthButton>
-          <AuthButton icon={AppleIcon} delay={0.11} onClick={() => handleOAuth(signInWithApple)}>
+          <AuthButton
+            icon={AppleIcon}
+            delay={0.11}
+            onClick={() => handleOAuth(signInWithApple)}
+          >
             Continue with Apple
           </AuthButton>
-          <AuthButton icon={EmailIcon} delay={0.14} onClick={() => reset("email")}>
+          <AuthButton
+            icon={EmailIcon}
+            delay={0.14}
+            onClick={() => reset("email")}
+          >
             Continue with Email
           </AuthButton>
           <AuthError message={error} />
@@ -99,7 +120,10 @@ export default function Login() {
       {view === "email" && (
         <AnimIn>
           <form
-            onSubmit={(e) => { e.preventDefault(); handleEmailSubmit(); }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleEmailSubmit();
+            }}
             className={clsx("flex flex-col gap-3 mt-10 w-full")}
           >
             <input
@@ -136,7 +160,7 @@ export default function Login() {
               className={clsx(
                 "w-full h-14 rounded-full",
                 "bg-black-secondary text-white",
-                "font-figtree font-bold text-button-sm sm:text-button",
+                "font-sans font-bold text-button-sm sm:text-button",
                 "cursor-pointer transition-all duration-200",
                 "hover:bg-black-secondary/85 active:scale-[0.98]",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -158,7 +182,10 @@ export default function Login() {
       {view === "forgot" && (
         <AnimIn>
           <form
-            onSubmit={(e) => { e.preventDefault(); handleForgotSubmit(); }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleForgotSubmit();
+            }}
             className={clsx("flex flex-col gap-3 mt-10 w-full")}
           >
             <input
@@ -177,7 +204,7 @@ export default function Login() {
               className={clsx(
                 "w-full h-14 rounded-full",
                 "bg-black-secondary text-white",
-                "font-figtree font-bold text-button-sm sm:text-button",
+                "font-sans font-bold text-button-sm sm:text-button",
                 "cursor-pointer transition-all duration-200",
                 "hover:bg-black-secondary/85 active:scale-[0.98]",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -198,7 +225,12 @@ export default function Login() {
 
       {view === "forgot-sent" && (
         <AnimIn>
-          <p className={clsx("mt-10 text-center text-black-secondary/70", "text-sm leading-relaxed")}>
+          <p
+            className={clsx(
+              "mt-10 text-center text-black-secondary/70",
+              "text-sm leading-relaxed",
+            )}
+          >
             Check your inbox — we sent a reset link to <strong>{email}</strong>.
           </p>
         </AnimIn>
@@ -206,9 +238,12 @@ export default function Login() {
 
       <p className="mt-6 text-sm text-black-secondary/50 text-center">
         Don't have an account?{" "}
-        <a href="/app/register" className="text-black-secondary hover:underline font-medium">
+        <Link
+          to="/app/register"
+          className="text-black-secondary hover:underline font-medium"
+        >
           Sign up
-        </a>
+        </Link>
       </p>
     </AuthLayout>
   );

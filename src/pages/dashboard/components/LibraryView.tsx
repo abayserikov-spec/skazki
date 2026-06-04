@@ -4,7 +4,7 @@ import { getBookWithPages } from "lib/db";
 import type { Book } from "lib/types";
 import { ArrowLeft, BookMarked, BookOpen } from "lucide-react";
 import { useState } from "react";
-import ReadingView from "views/ReadingView";
+import ReadingView from "./ReadingView";
 
 export default function LibraryView() {
   const { library, lang, L, setView } = useApp();

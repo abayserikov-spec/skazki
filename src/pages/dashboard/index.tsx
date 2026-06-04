@@ -2,12 +2,12 @@ import { CSS, T } from "components/UI";
 import { useApp } from "context/AppContext";
 import { StoryProvider } from "context/StoryContext";
 import { Loader2 } from "lucide-react";
-import CharactersView from "views/CharactersView";
-import DashboardView from "views/DashboardView";
-import LibraryView from "views/LibraryView";
-import ReportView from "views/ReportView";
-import SessionView from "views/SessionView";
-import SetupView from "views/SetupView";
+import CharactersView from "./components/CharactersView";
+import DashboardView from "./components/DashboardView";
+import LibraryView from "./components/LibraryView";
+import ReportView from "./components/ReportView";
+import SessionView from "./components/SessionView";
+import SetupView from "./components/SetupView";
 
 export default function Dashboard() {
   const { view } = useApp();
@@ -31,11 +31,6 @@ export default function Dashboard() {
         />
       </div>
     );
-
-  if (view === "auth") {
-    window.location.replace("/app/login");
-    return null;
-  }
 
   return (
     <StoryProvider>
