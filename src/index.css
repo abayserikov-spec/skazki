@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@fontsource-variable/work-sans";
 @import "@fontsource-variable/figtree";
 @import "@fontsource-variable/fraunces";
 
@@ -11,8 +10,7 @@
 }
 
 @theme {
-  --font-sans: "Work Sans", sans-serif;
-  --font-figtree: "Figtree Variable", sans-serif;
+  --font-sans: "Figtree Variable", sans-serif;
   --font-fraunces: "Fraunces Variable", serif;
 
   --text-h1: 2.125rem;

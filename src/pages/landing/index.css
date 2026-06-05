@@ -1,7 +1,7 @@
 /* ============ Anyturn — design tokens (Figma exact) ============ */
 @font-face{
   font-family:'Sassoon Primary';
-  src:url('/assets/fonts/sassoon-primary.otf') format('opentype');
+  src:url('/assets/fonts/sassoon-primary.woff2') format('woff2');
   font-weight:400;font-style:normal;font-display:swap;
 }
 .landing-page{
