@@ -40,7 +40,7 @@ export default function AuthButton({
         )}
       >
         <Icon className="w-6 h-6 shrink-0" />
-        <span className="font-bold text-button leading-none text-black-secondary font-figtree">
+        <span className="font-bold text-button leading-none text-black-secondary font-sans">
           {children}
         </span>
       </button>

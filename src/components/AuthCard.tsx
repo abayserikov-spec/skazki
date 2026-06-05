@@ -1,23 +1,28 @@
 import { clsx } from "clsx";
 import { AnimIn } from "components/AnimIn";
+import { motion } from "motion/react";
 
 export default function AuthCard({ children }: { children: React.ReactNode }) {
   return (
     <AnimIn delay={0.05}>
-      <div
+      <motion.div
+        layout
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         className={clsx(
           // sizing
-          "min-h-106 w-107.5 max-w-[90vw]",
+          "min-h-50 w-107.5 max-w-[90vw]",
           // spacing
           "px-[5vw] sm:px-15 py-15",
           // background & shape
           "bg-white rounded-3xl",
           // shadow
           "shadow-card",
+          // flex
+          "flex flex-col items-stretch justify-center",
         )}
       >
         {children}
-      </div>
+      </motion.div>
     </AnimIn>
   );
 }

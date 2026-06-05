@@ -2,15 +2,17 @@ import { AppleIcon, EmailIcon, GoogleIcon } from "assets/svg";
 import { clsx } from "clsx";
 import { AnimIn } from "components/AnimIn";
 import AuthButton from "components/AuthButton";
+import AuthError from "components/AuthError";
 import AuthLayout from "components/AuthLayout";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { signInWithApple, signInWithGoogle, signUpWithEmail } from "lib/auth";
 
 const inputClass = clsx(
   "w-full h-14 px-5 rounded-full",
   "border-2 border-grey-medium",
   "text-black-secondary placeholder:text-black-secondary/30",
-  "font-figtree text-button-sm sm:text-button",
+  "font-sans text-button-sm sm:text-button",
   "outline-none focus:border-black-secondary/40 transition-colors duration-200",
 );
 
@@ -84,9 +86,7 @@ export default function Register() {
           >
             Continue with Email
           </AuthButton>
-          {error && (
-            <p className="text-sm text-center text-red-500 mt-1">{error}</p>
-          )}
+          <AuthError message={error} />
         </div>
       ) : sent ? (
         <AnimIn>
@@ -133,16 +133,14 @@ export default function Register() {
               autoComplete="new-password"
               className={inputClass}
             />
-            {error && (
-              <p className="text-sm text-center text-red-500">{error}</p>
-            )}
+            <AuthError message={error} />
             <button
               type="submit"
               disabled={loading}
               className={clsx(
                 "w-full h-14 rounded-full",
                 "bg-black-secondary text-white",
-                "font-figtree font-bold text-button-sm sm:text-button",
+                "font-sans font-bold text-button-sm sm:text-button",
                 "cursor-pointer transition-all duration-200",
                 "hover:bg-black-secondary/85 active:scale-[0.98]",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -162,9 +160,9 @@ export default function Register() {
       )}
       <p className="mt-6 text-sm text-black-secondary/50 text-center">
         Already have an account?{" "}
-        <a href="/app/login" className="text-black-secondary hover:underline font-medium">
+        <Link to="/app/login" className="text-black-secondary hover:underline font-medium">
           Sign in
-        </a>
+        </Link>
       </p>
     </AuthLayout>
   );

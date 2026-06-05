@@ -146,8 +146,6 @@ export function AppProvider({
             setLibrary(books);
           }
         }
-      } else {
-        setView("auth");
       }
     })();
   }, []);
@@ -194,14 +192,19 @@ export function AppProvider({
   }, []);
 
   const logout = useCallback(async () => {
-    await ST.del("user");
+    ST.clear({ preserve: ["lang"] });
+    if (supabase) await supabase.auth.signOut();
     window.location.href = "/";
   }, []);
 
   const addChild = useCallback(
     async (name: string, age: string | number) => {
       if (!name.trim() || !supabase || !dbUser) return;
-      const ch = await dbAddChild(dbUser.id, name.trim(), parseInt(String(age)));
+      const ch = await dbAddChild(
+        dbUser.id,
+        name.trim(),
+        parseInt(String(age)),
+      );
       if (!ch) return;
       setChildrenList((prev) => [...prev, ch]);
       return ch;

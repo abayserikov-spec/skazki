@@ -44,6 +44,22 @@ export default defineConfig({
         main: resolve(__dirname, "index.html"),
         app: resolve(__dirname, "app/index.html"),
       },
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/react-router")) {
+            return "vendor-router";
+          }
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
+            return "vendor-react";
+          }
+          if (id.includes("node_modules/motion")) {
+            return "vendor-motion";
+          }
+          if (id.includes("node_modules/@supabase")) {
+            return "vendor-supabase";
+          }
+        },
+      },
     },
   },
   server: {
