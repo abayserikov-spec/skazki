@@ -173,6 +173,7 @@ const BookPage = forwardRef<HTMLDivElement, BookPageProps>(
                        edge meets the page's right edge, and vice versa. */
                       left: spreadSide === "left" ? 0 : "-100%",
                       width: "200%",
+                      maxWidth: "none", // override Tailwind Preflight's img{max-width:100%}, which caps the 200% spread width to one page
                       height: "100%",
                       objectFit: "cover",
                       objectPosition: "center",
