@@ -15,14 +15,17 @@
 
   --text-h1: 2.125rem;
   --text-button: 1.125rem;
+  --text-body: 0.9375rem;
 
   --color-cream: #fdfaf4;
-  --color-midnight: #0c1c31;
+  --color-black-prime: #0c1c31;
   --color-black-secondary: #2b3b51;
   --color-grey-medium: #e3e3e3;
+  --color-grey-darkest: #989898;
+  --color-accent-green: #00a877;
 
   --shadow-card:
-    0 20px 30px color-mix(in srgb, var(--color-midnight) 5%, transparent),
-    0 10px 30px color-mix(in srgb, var(--color-midnight) 5%, transparent),
-    0 5px 15px color-mix(in srgb, var(--color-midnight) 5%, transparent);
+    0 20px 30px color-mix(in srgb, var(--color-black-prime) 5%, transparent),
+    0 10px 30px color-mix(in srgb, var(--color-black-prime) 5%, transparent),
+    0 5px 15px color-mix(in srgb, var(--color-black-prime) 5%, transparent);
 }

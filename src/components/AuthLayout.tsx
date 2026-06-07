@@ -7,8 +7,10 @@ import { motion } from "motion/react";
 
 export default function AuthLayout({
   children,
+  padding,
 }: {
   children: React.ReactNode;
+  padding?: string;
 }) {
   return (
     <div
@@ -61,7 +63,7 @@ export default function AuthLayout({
           "flex items-center justify-center",
         )}
       >
-        <AuthCard>{children}</AuthCard>
+        <AuthCard padding={padding}>{children}</AuthCard>
       </div>
     </div>
   );

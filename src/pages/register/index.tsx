@@ -4,17 +4,58 @@ import { AnimIn } from "components/AnimIn";
 import AuthButton from "components/AuthButton";
 import AuthError from "components/AuthError";
 import AuthLayout from "components/AuthLayout";
+import Input from "components/Input";
+import { signInWithApple, signInWithGoogle, signUpWithEmail } from "lib/auth";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { signInWithApple, signInWithGoogle, signUpWithEmail } from "lib/auth";
 
-const inputClass = clsx(
-  "w-full h-14 px-5 rounded-full",
-  "border-2 border-grey-medium",
-  "text-black-secondary placeholder:text-black-secondary/30",
-  "font-sans text-button-sm sm:text-button",
-  "outline-none focus:border-black-secondary/40 transition-colors duration-200",
-);
+function getPasswordStrength(pwd: string): {
+  score: 0 | 1 | 2 | 3;
+  level: string;
+  label: string;
+} {
+  if (!pwd) return { score: 0, level: "", label: "" };
+  let score = 0;
+  if (pwd.length >= 3) score++;
+  const hasLetter = /[a-zA-Z]/.test(pwd);
+  if (
+    score >= 1 &&
+    hasLetter &&
+    (/[0-9]/.test(pwd) || /[^A-Za-z0-9]/.test(pwd))
+  )
+    score++;
+  if (score >= 2 && hasLetter && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd))
+    score++;
+  const levels = ["Too short", "Weak", "Medium", "Strong"];
+  const missing2 = [
+    ...(!hasLetter ? ["a letter"] : []),
+    ...(!/[0-9]/.test(pwd) ? ["a number"] : []),
+    ...(!/[^A-Za-z0-9]/.test(pwd) ? ["a symbol"] : []),
+  ];
+  const toText = (parts: string[]) =>
+    parts.length > 1
+      ? parts.slice(0, -1).join(", ") + " and " + parts.at(-1)
+      : parts[0];
+  const missing2Text = toText(missing2);
+  const missing1 = [
+    ...(!hasLetter ? ["a letter"] : []),
+    ...(!(/[0-9]/.test(pwd) || /[^A-Za-z0-9]/.test(pwd))
+      ? ["a number or symbol"]
+      : []),
+  ];
+  const missing1Text = toText(missing1);
+  const labels = [
+    "Use at least 3 characters, numbers and symbols.",
+    `Add ${missing1Text} to reach the next level.`,
+    `Almost there! Add ${missing2Text} to make it stronger.`,
+    "Your password is excellent. You are good to go!",
+  ];
+  return {
+    score: score as 0 | 1 | 2 | 3,
+    level: levels[score],
+    label: labels[score],
+  };
+}
 
 export default function Register() {
   const [showEmail, setShowEmail] = useState<boolean>(false);
@@ -39,7 +80,11 @@ export default function Register() {
     setLoading(true);
     setError(null);
     try {
-      const { needsConfirmation } = await signUpWithEmail(name.trim(), email.trim(), password);
+      const { needsConfirmation } = await signUpWithEmail(
+        name.trim(),
+        email.trim(),
+        password,
+      );
       if (needsConfirmation) setSent(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -49,7 +94,7 @@ export default function Register() {
   }
 
   return (
-    <AuthLayout>
+    <AuthLayout padding={showEmail ? "p-10" : ""}>
       <AnimIn>
         <h1
           className={clsx(
@@ -103,67 +148,120 @@ export default function Register() {
       ) : (
         <AnimIn>
           <form
-            onSubmit={(e) => { e.preventDefault(); handleEmailSubmit(); }}
-            className={clsx("flex flex-col gap-3 mt-10 w-full")}
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleEmailSubmit();
+            }}
+            className={clsx("flex flex-col gap-10 mt-10 w-full")}
           >
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              required
-              autoComplete="name"
-              className={inputClass}
-            />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-              autoComplete="email"
-              className={inputClass}
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              required
-              autoComplete="new-password"
-              className={inputClass}
-            />
-            <AuthError message={error} />
-            <button
-              type="submit"
-              disabled={loading}
-              className={clsx(
-                "w-full h-14 rounded-full",
-                "bg-black-secondary text-white",
-                "font-sans font-bold text-button-sm sm:text-button",
-                "cursor-pointer transition-all duration-200",
-                "hover:bg-black-secondary/85 active:scale-[0.98]",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-              )}
-            >
-              {loading ? "Creating account…" : "Create account"}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowEmail(false); setError(null); }}
-              className="text-sm text-black-secondary/50 hover:text-black-secondary/80 transition-colors duration-200 cursor-pointer mt-1"
-            >
-              ← Back
-            </button>
+            <div className="flex flex-col gap-4">
+              <Input
+                label="Name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Type your Name here"
+                required
+                autoComplete="name"
+              />
+              <Input
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Type your Email here"
+                required
+                autoComplete="email"
+              />
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Type your password here"
+                required
+                autoComplete="new-password"
+              />
+              {password &&
+                (() => {
+                  const { score, level, label } = getPasswordStrength(password);
+                  return (
+                    <div className="flex flex-col gap-4 pt-1">
+                      <div className="flex gap-2">
+                        {[1, 2, 3].map((step) => (
+                          <div
+                            key={step}
+                            className={clsx(
+                              "flex-1 h-1 rounded-full transition-colors duration-300",
+                              step <= score
+                                ? "bg-accent-green"
+                                : "bg-grey-medium",
+                            )}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <p className="h-3 font-sans font-medium text-xs leading-none self-stretch text-accent-green">
+                          {level}
+                        </p>
+                        <p className="font-sans font-normal text-xs leading-body text-black-secondary self-stretch">
+                          {label}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              <AuthError message={error} />
+            </div>
+
+            <div className="flex gap-6 flex-col">
+              <AuthButton
+                variant="primary"
+                type="submit"
+                disabled={loading || getPasswordStrength(password).score < 3}
+                className={
+                  !name.trim() || !email.trim() || getPasswordStrength(password).score < 3 ? "opacity-40" : ""
+                }
+              >
+                {loading ? "Sign Up…" : "Sign Up"}
+              </AuthButton>
+              <div className="font-sans font-normal text-xs leading-body text-center text-black-prime flex flex-col gap-3.75">
+                <p>
+                  By clicking the “Sign up” button, you are creating a Anyturn
+                  <br />
+                  account and therefore you agree to Anyturn’s
+                  <br />
+                  <Link
+                    to="/app/login"
+                    className="text-accent-green underline font-medium"
+                  >
+                    Terms of Use
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    to="/app/login"
+                    className="text-accent-green underline font-medium"
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </p>
+                <p>
+                  <span>
+                    Already have an account?{" "}
+                    <Link
+                      to="/app/login"
+                      className="text-accent-green underline font-medium"
+                    >
+                      Log in
+                    </Link>
+                  </span>
+                </p>
+              </div>
+            </div>
           </form>
         </AnimIn>
       )}
-      <p className="mt-6 text-sm text-black-secondary/50 text-center">
-        Already have an account?{" "}
-        <Link to="/app/login" className="text-black-secondary hover:underline font-medium">
-          Sign in
-        </Link>
-      </p>
     </AuthLayout>
   );
 }

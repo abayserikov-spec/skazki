@@ -4,6 +4,7 @@ import { AnimIn } from "components/AnimIn";
 import AuthButton from "components/AuthButton";
 import AuthError from "components/AuthError";
 import AuthLayout from "components/AuthLayout";
+import Input from "components/Input";
 import {
   resetPassword,
   signInWithApple,
@@ -12,14 +13,6 @@ import {
 } from "lib/auth";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-const inputClass = clsx(
-  "w-full h-14 px-5 rounded-full",
-  "border-2 border-grey-medium",
-  "text-black-secondary placeholder:text-black-secondary/30",
-  "font-sans text-button-sm sm:text-button",
-  "outline-none focus:border-black-secondary/40 transition-colors duration-200",
-);
 
 type View = "oauth" | "email" | "forgot" | "forgot-sent";
 
@@ -124,57 +117,58 @@ export default function Login() {
               e.preventDefault();
               handleEmailSubmit();
             }}
-            className={clsx("flex flex-col gap-3 mt-10 w-full")}
+            className={clsx("flex flex-col gap-10 mt-10 w-full")}
           >
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-              autoComplete="email"
-              className={inputClass}
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              required
-              autoComplete="current-password"
-              className={inputClass}
-            />
-            <div className="flex justify-end -mt-1">
-              <button
-                type="button"
-                onClick={() => reset("forgot")}
-                className="text-sm text-black-secondary/50 hover:text-black-secondary/80 transition-colors duration-200 cursor-pointer"
-              >
-                Forgot password?
-              </button>
+            <div className="flex flex-col gap-4">
+              <Input
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Type your Email here"
+                required
+                autoComplete="email"
+              />
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Type your password here"
+                required
+                autoComplete="current-password"
+              />
+              <div className="flex justify-end -my-3">
+                <button
+                  type="button"
+                  onClick={() => reset("forgot")}
+                  className="inline text-sm text-black-secondary/50 hover:text-black-secondary/80 transition-colors duration-200 cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <AuthError message={error} />
             </div>
-            <AuthError message={error} />
-            <button
-              type="submit"
-              disabled={loading}
-              className={clsx(
-                "w-full h-14 rounded-full",
-                "bg-black-secondary text-white",
-                "font-sans font-bold text-button-sm sm:text-button",
-                "cursor-pointer transition-all duration-200",
-                "hover:bg-black-secondary/85 active:scale-[0.98]",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-              )}
-            >
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
-            <button
-              type="button"
-              onClick={() => reset("oauth")}
-              className="text-sm text-black-secondary/50 hover:text-black-secondary/80 transition-colors duration-200 cursor-pointer mt-1"
-            >
-              ← Back
-            </button>
+
+            <div className="flex gap-6 flex-col">
+              <AuthButton
+                variant="primary"
+                type="submit"
+                disabled={loading}
+                className={!email.trim() || !password ? "opacity-40" : ""}
+              >
+                {loading ? "Signing in…" : "Sign in"}
+              </AuthButton>
+              <p className="font-sans font-normal text-xs leading-body text-center text-black-prime">
+                Don't have an account?{" "}
+                <Link
+                  to="/app/register"
+                  className="text-accent-green underline font-medium"
+                >
+                  Sign up
+                </Link>
+              </p>
+            </div>
           </form>
         </AnimIn>
       )}
@@ -186,39 +180,33 @@ export default function Login() {
               e.preventDefault();
               handleForgotSubmit();
             }}
-            className={clsx("flex flex-col gap-3 mt-10 w-full")}
+            className={clsx("flex flex-col gap-10 mt-10 w-full")}
           >
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-              autoComplete="email"
-              className={inputClass}
-            />
-            <AuthError message={error} />
-            <button
-              type="submit"
-              disabled={loading}
-              className={clsx(
-                "w-full h-14 rounded-full",
-                "bg-black-secondary text-white",
-                "font-sans font-bold text-button-sm sm:text-button",
-                "cursor-pointer transition-all duration-200",
-                "hover:bg-black-secondary/85 active:scale-[0.98]",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-              )}
-            >
-              {loading ? "Sending…" : "Send reset link"}
-            </button>
-            <button
-              type="button"
-              onClick={() => reset("email")}
-              className="text-sm text-black-secondary/50 hover:text-black-secondary/80 transition-colors duration-200 cursor-pointer mt-1"
-            >
-              ← Back
-            </button>
+            <div className="flex flex-col gap-4">
+              <Input
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                autoComplete="email"
+              />
+              <AuthError message={error} />
+            </div>
+
+            <div className="flex gap-6 flex-col">
+              <AuthButton variant="primary" type="submit" disabled={loading}>
+                {loading ? "Sending…" : "Send reset link"}
+              </AuthButton>
+              <button
+                type="button"
+                onClick={() => reset("email")}
+                className="text-sm text-black-secondary/50 hover:text-black-secondary/80 transition-colors duration-200 cursor-pointer"
+              >
+                ← Back
+              </button>
+            </div>
           </form>
         </AnimIn>
       )}
@@ -235,16 +223,6 @@ export default function Login() {
           </p>
         </AnimIn>
       )}
-
-      <p className="mt-6 text-sm text-black-secondary/50 text-center">
-        Don't have an account?{" "}
-        <Link
-          to="/app/register"
-          className="text-black-secondary hover:underline font-medium"
-        >
-          Sign up
-        </Link>
-      </p>
     </AuthLayout>
   );
 }
